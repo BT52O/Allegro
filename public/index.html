@@ -735,6 +735,11 @@ body.dragging-row .tr:hover .like:not(.on), body.dragging-row .tr:hover .more { 
 .li.drop-into .folder-art { background: var(--ink); color: var(--panel); }
 .folder-pop { position: fixed; z-index: 45; width: 280px; max-height: min(420px, calc(100vh - 16px)); overflow-y: auto; padding: 8px; border-radius: 12px; background: var(--panel); box-shadow: var(--shadow), 0 0 0 1px var(--line); animation: pop-in .16s cubic-bezier(.2, .8, .2, 1); }
 .folder-pop[hidden] { display: none; }
+.folder-pop.moving { overflow: hidden; transition: top .26s cubic-bezier(.2, .8, .2, 1), height .26s cubic-bezier(.2, .8, .2, 1); }
+.folder-pop.closing { opacity: 0; transform: translateX(-6px) scale(.98); transition: opacity .14s ease-in, transform .14s ease-in; pointer-events: none; }
+.fp-body.swap { animation: fp-swap .26s cubic-bezier(.2, .8, .2, 1); }
+@keyframes fp-swap { from { opacity: 0; transform: translateY(var(--fp-from, 0px)); } }
+@media (prefers-reduced-motion: reduce) { .folder-pop, .folder-pop.moving, .folder-pop.closing, .fp-body.swap { animation: none; transition: none; } }
 .fp-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; padding: 6px 8px 8px; }
 .fp-head b { font: 700 .95rem var(--f-display); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .fp-head span { font-size: .78rem; color: var(--muted); flex: none; }
@@ -750,6 +755,9 @@ body.dragging-row .tr:hover .like:not(.on), body.dragging-row .tr:hover .more { 
 .folder-art .ic { width: 46%; height: 46%; stroke-width: 1.5; }
 .folder-head { display: flex; align-items: center; gap: 10px; margin-top: 6px; }
 .folder-head .page-title { margin: 0; }
+.fd-path { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; margin: 6px 0 -14px; font-size: .88rem; font-weight: 600; color: var(--muted); }
+.fd-path .link { color: var(--muted); }
+.fd-path .link:hover { color: var(--ink); }
 .folder-rename { font: 800 clamp(1.6rem, 4cqi, 2.2rem) var(--f-display); letter-spacing: -.03em; max-width: 100%; }
 .create-art { display: grid; place-items: center; background: var(--chip); color: var(--ink); transition: background-color .18s; }
 .create-art .ic { width: 45%; height: 45%; stroke-width: 1.8; }
@@ -986,6 +994,14 @@ body.touch-input .has-pen::after { display: none; }
     <label class="search-box sp-search"><i data-ic="search"></i><input id="sp-q" type="search" placeholder="Search your songs" autocomplete="off" aria-label="Search your songs"></label>
     <div class="sp-list" id="sp-list"></div>
     <div class="modal-foot"><button type="button" class="btn" id="sp-done">Done</button></div>
+  </div>
+</div>
+<div class="modal-scrim" id="fk-edit" hidden>
+  <div class="modal sp-modal" role="dialog" aria-modal="true" aria-labelledby="fk-title">
+    <div class="modal-head"><h2 id="fk-title">Add to Folder</h2><button type="button" class="circ" id="fk-close" aria-label="Close"><i data-ic="close"></i></button></div>
+    <label class="search-box sp-search"><i data-ic="search"></i><input id="fk-q" type="search" placeholder="Search your playlists and folders" autocomplete="off" aria-label="Search your playlists and folders"></label>
+    <div class="sp-list" id="fk-list"></div>
+    <div class="modal-foot"><button type="button" class="btn" id="fk-done">Done</button></div>
   </div>
 </div>
 <div class="modal-scrim" id="fd-edit" hidden>
@@ -1979,11 +1995,12 @@ const VIEWS = {
   folder(v) {
     const f = S.folders.find(x => x.id === v.key);
     if (!f) return notFound('That folder was deleted.');
-    const pls = folderPlaylists(f);
-    const title = S.renaming === f.id ? `<input class="rename folder-rename" id="rename-input" value="${esc(f.name)}" maxlength="80" aria-label="Folder name">` : `<h1 class="page-title">${esc(f.name)}</h1>`;
-    return `<div class="folder-head">${title}<button class="act-btn" data-folder-more="${esc(f.id)}" aria-label="Folder options">${ic('more')}</button></div>`
-      + (pls.length ? `<div class="cards folder-cards" data-folder="${esc(f.id)}">${pls.map(plCard).join('')}</div>`
-        : `<div class="empty"><h3>This Folder Is Empty</h3><p>Open a playlist's ⋯ menu and choose Move to Folder.</p></div>`);
+    const items = folderItems(f), path = folderPath(f);
+    const crumbs = path.length > 1 ? `<nav class="fd-path" aria-label="Folder path">${path.slice(0, -1).map(x => `<button class="link" data-open="folder:${esc(x.id)}">${esc(x.name)}</button>`).join(`<span aria-hidden="true">›</span>`)}<span aria-hidden="true">›</span></nav>` : '';
+    const title = `<h1 class="page-title">${esc(f.name)}</h1>`;
+    return crumbs + `<div class="folder-head">${title}<button class="act-btn" data-folder-add="${esc(f.id)}" aria-label="Add to this folder" title="Add">${ic('plus')}</button><button class="act-btn" data-folder-more="${esc(f.id)}" aria-label="Folder options">${ic('more')}</button></div>`
+      + (items.length ? `<div class="cards folder-cards" data-folder="${esc(f.id)}">${items.map(x => x.kind === 'playlist' ? plCard(x.p) : folderCard(x.f)).join('')}</div>`
+        : `<div class="empty"><h3>This Folder Is Empty</h3><p>Use the + button to add playlists or make a folder inside this one.</p></div>`);
   },
   history() {
     const hist = S.history.filter(h => S.tracks.has(h.id)).slice(0, HISTORY_MAX);
@@ -2133,7 +2150,7 @@ function libItems(all = false) {
   items.push({ key: 'liked', name: 'Liked Songs', type: 'Playlist', sub: `Playlist • ${plural(live(S.liked).length, 'song')}`, art: likedArt(), pinned: true, added: Infinity, creator: 'You' });
   const q0 = all ? '' : S.libQ.trim();
   const filed = new Set(S.folders.flatMap(f => f.ids));
-  S.folders.forEach(f => items.push({ key: 'folder:' + f.id, name: f.name, type: 'Folder', sub: `Folder • ${plural(folderPlaylists(f).length, 'playlist')}`, art: folderArt(), added: f.created || 0, creator: 'You' }));
+  S.folders.filter(f => q0 || all || !filed.has(f.id)).forEach(f => items.push({ key: 'folder:' + f.id, name: f.name, type: 'Folder', sub: `Folder • ${folderDesc(f)}`, art: folderArt(), added: f.created || 0, creator: 'You' }));
   S.playlists.filter(p => q0 || all || !filed.has(p.id)).forEach(p => items.push({ key: 'playlist:' + p.id, name: p.name, type: 'Playlist', sub: `Playlist • ${plural(live(p.ids).length, 'song')}`, art: plArt(p), added: p.created || 0, creator: 'You' }));
   let out = all ? items : items.filter(it => !S.libFilter || it.type === S.libFilter);
   const q = all ? '' : S.libQ.trim().toLowerCase();
@@ -2388,12 +2405,25 @@ function deletePlaylist(id) {
 /* ================= folders: a place to group playlists ================= */
 const folderArt = () => `<div class="folder-art" aria-hidden="true">${ic('folder')}</div>`;
 const folderPlaylists = f => f.ids.map(id => S.playlists.find(p => p.id === id)).filter(Boolean);
+// What's inside a folder, in order: playlists and other folders (folders can hold folders, as deep as you like).
+const folderItems = f => f.ids.map(id => { const p = S.playlists.find(x => x.id === id); if (p) return { kind: 'playlist', key: 'playlist:' + id, p }; const c = S.folders.find(x => x.id === id); return c ? { kind: 'folder', key: 'folder:' + id, f: c } : null; }).filter(Boolean);
+const parentOf = id => S.folders.find(f => f.ids.includes(id));
+const folderPath = f => { const out = []; let cur = f, guard = 0; while (cur && guard++ < 50) { out.unshift(cur); cur = parentOf(cur.id); } return out; };
+const isInside = (id, ancestorId) => { let cur = parentOf(id), guard = 0; while (cur && guard++ < 50) { if (cur.id === ancestorId) return true; cur = parentOf(cur.id); } return false; };
+// can item (playlist or folder id) go into folder target? not into itself, and a folder not into its own subfolders
+const canMoveInto = (id, targetId) => id !== targetId && !(S.folders.some(f => f.id === id) && isInside(targetId, id));
+function folderDesc(f) {
+  const it = folderItems(f), np = it.filter(x => x.kind === 'playlist').length, nf = it.length - np;
+  return [np || !nf ? plural(np, 'playlist') : '', nf ? plural(nf, 'folder') : ''].filter(Boolean).join(', ');
+}
+const itemName = id => (S.playlists.find(p => p.id === id) || S.folders.find(f => f.id === id) || {}).name || 'item';
+const folderCard = f => `<div class="card" data-open="folder:${esc(f.id)}" tabindex="0" role="link" aria-label="${esc(f.name)}"><div class="card-art">${folderArt()}</div><div class="card-t">${esc(f.name)}</div><div class="card-s">Folder · ${esc(folderDesc(f))}</div></div>`;
 // New playlists and folders go to the top of My Playlists, right under Liked Songs (in Custom Sort too).
 function toTopOfLibrary(key) {
   const keys = libItems(true).filter(it => !it.pinned).map(it => it.key);
   S.libOrder = [key, ...(S.libOrder.length ? S.libOrder : keys).filter(k => k !== key)];
 }
-const folderOf = plId => S.folders.find(f => f.ids.includes(plId));
+const folderOf = id => parentOf(id);
 function createMenu(anchor) {
   openMenu(anchor, [
     { label: 'Playlist', icon: 'list', fn: () => newPlaylist() },
@@ -2402,13 +2432,13 @@ function createMenu(anchor) {
 }
 // Creating or renaming a folder goes through a small window first, like Create Playlist: closing it changes nothing.
 let fdlg = null;
-function newFolder(withPlaylist = null) { openFolderDialog({ withPlaylist }); }
-function openFolderDialog({ id = null, withPlaylist = null } = {}) {
+function newFolder(withPlaylist = null, parent = null) { openFolderDialog({ withPlaylist, parent }); }
+function openFolderDialog({ id = null, withPlaylist = null, parent = null } = {}) {
   closeMenu();
   const f = id && S.folders.find(x => x.id === id);
   let n = 1; const nm = i => i === 1 ? 'New Folder' : `New Folder #${i}`;
   while (S.folders.some(x => x.name === nm(n))) n++;
-  fdlg = { id: f ? f.id : null, withPlaylist, back: document.activeElement };
+  fdlg = { id: f ? f.id : null, withPlaylist, parent, back: document.activeElement };
   $('#fd-title').textContent = f ? 'Rename Folder' : 'Create Folder';
   $('#fd-save').textContent = f ? 'Save' : 'Create';
   $('#fd-name').value = f ? f.name : nm(n);
@@ -2429,7 +2459,7 @@ $('#fd-edit-form').addEventListener('submit', e => {
   if (!fdlg) return;
   const name = $('#fd-name').value.trim();
   if (!name) { $('#fd-err').textContent = 'Give the folder a name.'; $('#fd-name').focus(); return; }
-  const { id, withPlaylist } = fdlg;
+  const { id, withPlaylist, parent } = fdlg;
   closeFd();
   if (id) {
     const f = S.folders.find(x => x.id === id); if (!f) return;
@@ -2437,46 +2467,100 @@ $('#fd-edit-form').addEventListener('submit', e => {
     return;
   }
   const f = { id: uid('fd'), name, created: Date.now(), ids: [] };
+  // a new folder made from an item's Move to Folder menu lands where that item was, then takes the item in
+  const host = parent ? S.folders.find(x => x.id === parent) : withPlaylist ? parentOf(withPlaylist) : null;
   if (withPlaylist) { S.folders.forEach(x => { x.ids = x.ids.filter(i => i !== withPlaylist); }); f.ids.push(withPlaylist); }
-  S.folders.push(f); toTopOfLibrary('folder:' + f.id);
+  S.folders.push(f);
+  if (host && host.id !== withPlaylist) host.ids.push(f.id); else toTopOfLibrary('folder:' + f.id);
   userActed = true; save();
   go({ name: 'folder', key: f.id }); renderSide();
   toast(`Created ${f.name}`);
 });
-function moveToFolder(plId, folderId) {
-  S.folders.forEach(f => { f.ids = f.ids.filter(i => i !== plId); });
+function moveToFolder(itemId, folderId, quiet) {
   const f = folderId && S.folders.find(x => x.id === folderId);
-  if (f) f.ids.push(plId);
+  if (f && !canMoveInto(itemId, f.id)) { toast("A folder can't go inside itself."); return false; }
+  S.folders.forEach(x => { x.ids = x.ids.filter(i => i !== itemId); });
+  if (f) f.ids.push(itemId);
   userActed = true; save(); render(); renderSide();
-  const p = S.playlists.find(x => x.id === plId);
-  toast(f ? `Moved ${p ? p.name : 'playlist'} to ${f.name}` : `Moved ${p ? p.name : 'playlist'} out of its folder`, f ? { label: 'Open', fn: () => openKey('folder:' + f.id) } : null);
+  if (!quiet) toast(f ? `Moved ${itemName(itemId)} to ${f.name}` : `Moved ${itemName(itemId)} out of its folder`, f ? { label: 'Open', fn: () => openKey('folder:' + f.id) } : null);
+  return true;
 }
-function folderSub(plId) {
+// Folder names in menus show where they sit, e.g. "华语 › Kpop".
+const folderLabel = f => folderPath(f).map(x => x.name).join(' › ');
+function folderSub(itemId) {
   return () => {
-    const cur = folderOf(plId);
+    const cur = folderOf(itemId);
+    const targets = S.folders.filter(f => canMoveInto(itemId, f.id)).sort((a, b) => folderLabel(a).localeCompare(folderLabel(b)));
     return [
-      { label: 'New Folder', icon: 'plus', fn: () => newFolder(plId) },
-      ...(S.folders.length ? [{ sep: true }] : []),
-      ...S.folders.map(f => ({ label: f.name, icon: f === cur ? 'check' : 'folder', fn: () => { if (f !== cur) moveToFolder(plId, f.id); } })),
-      ...(cur ? [{ sep: true }, { label: 'Remove from Folder', icon: 'close', fn: () => moveToFolder(plId, null) }] : [])
+      { label: 'New Folder', icon: 'plus', fn: () => newFolder(itemId) },
+      ...(targets.length ? [{ sep: true }] : []),
+      ...targets.map(f => ({ label: folderLabel(f), icon: f === cur ? 'check' : 'folder', fn: () => { if (f !== cur) moveToFolder(itemId, f.id); } })),
+      ...(cur ? [{ sep: true }, { label: 'Remove from Folder', icon: 'close', fn: () => moveToFolder(itemId, null) }] : [])
     ];
   };
 }
+function folderAddMenu(anchor, id) {
+  openMenu(anchor, [
+    { label: 'Add Playlists', icon: 'list', fn: () => openFolderPicker(id) },
+    { label: 'New Folder Here', icon: 'folder', fn: () => newFolder(null, id) }
+  ], 'Add to This Folder');
+}
+/* pick playlists (or folders) to put in a folder */
+let fk = null;
+function openFolderPicker(fid) {
+  if (!S.folders.some(f => f.id === fid)) return;
+  closeMenu();
+  fk = { fid, back: document.activeElement, added: 0 };
+  $('#fk-title').textContent = 'Add to ' + S.folders.find(f => f.id === fid).name;
+  $('#fk-q').value = '';
+  drawFolderPicker();
+  $('#fk-edit').hidden = false;
+  setTimeout(() => $('#fk-q').focus(), 30);
+}
+function drawFolderPicker() {
+  const f = S.folders.find(x => x.id === fk.fid); if (!f) return;
+  const q = $('#fk-q').value.trim().toLowerCase();
+  const rows = [
+    ...S.playlists.map(p => ({ id: p.id, name: p.name, art: plArt(p), sub: 'Playlist · ' + plural(live(p.ids).length, 'song') })),
+    ...S.folders.filter(x => x.id !== f.id && canMoveInto(x.id, f.id)).map(x => ({ id: x.id, name: x.name, art: folderArt(), sub: 'Folder · ' + folderDesc(x) }))
+  ].filter(r => !q || r.name.toLowerCase().includes(q));
+  $('#fk-list').innerHTML = rows.length ? rows.map(r => {
+    const inIt = f.ids.includes(r.id), where = !inIt && parentOf(r.id);
+    return `<div class="sp-row"><span class="fp-art">${r.art}</span><span class="sp-t"><b>${esc(r.name)}</b><span>${esc(r.sub)}${where ? ' · in ' + esc(where.name) : ''}</span></span><button type="button" class="pill-btn sp-add" data-fk-add="${esc(r.id)}"${inIt ? ' disabled' : ''}>${inIt ? 'Added' : where ? 'Move Here' : 'Add'}</button></div>`;
+  }).join('') : `<p class="sp-none">Nothing matches “${esc($('#fk-q').value.trim())}”.</p>`;
+}
+function closeFk() { if (!fk) return; $('#fk-edit').hidden = true; const n = fk.added; try { fk.back && fk.back.focus && fk.back.focus(); } catch (e) {} fk = null; if (n) { render(); renderSide(); } }
+$('#fk-close').addEventListener('click', closeFk);
+$('#fk-done').addEventListener('click', closeFk);
+$('#fk-edit').addEventListener('mousedown', e => { if (e.target.id === 'fk-edit') closeFk(); });
+$('#fk-q').addEventListener('input', () => { if (fk) drawFolderPicker(); });
+$('#fk-list').addEventListener('click', e => {
+  const b = e.target.closest('[data-fk-add]'); if (!b || !fk) return;
+  if (!canMoveInto(b.dataset.fkAdd, fk.fid)) return;
+  S.folders.forEach(x => { x.ids = x.ids.filter(i => i !== b.dataset.fkAdd); });
+  S.folders.find(x => x.id === fk.fid).ids.push(b.dataset.fkAdd);
+  fk.added++; userActed = true; save();
+  drawFolderPicker();
+});
 function folderMenu(anchor, id) {
   const f = S.folders.find(x => x.id === id); if (!f) return;
   openMenu(anchor, [
     { label: 'Rename', icon: 'edit', fn: () => openFolderDialog({ id: f.id }) },
+    { label: 'Move to Folder', icon: 'folder', sub: folderSub(f.id) },
     { sep: true },
     { label: 'Delete Folder', icon: 'trash', danger: true, fn: () => deleteFolder(f.id) }
   ], f.name);
 }
 function deleteFolder(id) {
   const idx = S.folders.findIndex(f => f.id === id); if (idx < 0) return;
+  // what was inside moves up one level: into the parent folder, or back to My Playlists
+  const parent = parentOf(id), pAt = parent ? parent.ids.indexOf(id) : -1, before = parent ? parent.ids.slice() : null;
   const [f] = S.folders.splice(idx, 1);
+  if (parent) parent.ids.splice(pAt, 1, ...f.ids);
   userActed = true; save();
-  if (S.view.name === 'folder' && S.view.key === id) { S.view = { name: 'library', tab: 'playlists' }; render(true); } else render();
+  if (S.view.name === 'folder' && S.view.key === id) { if (parent) go({ name: 'folder', key: parent.id }); else { S.view = { name: 'library', tab: 'playlists' }; render(true); } } else render();
   renderSide();
-  toast(`Deleted ${f.name}. Its playlists are back in My Playlists.`, { label: 'Undo', fn: () => { S.folders.splice(idx, 0, f); save(); render(); renderSide(); } });
+  toast(`Deleted ${f.name}. What was inside is back in ${parent ? parent.name : 'My Playlists'}.`, { label: 'Undo', fn: () => { S.folders.splice(idx, 0, f); if (parent) parent.ids = before; save(); render(); renderSide(); } });
 }
 
 /* ================= playlist page breaks (sections, like the volumes of a soundtrack) ================= */
@@ -2576,27 +2660,48 @@ $('#sp-list').addEventListener('click', e => {
 const fpop = Object.assign(document.createElement('div'), { id: 'folder-pop', className: 'folder-pop', hidden: true });
 fpop.setAttribute('role', 'menu');
 document.body.appendChild(fpop);
-const fp = { timer: 0, hide: 0, key: null };
+const fp = { timer: 0, hide: 0, anim: 0, key: null };
 function showFolderPop(li) {
   const f = S.folders.find(x => 'folder:' + x.id === li.dataset.open); if (!f || sd || cd || drag) return;
-  const pls = folderPlaylists(f);
-  fpop.innerHTML = `<div class="fp-head"><b>${esc(f.name)}</b><span>${plural(pls.length, 'playlist')}</span></div>`
-    + (pls.length ? pls.map(p => `<button class="fp-row" data-open="playlist:${esc(p.id)}" role="menuitem"><span class="fp-art">${plArt(p)}</span><span class="fp-t"><b>${esc(p.name)}</b><span>${plural(live(p.ids).length, 'song')}</span></span></button>`).join('')
-      : `<p class="fp-empty">Nothing here yet. Drag a playlist onto this folder to add it.</p>`);
+  const items = folderItems(f);
+  // Moving from one folder to the next: the panel glides over, resizes smoothly, and the new list slides in
+  // from the direction you moved. Opening fresh, it pops in.
+  const wasOpen = !fpop.hidden && !fpop.classList.contains('closing');
+  const oldTop = parseFloat(fpop.style.top) || 0, oldH = wasOpen ? fpop.offsetHeight : 0;
+  clearTimeout(fp.anim); fpop.classList.remove('closing');
+  fpop.innerHTML = `<div class="fp-body${wasOpen ? ' swap' : ''}"><div class="fp-head"><b>${esc(f.name)}</b><span>${esc(folderDesc(f))}</span></div>`
+    + (items.length ? items.map(x => x.kind === 'playlist'
+        ? `<button class="fp-row" data-open="playlist:${esc(x.p.id)}" role="menuitem"><span class="fp-art">${plArt(x.p)}</span><span class="fp-t"><b>${esc(x.p.name)}</b><span>${plural(live(x.p.ids).length, 'song')}</span></span></button>`
+        : `<button class="fp-row" data-open="folder:${esc(x.f.id)}" role="menuitem"><span class="fp-art">${folderArt()}</span><span class="fp-t"><b>${esc(x.f.name)}</b><span>Folder · ${esc(folderDesc(x.f))}</span></span></button>`).join('')
+      : `<p class="fp-empty">Nothing here yet. Drag a playlist onto this folder to add it.</p>`) + `</div>`;
   fp.key = li.dataset.open;
   fpop.hidden = false;
+  fpop.style.height = '';
   const r = li.getBoundingClientRect(), side = $('.side').getBoundingClientRect(), h = fpop.offsetHeight;
+  const top = Math.max(8, Math.min(r.top - 8, innerHeight - h - 8));
   fpop.style.left = (side.right + 8) + 'px';
-  fpop.style.top = Math.max(8, Math.min(r.top - 8, innerHeight - h - 8)) + 'px';
+  if (wasOpen) {
+    fpop.style.setProperty('--fp-from', (top > oldTop ? 8 : top < oldTop ? -8 : 0) + 'px');
+    fpop.classList.remove('moving'); fpop.style.height = oldH + 'px'; fpop.style.top = oldTop + 'px';
+    void fpop.offsetWidth;
+    fpop.classList.add('moving'); fpop.style.height = h + 'px'; fpop.style.top = top + 'px';
+    fp.anim = setTimeout(() => { fpop.classList.remove('moving'); fpop.style.height = ''; }, 280);
+  } else { fpop.classList.remove('moving'); fpop.style.top = top + 'px'; }
 }
-function hideFolderPop() { clearTimeout(fp.timer); clearTimeout(fp.hide); fpop.hidden = true; fp.key = null; }
+function hideFolderPop(now) {
+  clearTimeout(fp.timer); clearTimeout(fp.hide); clearTimeout(fp.anim); fp.key = null;
+  if (fpop.hidden) return;
+  if (now === true) { fpop.hidden = true; fpop.classList.remove('closing', 'moving'); return; }
+  fpop.classList.add('closing');
+  fp.anim = setTimeout(() => { fpop.hidden = true; fpop.classList.remove('closing', 'moving'); fpop.style.height = ''; }, 140);
+}
 const fpHideSoon = () => { clearTimeout(fp.hide); fp.hide = setTimeout(hideFolderPop, 200); };
 $('#side-list').addEventListener('pointerover', e => {
   if (e.pointerType !== 'mouse' || sd || cd || drag) return;
   const li = e.target.closest('.li[data-open^="folder:"]'); if (!li) return;
   clearTimeout(fp.hide);
-  if (fp.key === li.dataset.open && !fpop.hidden) return;
-  clearTimeout(fp.timer); fp.timer = setTimeout(() => showFolderPop(li), fpop.hidden ? 260 : 60);
+  if (fp.key === li.dataset.open && !fpop.hidden && !fpop.classList.contains('closing')) return;
+  clearTimeout(fp.timer); fp.timer = setTimeout(() => showFolderPop(li), fpop.hidden || fpop.classList.contains('closing') ? 260 : 40);
 });
 $('#side-list').addEventListener('pointerout', e => {
   const li = e.target.closest('.li[data-open^="folder:"]'); if (!li || li.contains(e.relatedTarget)) return;
@@ -2604,9 +2709,9 @@ $('#side-list').addEventListener('pointerout', e => {
 });
 fpop.addEventListener('pointerenter', () => clearTimeout(fp.hide));
 fpop.addEventListener('pointerleave', fpHideSoon);
-$('#side-list').addEventListener('scroll', hideFolderPop, { passive: true });
+$('#side-list').addEventListener('scroll', () => hideFolderPop(), { passive: true });
 document.addEventListener('pointerdown', e => { if (!fpop.hidden && !fpop.contains(e.target) && !e.target.closest('.li[data-open^="folder:"]')) hideFolderPop(); }, true);
-fpop.addEventListener('click', () => setTimeout(hideFolderPop, 0));
+fpop.addEventListener('click', () => setTimeout(() => hideFolderPop(true), 0));
 
 /* ---- drag playlists around inside a folder page ---- */
 let cd = null;
@@ -2652,7 +2757,8 @@ function cdMove(x, y) {
   let into = null, side = null;
   if (overSide) {
     const lis = [...$('#side-list').querySelectorAll('.li[data-drag]')];
-    into = lis.find(el => { if (!el.dataset.open.startsWith('folder:') || el.dataset.open === 'folder:' + here) return false; const r = el.getBoundingClientRect(), m = r.height * .22; return y >= r.top + m && y <= r.bottom - m; }) || null;
+    const cardKey = cd.card.dataset.open, cardId = cardKey.slice(cardKey.indexOf(':') + 1);
+    into = lis.find(el => { if (!el.dataset.open.startsWith('folder:') || el.dataset.open === 'folder:' + here || !canMoveInto(cardId, el.dataset.open.slice(7))) return false; const r = el.getBoundingClientRect(), m = r.height * .22; return y >= r.top + m && y <= r.bottom - m; }) || null;
     if (!into) {
       let to = lis.length;
       for (let i = 0; i < lis.length; i++) { const r = lis[i].getBoundingClientRect(); if (y < r.top + r.height / 2) { to = i; break; } }
@@ -2687,11 +2793,10 @@ function cdEnd(commit) {
   $('#side-list').classList.remove('drop-out');
   document.body.classList.remove('dragging-row');
   if (!commit) return;
-  const plId = d.card.dataset.open.slice(9);
+  const key = d.card.dataset.open, plId = key.slice(key.indexOf(':') + 1);
   if (d.into) { moveToFolder(plId, d.into.dataset.open.slice(7)); return; }
   if (d.side) {
     // Out of the folder, into My Playlists at the spot it was dropped (Custom Sort keeps that spot).
-    const key = 'playlist:' + plId;
     const order = libItems(true).filter(it => !it.pinned).map(it => it.key).filter(k => k !== key);
     const at = d.side.before ? order.indexOf(d.side.before) : -1;
     order.splice(at < 0 ? order.length : at, 0, key);
@@ -2702,7 +2807,7 @@ function cdEnd(commit) {
   let to = d.to; if (to > d.from) to--;
   if (to === d.from) return;
   const f = S.folders.find(x => x.id === d.grid.dataset.folder); if (!f) return;
-  const shown = d.cards.map(el => el.dataset.open.slice(9));
+  const shown = d.cards.map(el => el.dataset.open.slice(el.dataset.open.indexOf(':') + 1));
   const [moved] = shown.splice(d.from, 1); shown.splice(to, 0, moved);
   f.ids = [...shown, ...f.ids.filter(id => !shown.includes(id))];
   userActed = true; save(); render(); renderSide();
@@ -3336,8 +3441,9 @@ function sdMove(x, y) {
   sd.ghost.style.transform = `translate(${x + 14}px, ${y - 20}px)`;
   const rects = sd.items.map(el => el.getBoundingClientRect());
   // A playlist held over the middle of a folder goes into that folder instead of moving in the list.
-  const into = sd.item.dataset.open.startsWith('playlist:') && sd.items.find((el, i) => {
-    if (!el.dataset.open.startsWith('folder:')) return false;
+  const dragId = sd.item.dataset.open.slice(sd.item.dataset.open.indexOf(':') + 1);
+  const into = /^(playlist|folder):/.test(sd.item.dataset.open) && sd.items.find((el, i) => {
+    if (!el.dataset.open.startsWith('folder:') || el === sd.item || !canMoveInto(dragId, el.dataset.open.slice(7))) return false;
     const r = rects[i], mx = sd.grid ? r.width * .2 : 0, my = sd.grid ? r.height * .2 : r.height * .22;
     return x >= r.left + mx && x <= r.right - mx && y >= r.top + my && y <= r.bottom - my;
   });
@@ -3369,7 +3475,7 @@ function sdEnd(commit) {
   if (d.into) d.into.classList.remove('drop-into');
   document.body.classList.remove('dragging-row');
   if (!commit) return;
-  if (d.into) { moveToFolder(d.item.dataset.open.slice(9), d.into.dataset.open.slice(7)); return; }
+  if (d.into) { const k = d.item.dataset.open; moveToFolder(k.slice(k.indexOf(':') + 1), d.into.dataset.open.slice(7)); return; }
   let to = d.to; if (to > d.from) to--;
   if (to === d.from) return;
   const shown = d.items.map(el => el.dataset.open);
@@ -3783,6 +3889,7 @@ document.addEventListener('click', e => {
   if (more) { const tl = more.closest('[data-list]'); trackMenu(more, more.dataset.more, tl && LISTS[tl.dataset.list]); return; }
   const pa = T.closest('[data-pl-add]'); if (pa) { plAddMenu(pa, pa.dataset.plAdd); return; }
   const bm = T.closest('[data-break-more]'); if (bm && S.view.name === 'playlist') { breakMenu(bm, S.view.key, bm.dataset.breakMore); return; }
+  const fa = T.closest('[data-folder-add]'); if (fa) { folderAddMenu(fa, fa.dataset.folderAdd); return; }
   const fm = T.closest('[data-folder-more]'); if (fm) { folderMenu(fm, fm.dataset.folderMore); return; }
   const cm = T.closest('[data-ctx-more]'); if (cm) { ctxMenu(cm, cm.dataset.ctxMore); return; }
   const ga = T.closest('[data-go-artist]'); if (ga) { go({ name: 'artist', key: ga.dataset.goArtist }); return; }
@@ -3807,7 +3914,7 @@ document.addEventListener('click', e => {
   const op = T.closest('[data-open]'); if (op) { openKey(op.dataset.open); return; }
 });
 document.addEventListener('keydown', e => {
-  if (e.key === 'Escape') { if (crop) { cropClose(null); return; } if (!$('#lightbox').hidden) { closeLightbox(); return; } if (fdlg) { closeFd(); return; } if (bk) { closeBk(); return; } if (sp) { closeSp(); return; } if (se) { closeSe(); return; } if (pe) { closePe(); return; } if (!$('#menu').hidden) { closeMenu(); return; } if (!$('#sheet').hidden) { closeSheet(); return; } if (S.renaming) { S.renaming = null; render(); } return; }
+  if (e.key === 'Escape') { if (crop) { cropClose(null); return; } if (!$('#lightbox').hidden) { closeLightbox(); return; } if (fdlg) { closeFd(); return; } if (bk) { closeBk(); return; } if (fk) { closeFk(); return; } if (sp) { closeSp(); return; } if (se) { closeSe(); return; } if (pe) { closePe(); return; } if (!$('#menu').hidden) { closeMenu(); return; } if (!$('#sheet').hidden) { closeSheet(); return; } if (S.renaming) { S.renaming = null; render(); } return; }
   if (e.target.id === 'rename-input' && e.key === 'Enter') { e.preventDefault(); commitRename(); return; }
   const el = e.target;
   if ((e.key === 'Enter' || e.key === ' ') && el.matches && el.matches('.tr, .card, .qt, [data-open][tabindex], [data-qi]')) { e.preventDefault(); el.click(); return; }
