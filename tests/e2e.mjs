@@ -289,14 +289,16 @@ try {
   check(await A.$eval('.logo', e => getComputedStyle(e).backgroundColor !== 'rgba(0, 0, 0, 0)'), 'Allegro logo shows hover on the Home page');
 
   // --- the search box sits in the top right on every page, next to the profile button
-  const boxes = [];
-  for (const n of ['home', 'library', 'uploads']) {
+  const boxes = [], boxX = [];
+  for (const n of ['home', 'search', 'library', 'uploads']) {
     await A.click(`.nav-btn[data-nav="${n}"]`); await A.waitForTimeout(350);
+    boxX.push(await A.$eval('#search-box', b => { const r = b.getBoundingClientRect(); return [Math.round(r.left), Math.round(r.right)].join('-'); }));
     boxes.push(await A.evaluate(() => { const b = document.getElementById('search-box').getBoundingClientRect(), a = document.getElementById('acct-btn').getBoundingClientRect(); return b.width > 200 && b.height > 0 && b.right <= a.left && a.left - b.right < 20; }));
   }
   await A.fill('#search-input', 'Some');
   await A.waitForTimeout(500);
   const searched = await A.evaluate(() => [...document.querySelectorAll('#view .t-name')].map(e => e.textContent));
+  check(new Set(boxX).size === 1, 'search box stays in the same spot on every page, long or short', JSON.stringify(boxX));
   const boxStyle = await A.$eval('#search-box', b => [getComputedStyle(b).backgroundColor, getComputedStyle(b).borderTopWidth]);
   check(boxStyle[0] === 'rgb(236, 236, 236)' && boxStyle[1] === '0px', 'search box is light gray with no outline while typing', JSON.stringify(boxStyle));
   check(boxes.every(Boolean) && searched.includes('Untagged Song'), 'search box is in the top right on every page, and typing shows results', JSON.stringify({ boxes, searched }));
