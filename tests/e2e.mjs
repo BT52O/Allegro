@@ -193,23 +193,25 @@ try {
   check(atExplore && backOff && atLib && fwdOff, 'back and forward go one page only');
 
   // --- collapsible sidebar
-  const dragEdge = async toX => {
-    const hb = await (await A.$('#side-toggle')).boundingBox(), y = hb.y + hb.height / 2;
-    await A.mouse.move(hb.x + hb.width / 2, y); await A.mouse.down();
-    await A.mouse.move(toX, y, { steps: 10 }); await A.mouse.up(); await A.waitForTimeout(500);
+  const dragEdge = async dx => {
+    const hb = await (await A.$('#side-toggle')).boundingBox(), x = hb.x + hb.width / 2, y = hb.y + hb.height / 2;
+    await A.mouse.move(x, y); await A.mouse.down();
+    await A.mouse.move(x + dx, y, { steps: 8 }); await A.mouse.up(); await A.waitForTimeout(700);
   };
-  const sideLeft = (await (await A.$('.side')).boundingBox()).x;
-  await dragEdge(sideLeft + 340);
-  const wide = Math.round((await (await A.$('.side')).boundingBox()).width);
-  await dragEdge(sideLeft + 80);
+  const w0 = Math.round((await (await A.$('.side')).boundingBox()).width);
+  const ic0 = await A.$eval('.nav-btn[data-nav="home"] .ic', e => e.getBoundingClientRect().left);
+  await dragEdge(-80);
   const rail = Math.round((await (await A.$('.side')).boundingBox()).width);
-  await dragEdge(sideLeft + 260);
+  const ic1 = await A.$eval('.nav-btn[data-nav="home"] .ic', e => e.getBoundingClientRect().left);
+  await dragEdge(-150);
+  const stillRail = Math.round((await (await A.$('.side')).boundingBox()).width);
+  await dragEdge(80);
   const back = Math.round((await (await A.$('.side')).boundingBox()).width);
-  check(Math.abs(wide - 340) <= 2 && rail === 64 && Math.abs(back - 260) <= 2, 'dragging the edge resizes and collapses the sidebar', JSON.stringify([wide, rail, back]));
+  check(rail === 64 && stillRail === 64 && back === w0 && Math.abs(ic0 - ic1) < 1, 'dragging the edge switches between full and collapsed only, icons stay put', JSON.stringify([w0, rail, back, Math.round(ic0), Math.round(ic1)]));
   await A.dblclick('#side-toggle'); await A.waitForTimeout(700);
   const dbl = Math.round((await (await A.$('.side')).boundingBox()).width);
   await A.dblclick('#side-toggle'); await A.waitForTimeout(700);
-  check(dbl === 64 && (await (await A.$('.side')).boundingBox()).width > 200, 'double-clicking the edge collapses and expands it');
+  check(dbl === 64 && Math.round((await (await A.$('.side')).boundingBox()).width) === w0, 'double-clicking the edge collapses and expands it');
 
   // --- My Library: Custom Sort is listed first, Creator is gone, dragging rearranges and saves
   await A.click('#sl-sort'); await A.waitForTimeout(200);

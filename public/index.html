@@ -61,11 +61,11 @@ img { display: block; }
 .shell {
   --gap: clamp(8px, .84vw, 16px);
   height: 100%; display: grid; gap: var(--gap); padding: var(--gap);
-  grid-template-columns: var(--side-w, clamp(224px, 15vw, 264px)) minmax(0, 1fr);
+  grid-template-columns: clamp(224px, 15vw, 264px) minmax(0, 1fr);
   grid-template-rows: minmax(0, 1fr) auto;
   grid-template-areas: "side main" "player player";
 }
-.shell.q-open { grid-template-columns: var(--side-w, clamp(224px, 15vw, 264px)) minmax(0, 1fr) auto; grid-template-areas: "side main queue" "player player player"; }
+.shell.q-open { grid-template-columns: clamp(224px, 15vw, 264px) minmax(0, 1fr) auto; grid-template-areas: "side main queue" "player player player"; }
 .side { grid-area: side; display: flex; flex-direction: column; gap: var(--gap); min-height: 0; }
 .box { background: var(--panel); border-radius: 16px; }
 .circ { width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; color: var(--muted); }
@@ -607,33 +607,41 @@ input[type="range"]:disabled { opacity: .4; cursor: default; }
 @keyframes pop-in { from { opacity: 0; transform: translateY(10px) scale(.98); } }
 @media (max-width: 520px) { .modal-body { grid-template-columns: minmax(0, 1fr); } .pe-cover { width: 160px; } }
 
-/* ---------- collapsible left column ---------- */
-.shell { transition: grid-template-columns .36s cubic-bezier(.2, .8, .2, 1); }
+/* ---------- collapsible left column ----------
+   Two states only: full width and a 64px icon rail. Icons and covers sit at the same x position in both,
+   so only the width, the panel header and the words animate. */
+.shell { transition: grid-template-columns .4s cubic-bezier(.32, .72, 0, 1); }
 .shell.side-collapsed { grid-template-columns: 64px minmax(0, 1fr); }
 .shell.side-collapsed.q-open { grid-template-columns: 64px minmax(0, 1fr) auto; }
 .side { position: relative; }
 .side .box { overflow: hidden; }
 .side-edge { position: absolute; top: 0; bottom: 0; right: calc(var(--gap) / -2 - 6px); width: 12px; z-index: 8; cursor: col-resize; display: flex; justify-content: center; touch-action: none; }
 .side-grip { width: 2px; height: 100%; border-radius: 2px; background: var(--ink); opacity: 0; transition: opacity .15s ease-out; }
-.side-edge:hover .side-grip, .side-edge:focus-visible .side-grip, .side-edge.dragging .side-grip { opacity: .28; }
+.side-edge:hover .side-grip, .side-edge:focus-visible .side-grip { opacity: .28; }
 .side-edge.dragging .side-grip { opacity: .5; }
 .side-edge:focus-visible { outline: none; }
 body.resizing-side, body.resizing-side * { cursor: col-resize !important; -webkit-user-select: none !important; user-select: none !important; }
-.shell.resizing { transition: none !important; }
-.logo > span:not(.clef), .nav-btn span, .sl-head, .sl-chips, .sl-tools, .li-text, .li .spk { transition: opacity .14s ease-out; }
-.side-fading .logo > span:not(.clef), .side-fading .nav-btn span, .side-fading .sl-head, .side-fading .sl-chips, .side-fading .sl-tools, .side-fading .li-text, .side-fading .li .spk { opacity: 0; }
-.side-fading .logo, .side-fading .nav-btn, .side-fading .sl-head h2, .side-fading .li-name, .side-fading .li-sub span { white-space: nowrap; }
-.side-fading .sl-chips { flex-wrap: nowrap; }
-.side-collapsed .nav-box { --pl: 0px; padding: 8px; }
-.side-collapsed .logo, .side-collapsed .nav-btn { justify-content: center; padding: 0; }
-.side-collapsed .logo > span:not(.clef), .side-collapsed .nav-btn span { display: none; }
-.side-collapsed .sl-head, .side-collapsed .sl-chips, .side-collapsed .sl-tools, .side-collapsed .li-text, .side-collapsed .li .spk { display: none !important; }
-.side-collapsed .side-lib { padding: 8px 4px; }
+/* same positions in both states (icon/cover centred in the 64px rail) */
+.nav-box { --pl: 14.5px; }
+.logo, .nav-btn, .sl-head h2, .li-name, .li-sub span { white-space: nowrap; }
+.li { padding-left: 4px; }
+/* words: fade out quickly when collapsing, fade in after the panel has opened */
+.logo > span:not(.clef), .nav-btn span, .li-text, .li .spk { transition: opacity .22s ease-out .14s; }
+.side-collapsed .logo > span:not(.clef), .side-collapsed .nav-btn span, .side-collapsed .li-text, .side-collapsed .li .spk { opacity: 0; transition: opacity .1s ease-out; pointer-events: none; }
+/* panel header folds away so the list slides up smoothly */
+.sl-head, .sl-tools { max-height: 52px; overflow: hidden; transition: max-height .4s cubic-bezier(.32, .72, 0, 1), opacity .22s ease-out .14s, padding .4s cubic-bezier(.32, .72, 0, 1); }
+.side-collapsed .sl-head, .side-collapsed .sl-tools { max-height: 0; opacity: 0; padding-top: 0; padding-bottom: 0; transition: max-height .4s cubic-bezier(.32, .72, 0, 1), opacity .1s ease-out, padding .4s cubic-bezier(.32, .72, 0, 1); }
+.sl-list { scrollbar-width: thin; }
+.side-collapsed .sl-list { scrollbar-width: none; }
+.side-collapsed .sl-list::-webkit-scrollbar { display: none; }
+/* grid view collapses to the same single column of small covers */
 .side-collapsed .sl-list.grid { grid-template-columns: minmax(0, 1fr); }
-.side-collapsed .li, .side-collapsed .li.grid { grid-template-columns: 40px; justify-content: center; padding: 4px; }
+.side-collapsed .li.grid { grid-template-columns: 40px; padding: 5px 4px; }
 .side-collapsed .li.grid .li-art { width: 40px; }
+.side-collapsed .li.grid .li-text { display: none; }
 @media (max-width: 1080px) { .side-edge { display: none; } }
 @media (max-width: 759px) { .shell.side-collapsed, .shell.side-collapsed.q-open { grid-template-columns: minmax(0, 1fr); } }
+@media (prefers-reduced-motion: reduce) { .shell, .sl-head, .sl-tools, .li-text, .nav-btn span, .logo > span { transition: none !important; } }
 
 /* ---------- drag to reorder ---------- */
 .tl { position: relative; }
@@ -739,7 +747,7 @@ body.dragging-row .tr:hover .like:not(.on), body.dragging-row .tr:hover .more { 
 <body>
 <div class="shell" id="shell">
   <aside class="side">
-    <div class="side-edge" id="side-toggle" role="separator" aria-orientation="vertical" aria-label="Resize Sidebar" aria-valuemin="64" aria-valuemax="420" tabindex="0" title="Drag to resize. Double-click to collapse or expand."><span class="side-grip"></span></div>
+    <div class="side-edge" id="side-toggle" role="button" aria-label="Collapse Sidebar" aria-expanded="true" tabindex="0"><span class="side-grip"></span></div>
     <div class="box nav-box">
       <div class="nav-inner">
         <button class="logo" data-nav="home" aria-label="Allegro home"><span class="clef" aria-hidden="true">&#x1D11E;</span><span>Allegro</span></button>
@@ -989,7 +997,7 @@ const S = {
   view: { name: 'home' }, back: [], fwd: [],
   q: '', libTab: 'playlists', sort: 'added', queueOpen: false,
   demoAdded: Date.parse('2026-10-01T12:00:00Z'), last: null, renaming: null,
-  libSort: 'custom', libOrder: [], history: [], libView: 'list', libFilter: null, libQ: '', sideCollapsed: false, sideWidth: 0
+  libSort: 'custom', libOrder: [], history: [], libView: 'list', libFilter: null, libQ: '', sideCollapsed: false
 };
 let IDX = { albums: new Map(), artists: new Map(), genres: new Map() };
 const STORE_KEY = 'waxwing.state.v1';
@@ -1012,7 +1020,6 @@ try {
     if (Array.isArray(p.libOrder)) S.libOrder = p.libOrder;
     if (['list', 'grid'].includes(p.libView)) S.libView = p.libView;
     S.sideCollapsed = !!p.sideCollapsed;
-    if (typeof p.sideWidth === 'number' && p.sideWidth >= 200 && p.sideWidth <= 420) S.sideWidth = p.sideWidth;
     S.last = p.last || null;
   }
 } catch (e) {}
@@ -1023,7 +1030,7 @@ function save() {
     try {
       localStorage.setItem(STORE_KEY, JSON.stringify({
         playlists: S.playlists, liked: S.liked, libOrder: S.libOrder, recent: S.recent, history: S.history, volume: S.volume, shuffle: S.shuffle, repeat: S.repeat,
-        demoAdded: S.demoAdded, libTab: S.libTab, sort: S.sort, queueOpen: S.queueOpen, libSort: S.libSort, libView: S.libView, sideCollapsed: S.sideCollapsed, sideWidth: S.sideWidth,
+        demoAdded: S.demoAdded, libTab: S.libTab, sort: S.sort, queueOpen: S.queueOpen, libSort: S.libSort, libView: S.libView, sideCollapsed: S.sideCollapsed,
         last: S.current ? { ctx: S.context && S.context.key, id: S.current } : null
       }));
     } catch (e) {}
@@ -2179,68 +2186,42 @@ $('#pl-edit-form').addEventListener('submit', async e => {
   } else { render(); renderSide(); toast('Playlist updated'); }
 });
 
-/* ================= resizable left column ================= */
-// Drag the edge to resize. Narrower than SIDE_SNAP collapses to the icon rail; double-click toggles.
-const SIDE_MIN = 200, SIDE_MAX = 420, SIDE_SNAP = 150, SIDE_RAIL = 64;
-let sideTimer = 0;
-function applySideWidth() {
-  const sh = $('#shell'), h = $('#side-toggle');
-  sh.style.setProperty('--side-w', S.sideWidth ? S.sideWidth + 'px' : 'clamp(224px, 15vw, 264px)');
-  h.setAttribute('aria-valuenow', String(S.sideCollapsed ? SIDE_RAIL : Math.round($('.side').getBoundingClientRect().width)));
-}
-function setSideCollapsed(c, animate = true) {
-  const sh = $('#shell');
+/* ================= collapsible left column ================= */
+// Two states. Drag the edge left to collapse, right to expand; double-click or Enter toggles.
+function setSideCollapsed(c) {
   S.sideCollapsed = c;
-  clearTimeout(sideTimer);
-  if (!animate || matchMedia('(prefers-reduced-motion: reduce)').matches) { sh.classList.toggle('side-collapsed', c); sh.classList.remove('side-fading'); applySideWidth(); return; }
-  sh.classList.add('side-fading');            // words fade out first
-  if (c) sideTimer = setTimeout(() => { sh.classList.add('side-collapsed'); sideTimer = setTimeout(() => sh.classList.remove('side-fading'), 380); }, 140);
-  else { sh.classList.remove('side-collapsed'); sideTimer = setTimeout(() => sh.classList.remove('side-fading'), 380); }
-  applySideWidth();
+  $('#shell').classList.toggle('side-collapsed', c);
+  const h = $('#side-toggle');
+  h.setAttribute('aria-expanded', String(!c));
+  h.setAttribute('aria-label', c ? 'Expand Sidebar' : 'Collapse Sidebar');
+  h.title = c ? 'Drag right or double-click to expand' : 'Drag left or double-click to collapse';
 }
 (() => {
-  const h = $('#side-toggle'), sh = $('#shell');
+  const h = $('#side-toggle');
   let d = null;
   h.addEventListener('pointerdown', e => {
     if (e.button !== 0) return;
     e.preventDefault();
     h.setPointerCapture(e.pointerId);
-    d = { left: $('.side').getBoundingClientRect().left, moved: false, x: e.clientX };
-    h.classList.add('dragging'); sh.classList.add('resizing'); document.body.classList.add('resizing-side');
+    d = { x: e.clientX, done: false };
+    h.classList.add('dragging'); document.body.classList.add('resizing-side');
   });
   h.addEventListener('pointermove', e => {
-    if (!d) return;
-    if (!d.moved && Math.abs(e.clientX - d.x) < 3) return;
-    d.moved = true;
-    const raw = e.clientX - d.left;
-    if (raw < SIDE_SNAP) { if (!S.sideCollapsed) { S.sideCollapsed = true; sh.classList.add('side-collapsed'); } }
-    else {
-      if (S.sideCollapsed) { S.sideCollapsed = false; sh.classList.remove('side-collapsed'); }
-      S.sideWidth = Math.round(Math.min(SIDE_MAX, Math.max(SIDE_MIN, raw)));
-    }
-    applySideWidth();
+    if (!d || d.done) return;
+    const dx = e.clientX - d.x;
+    if (!S.sideCollapsed && dx < -24) { d.done = true; setSideCollapsed(true); save(); }
+    else if (S.sideCollapsed && dx > 24) { d.done = true; setSideCollapsed(false); save(); }
   });
-  const end = () => {
-    if (!d) return;
-    d = null;
-    h.classList.remove('dragging'); sh.classList.remove('resizing'); document.body.classList.remove('resizing-side');
-    applySideWidth(); save();
-  };
+  const end = () => { if (!d) return; d = null; h.classList.remove('dragging'); document.body.classList.remove('resizing-side'); };
   h.addEventListener('pointerup', end); h.addEventListener('pointercancel', end);
   h.addEventListener('dblclick', () => { setSideCollapsed(!S.sideCollapsed); save(); });
   h.addEventListener('keydown', e => {
-    const step = e.shiftKey ? 48 : 16;
-    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSideCollapsed(!S.sideCollapsed); save(); return; }
-    if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
-    e.preventDefault();
-    const cur = S.sideCollapsed ? SIDE_RAIL : $('.side').getBoundingClientRect().width;
-    const next = cur + (e.key === 'ArrowRight' ? step : -step);
-    if (next < SIDE_SNAP) setSideCollapsed(true, false);
-    else { S.sideWidth = Math.round(Math.min(SIDE_MAX, Math.max(SIDE_MIN, S.sideCollapsed ? SIDE_MIN : next))); setSideCollapsed(false, false); }
-    save();
+    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSideCollapsed(!S.sideCollapsed); save(); }
+    else if (e.key === 'ArrowLeft') { e.preventDefault(); setSideCollapsed(true); save(); }
+    else if (e.key === 'ArrowRight') { e.preventDefault(); setSideCollapsed(false); save(); }
   });
 })();
-setSideCollapsed(S.sideCollapsed, false);
+setSideCollapsed(S.sideCollapsed);
 
 /* ================= crop a cover photo ================= */
 const MAX_SOURCE = 40 * 1024 * 1024;   // big photos are fine: the cropped result is resized and re-saved
