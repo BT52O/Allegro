@@ -515,7 +515,8 @@ input[type="range"]:disabled { opacity: .4; cursor: default; }
   padding: calc(env(safe-area-inset-top, 0px) + 10px) max(20px, env(safe-area-inset-right, 0px)) calc(env(safe-area-inset-bottom, 0px) + 20px) max(20px, env(safe-area-inset-left, 0px));
   animation: rise .36s cubic-bezier(.2, .8, .2, 1);
 }
-.sheet.closing { animation: sink .36s cubic-bezier(.8, .2, .8, 0) forwards; pointer-events: none; }   /* the opening motion played backward */
+.sheet.closing { animation: sink .36s cubic-bezier(.2, .8, .2, 1) forwards; pointer-events: none; }   /* same speed and easing as opening: it starts moving at once and settles */
+.sheet, .sheet.closing { will-change: transform, opacity; }
 @keyframes rise { from { transform: translateY(48px) scale(.985); opacity: 0; } }
 @keyframes sink { to { transform: translateY(48px) scale(.985); opacity: 0; } }
 .sheet-tint { position: absolute; inset: 0; background: linear-gradient(180deg, rgb(var(--tint, var(--tint-def)) / .75), rgb(var(--tint, var(--tint-def)) / .12) 75%); pointer-events: none; transition: background .5s; }
