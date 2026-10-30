@@ -308,6 +308,21 @@ try {
   await A.mouse.move(5, 5); await A.hover(`#side-list [data-open="folder:${fd.id}"]`); await A.waitForTimeout(600);
   const peek = await A.evaluate(() => { const p = document.getElementById('folder-pop'); return p && !p.hidden ? [p.querySelector('.fp-head b').textContent, [...p.querySelectorAll('.fp-row .fp-t b')].map(e => e.textContent)] : null; });
   await shot(A, 'folder-peek');
+  {
+    const rows = await A.$$('#folder-pop .fp-row'), r0 = await rows[0].boundingBox(), r1 = await rows[1].boundingBox();
+    const before = await A.$$eval('#folder-pop .fp-row', x => x.map(e => e.dataset.open));
+    await A.mouse.move(r1.x + 60, r1.y + r1.height / 2); await A.mouse.down();
+    await A.mouse.move(r1.x + 62, r1.y + r1.height / 2 - 10, { steps: 3 }); await A.mouse.move(r0.x + 60, r0.y + 6, { steps: 8 });
+    await A.mouse.up(); await A.waitForTimeout(700);
+    const after = await A.$$eval('#folder-pop .fp-row', x => x.map(e => e.dataset.open));
+    const savedFd = ((await lib(A)).state.folders.find(f => f.id === fd.id) || {}).ids || [];
+    check(after[0] === before[1] && after[1] === before[0] && savedFd[0] === before[1].slice(9) && await A.isVisible('#folder-pop'), 'playlists can be dragged to rearrange inside the folder preview', JSON.stringify({ before, after, savedFd }));
+    // put them back the way they were for the tests that follow
+    const s0 = await (await A.$$('#folder-pop .fp-row'))[1].boundingBox(), s1 = await (await A.$$('#folder-pop .fp-row'))[0].boundingBox();
+    await A.mouse.move(s0.x + 60, s0.y + s0.height / 2); await A.mouse.down();
+    await A.mouse.move(s0.x + 62, s0.y + s0.height / 2 - 10, { steps: 3 }); await A.mouse.move(s1.x + 60, s1.y + 6, { steps: 8 });
+    await A.mouse.up(); await A.waitForTimeout(700);
+  }
   await A.mouse.move(700, 400); await A.waitForTimeout(500);
   const peekGone = await A.evaluate(() => document.getElementById('folder-pop').hidden);
   check(!!peek && peek[0] === '华语' && peek[1].includes('Made In Test') && peek[1].includes('Renamed In Test') && peekGone, 'hovering a folder shows the playlists inside it', JSON.stringify(peek));
@@ -794,6 +809,8 @@ try {
   const bar = await A.evaluate(() => { const pl = document.getElementById('player').getBoundingClientRect(), sh = document.getElementById('sheet'), art = document.getElementById('s-art').getBoundingClientRect(), tab = document.querySelector('.sp-tab').getBoundingClientRect();
     const top = document.elementFromPoint(pl.left + pl.width / 2, pl.top + pl.height / 2);
     return [!!top && !!top.closest('#player'), getComputedStyle(document.querySelector('.s-ctrls')).display, art.bottom <= pl.top, Math.round(tab.height), getComputedStyle(document.querySelector('#player .p-title')).color]; });
+  const sizes = await A.evaluate(() => { const a = document.getElementById('s-art').getBoundingClientRect(), p = document.getElementById('s-panel').getBoundingClientRect(); return [Math.round(a.height), Math.round(p.height), Math.round(a.top), Math.round(p.top), Math.round(a.width)]; });
+  check(Math.abs(sizes[0] - sizes[1]) <= 2 && Math.abs(sizes[2] - sizes[3]) <= 2 && sizes[0] === sizes[4] && sizes[0] > 300, 'the cover and the panel are the same size, side by side', JSON.stringify(sizes));
   check(bar[0] && bar[1] === 'none' && bar[2] && bar[3] <= 28 && bar[4] === 'rgb(255, 255, 255)', 'on desktop, the play controls stay in the bar along the bottom, in white; the tabs are compact', JSON.stringify(bar));
   check(np[0] === 'flex' && np[1] === 'Wiki|Lyrics|Comments' && np[2] === 'Mock Hit' && np[3].startsWith('Singer|Album'), 'Now Playing shows Wiki, Lyrics and Comments beside the cover, Wiki first', JSON.stringify(np));
   { const b = await (await A.$('#s-art')).boundingBox(); await A.mouse.move(b.x + b.width * .2, b.y + b.height * .3); await A.mouse.move(b.x + b.width * .25, b.y + b.height * .3, { steps: 3 }); await A.waitForTimeout(200); }

@@ -566,8 +566,11 @@ input[type="range"]:disabled { opacity: .4; cursor: default; }
   .sheet { padding-bottom: calc(var(--pbar, 96px) + 16px); }
   .sheet-body { grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr); gap: clamp(24px, 3vw, 48px); max-width: 1600px; padding-top: 12px; }
   .s-main { max-width: none; justify-content: center; align-items: center; }
+  .sheet-body { align-items: center; }
+  /* the cover and the Wiki / Lyrics / Comments panel are the same height, side by side */
+  .sheet:not(.show-queue) .s-panel { height: var(--np, 70vh); }
   .sheet .s-info, .sheet .s-prog, .sheet .s-ctrls { display: none; }
-  .s-art { width: min(100%, calc(100vh - var(--pbar, 96px) - 120px)); max-width: none; border-radius: 14px; }
+  .s-art { width: var(--np, min(100%, calc(100vh - var(--pbar, 96px) - 120px))); height: var(--np, auto); max-width: none; border-radius: 14px; }
   /* while Now Playing is open, the player bar sits on top of it in white, over the cover's color */
   body.sheet-open .player { z-index: 35; background: rgb(0 0 0 / .22); -webkit-backdrop-filter: blur(20px); backdrop-filter: blur(20px);
     --ink: #fff; --muted: rgba(255, 255, 255, .66); --accent: #fff; --accent-ink: #111; --chip: rgba(255, 255, 255, .14); --hover: rgba(255, 255, 255, .1); --line: rgba(255, 255, 255, .14); color: #fff; }
@@ -982,6 +985,9 @@ body.dragging-row .tr:hover .like:not(.on), body.dragging-row .tr:hover .more { 
 .fp-head span { font-size: .78rem; color: var(--muted); flex: none; }
 .fp-row { display: grid; grid-template-columns: 40px minmax(0, 1fr); gap: 10px; align-items: center; width: 100%; padding: 6px 8px; border-radius: 8px; text-align: left; }
 .fp-row:hover, .fp-row:focus-visible { background: var(--hover); }
+.fp-row.drag-src { opacity: .35; }
+.folder-pop { position: fixed; }
+.folder-pop .drop-line { left: 10px; right: 10px; }
 .fp-art { width: 40px; height: 40px; border-radius: 6px; overflow: hidden; }
 .fp-art img, .fp-art .mosaic, .fp-art .liked-art { width: 100%; height: 100%; object-fit: cover; display: block; }
 .fp-t { min-width: 0; }
@@ -3219,7 +3225,47 @@ function hideFolderPop(now) {
   fpop.classList.add('closing');
   fp.anim = setTimeout(() => { fpop.hidden = true; fpop.classList.remove('closing', 'moving'); fpop.style.height = ''; }, 140);
 }
-const fpHideSoon = () => { clearTimeout(fp.hide); fp.hide = setTimeout(hideFolderPop, 200); };
+const fpHideSoon = () => { if (fpd && fpd.active) return; clearTimeout(fp.hide); fp.hide = setTimeout(hideFolderPop, 200); };
+// Drag playlists up and down inside the preview to rearrange the folder.
+let fpd = null;
+fpop.addEventListener('pointerdown', e => { const row = e.target.closest('.fp-row'); if (!row || e.button !== 0 || e.pointerType !== 'mouse') return; fpd = { row, x: e.clientX, y: e.clientY, pid: e.pointerId, active: false }; });
+document.addEventListener('pointermove', e => {
+  if (!fpd || e.pointerId !== fpd.pid) return;
+  if (!fpd.active) { if (Math.hypot(e.clientX - fpd.x, e.clientY - fpd.y) < 5) return; fpdStart(); }
+  e.preventDefault(); fpdMove(e.clientY);
+}, { passive: false });
+document.addEventListener('pointerup', e => { if (fpd && e.pointerId === fpd.pid) fpdEnd(true); });
+document.addEventListener('pointercancel', e => { if (fpd && e.pointerId === fpd.pid) fpdEnd(false); });
+function fpdStart() {
+  fpd.active = true; clearTimeout(fp.hide); clearTimeout(fp.timer);
+  fpd.rows = [...fpop.querySelectorAll('.fp-row')]; fpd.from = fpd.rows.indexOf(fpd.row); fpd.to = fpd.from;
+  fpd.row.classList.add('drag-src'); document.body.classList.add('dragging-row');
+  fpd.line = document.createElement('div'); fpd.line.className = 'drop-line'; fpop.appendChild(fpd.line);
+}
+function fpdMove(y) {
+  const rows = fpd.rows; let to = rows.length;
+  for (let i = 0; i < rows.length; i++) { const r = rows[i].getBoundingClientRect(); if (y < r.top + r.height / 2) { to = i; break; } }
+  fpd.to = to;
+  const P = fpop.getBoundingClientRect(), edge = to < rows.length ? rows[to].getBoundingClientRect().top : rows[rows.length - 1].getBoundingClientRect().bottom;
+  fpd.line.style.top = (edge - P.top + fpop.scrollTop - 1) + 'px';
+  if (y < P.top + 30) fpop.scrollBy(0, -8); else if (y > P.bottom - 30) fpop.scrollBy(0, 8);
+}
+function fpdEnd(commit) {
+  const d = fpd; fpd = null;
+  if (!d.active) return;
+  suppressClick = true; setTimeout(() => { suppressClick = false; }, 80);
+  d.line.remove(); d.row.classList.remove('drag-src'); document.body.classList.remove('dragging-row');
+  if (!commit) return;
+  let to = d.to; if (to > d.from) to--;
+  if (to === d.from) return;
+  const f = S.folders.find(x => 'folder:' + x.id === fp.key); if (!f) return;
+  const ids = d.rows.map(r => r.dataset.open.slice(r.dataset.open.indexOf(':') + 1)), [m] = ids.splice(d.from, 1);
+  ids.splice(to, 0, m);
+  f.ids = [...ids, ...f.ids.filter(i => !ids.includes(i))];
+  userActed = true; save(); renderSide();
+  if (S.view.name === 'folder' && S.view.key === f.id) render();
+  const li = $(`#side-list [data-open="folder:${f.id}"]`); if (li) { fp.key = null; showFolderPop(li); }
+}
 $('#side-list').addEventListener('pointerover', e => {
   if (e.pointerType !== 'mouse' || sd || cd || drag) return;
   const li = e.target.closest('.li[data-open^="folder:"]'); if (!li) return;
@@ -4703,7 +4749,15 @@ function openSheet() {
   setTimeout(() => s.querySelector('.circ').focus({ preventScroll: true }), 50);
 }
 function closeSheet() { $('#sheet').hidden = true; document.body.classList.remove('sheet-open'); }
-function placeSheet() { const p = $('#player').getBoundingClientRect(); $('#sheet').style.setProperty('--pbar', Math.max(0, Math.round(innerHeight - p.top)) + 'px'); }
+function placeSheet() {
+  const sh = $('#sheet'), p = $('#player').getBoundingClientRect();
+  sh.style.setProperty('--pbar', Math.max(0, Math.round(innerHeight - p.top)) + 'px');
+  if (innerWidth < 760) { sh.style.removeProperty('--np'); return; }
+  // one size for both the cover and the panel: as big as the left column and the free height allow
+  const body = $('.sheet-body'), cs = getComputedStyle(body), main = $('.s-main');
+  const h = body.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
+  sh.style.setProperty('--np', Math.max(220, Math.floor(Math.min(main.clientWidth, h))) + 'px');
+}
 window.addEventListener('resize', () => { if (!$('#sheet').hidden) placeSheet(); });
 
 /* ================= events ================= */
