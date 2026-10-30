@@ -96,6 +96,7 @@ img { display: block; }
 /* the Allegro mark sits on its own above the menu, on the page background, like Tidal's */
 .side > .logo { flex: none; height: 40px; margin: 2px 0 -2px; padding-left: calc(8px + var(--pl)); font-weight: 700; font-size: calc(var(--nf) + 2px); }
 .side > .logo .clef { font-size: calc(var(--icn) * .8); }
+.side > .logo:hover { background: none; }   /* no hover shading on the Allegro mark */
 .nav-inner { padding: calc(var(--row) * .12) 0; }
 .logo, .nav-btn {
   display: flex; align-items: center; gap: var(--ig); width: 100%; height: var(--row); padding: 0 16px 0 var(--pl);

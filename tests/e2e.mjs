@@ -556,7 +556,7 @@ try {
   await A.click('.nav-btn[data-nav="home"]'); await A.waitForTimeout(600);
   check(await A.evaluate(() => window.__marker !== document.querySelector('#view h1') && document.querySelector('#view').classList.contains('enter-fwd')), 'clicking the current page refreshes it');
   await A.hover('.logo'); await A.waitForTimeout(300);
-  check(await A.$eval('.logo', e => getComputedStyle(e).backgroundColor !== 'rgba(0, 0, 0, 0)'), 'Allegro logo shows hover on the Home page');
+  check(await A.$eval('.logo', e => getComputedStyle(e).backgroundColor === 'rgba(0, 0, 0, 0)'), 'the Allegro logo has no hover shading');
 
   // --- the search box sits in the top right on every page, next to the profile button
   // The app draws its own slim scroll bars, which take up room like Windows ones do, so this checks the real case.
