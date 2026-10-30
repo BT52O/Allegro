@@ -88,7 +88,6 @@ img { display: block; }
 .logo .clef { font: 400 calc(var(--icn) * .92)/1 var(--f-clef); display: grid; place-items: center; overflow: visible; }
 .nav-btn .ic { stroke-width: 1.6; }
 .nav-btn:hover, .logo:hover { background: var(--hover); }
-.logo.active { background: none; }
 .nav-btn.active .ic { stroke-width: 2.2; }
 
 /* library panel, modeled on Spotify's */
@@ -620,6 +619,12 @@ body.dragging-row .tr:hover .c-n .num { display: inline; }
 body.dragging-row .tr:hover .like:not(.on), body.dragging-row .tr:hover .more { opacity: 0; }
 .tr.drag-src { opacity: .35; }
 .drop-line { position: absolute; left: 8px; right: 8px; height: 2px; border-radius: 2px; background: var(--ink); pointer-events: none; z-index: 3; }
+.drop-line.vertical::before { left: -3px; top: -4px; }
+.sl-list { position: relative; }
+.sl-list .li[data-drag] { -webkit-user-select: none; user-select: none; }
+.sl-list .li img { -webkit-user-drag: none; }
+.li.drag-src { opacity: .35; }
+#main.refreshing #view { opacity: .5; transition: opacity .15s; }
 .drop-line::before { content: ""; position: absolute; left: -4px; top: -3px; width: 8px; height: 8px; border-radius: 50%; background: var(--ink); }
 .drag-ghost {
   position: fixed; left: 0; top: 0; z-index: 70; display: flex; align-items: center; gap: 10px; max-width: 320px;
@@ -905,7 +910,7 @@ const S = {
   view: { name: 'home' }, back: [], fwd: [],
   q: '', libTab: 'playlists', sort: 'added', queueOpen: false,
   demoAdded: Date.parse('2026-10-01T12:00:00Z'), last: null, renaming: null,
-  libSort: 'recents', libView: 'list', libFilter: null, libQ: '', sideCollapsed: false
+  libSort: 'custom', libOrder: [], libView: 'list', libFilter: null, libQ: '', sideCollapsed: false
 };
 let IDX = { albums: new Map(), artists: new Map(), genres: new Map() };
 const STORE_KEY = 'waxwing.state.v1';
@@ -923,7 +928,8 @@ try {
     if (p.libTab) S.libTab = p.libTab;
     if (p.sort) S.sort = p.sort;
     S.queueOpen = !!p.queueOpen;
-    if (['recents', 'added', 'alpha', 'creator'].includes(p.libSort)) S.libSort = p.libSort;
+    if (['custom', 'recents', 'added', 'alpha'].includes(p.libSort)) S.libSort = p.libSort; else if (p.libSort === 'creator') S.libSort = 'custom';
+    if (Array.isArray(p.libOrder)) S.libOrder = p.libOrder;
     if (['list', 'grid'].includes(p.libView)) S.libView = p.libView;
     S.sideCollapsed = !!p.sideCollapsed;
     S.last = p.last || null;
@@ -935,7 +941,7 @@ function save() {
   saveTimer = setTimeout(() => {
     try {
       localStorage.setItem(STORE_KEY, JSON.stringify({
-        playlists: S.playlists, liked: S.liked, recent: S.recent, volume: S.volume, shuffle: S.shuffle, repeat: S.repeat,
+        playlists: S.playlists, liked: S.liked, libOrder: S.libOrder, recent: S.recent, volume: S.volume, shuffle: S.shuffle, repeat: S.repeat,
         demoAdded: S.demoAdded, libTab: S.libTab, sort: S.sort, queueOpen: S.queueOpen, libSort: S.libSort, libView: S.libView, sideCollapsed: S.sideCollapsed,
         last: S.current ? { ctx: S.context && S.context.key, id: S.current } : null
       }));
@@ -1481,10 +1487,20 @@ function toggleLike(id) {
 
 /* ================= navigation ================= */
 const sameView = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+let refreshing = false;
+async function refreshPage() {
+  if (refreshing) return; refreshing = true;
+  $('#main').classList.add('refreshing');
+  try { if (cloud.canWrite) await loadLibrary(true); } catch (e) {}
+  S.renaming = null;
+  render(true);
+  $('#main').classList.remove('refreshing');
+  refreshing = false;
+}
 function go(v) {
   closeMenu();
   if (!$('#sheet').hidden) closeSheet();
-  if (sameView(v, S.view)) { $('#main').scrollTo({ top: 0, behavior: 'smooth' }); return; }
+  if (sameView(v, S.view)) { refreshPage(); return; }
   S.back.push(S.view); if (S.back.length > 50) S.back.shift(); S.fwd = []; S.view = v; S.renaming = null;
   render(true);
 }
@@ -1673,25 +1689,26 @@ function render(scrollTop) {
   markPlaying(); syncPlayIcons(); renderSide();
   if (S.renaming) { const inp = $('#rename-input'); if (inp) { inp.focus(); inp.select(); } }
 }
-const SORTS = [['recents', 'Recents'], ['added', 'Recently Added'], ['alpha', 'Alphabetical'], ['creator', 'Creator']];
+const SORTS = [['custom', 'Custom Sort'], ['recents', 'Recents'], ['added', 'Recently Added'], ['alpha', 'Alphabetical']];
 const VIEWS_AS = [['list', 'List', 'viewList'], ['grid', 'Grid', 'viewGrid']];
-function libItems() {
+function libItems(all = false) {
   const items = [];
   const img = u => `<img src="${esc(u)}" alt="" loading="lazy">`;
   items.push({ key: 'liked', name: 'Liked Songs', type: 'Playlist', sub: `Playlist • ${plural(live(S.liked).length, 'song')}`, art: likedArt(), pinned: true, added: Infinity, creator: 'You' });
   S.playlists.forEach(p => items.push({ key: 'playlist:' + p.id, name: p.name, type: 'Playlist', sub: `Playlist • ${plural(live(p.ids).length, 'song')}`, art: plArt(p), added: p.created || 0, creator: 'You' }));
   albumsSorted().forEach(a => items.push({ key: 'album:' + a.key, name: a.name, type: 'Album', sub: `Album • ${a.artist}`, art: img(a.cover), added: a.added, creator: a.artist }));
   artistsSorted().forEach(a => items.push({ key: 'artist:' + a.name, name: a.name, type: 'Artist', sub: 'Artist', art: img(a.cover), round: true, added: Math.max(...a.ids.map(id => tk(id).added)), creator: a.name }));
-  let out = items.filter(it => !S.libFilter || it.type === S.libFilter);
-  const q = S.libQ.trim().toLowerCase();
+  let out = all ? items : items.filter(it => !S.libFilter || it.type === S.libFilter);
+  const q = all ? '' : S.libQ.trim().toLowerCase();
   if (q) out = out.filter(it => it.name.toLowerCase().includes(q) || it.sub.toLowerCase().includes(q));
   const rank = k => { const i = S.recent.indexOf(k); return i < 0 ? 1e6 : i; };
+  const orank = k => { const i = S.libOrder.indexOf(k); return i < 0 ? 1e6 : i; };
   const cmp = {
     recents: (a, b) => rank(a.key) - rank(b.key) || b.added - a.added,
     added: (a, b) => b.added - a.added,
     alpha: (a, b) => a.name.localeCompare(b.name),
-    creator: (a, b) => a.creator.localeCompare(b.creator) || a.name.localeCompare(b.name)
-  }[S.libSort];
+    custom: (a, b) => orank(a.key) - orank(b.key) || b.added - a.added
+  }[S.libSort] || ((a, b) => b.added - a.added);
   return out.sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0) || cmp(a, b));
 }
 function renderSide() {
@@ -1708,7 +1725,7 @@ function renderSide() {
   const cls = S.libView === 'grid' ? ' grid' : '';
   $('#side-list').classList.toggle('grid', S.libView === 'grid');
   $('#side-list').innerHTML = items.length ? items.map(it =>
-    `<button class="li${cls}${it.key === key ? ' active' : ''}${it.key === pctx ? ' playing' : ''}" data-open="${esc(it.key)}" title="${esc(it.name)}">`
+    `<button class="li${cls}${it.key === key ? ' active' : ''}${it.key === pctx ? ' playing' : ''}" data-open="${esc(it.key)}" title="${esc(it.name)}"${it.pinned ? '' : ' data-drag="1"'}>`
     + `<div class="li-art${it.round ? ' round' : ''}">${it.art}</div>`
     + `<div class="li-text"><div class="li-name">${esc(it.name)}</div><div class="li-sub">${it.pinned ? ic('pin') : ''}<span>${esc(it.sub)}</span></div></div>`
     + `<span class="spk" aria-label="Playing">${ic('speaker')}</span></button>`).join('')
@@ -1988,6 +2005,90 @@ function setSideCollapsed(c, animate = true) {
 $('#side-toggle').addEventListener('click', () => { setSideCollapsed(!S.sideCollapsed); save(); });
 setSideCollapsed(S.sideCollapsed, false);
 
+/* ================= drag to rearrange My Library ================= */
+let sd = null;
+$('#side-list').addEventListener('dragstart', e => e.preventDefault());
+$('#side-list').addEventListener('pointerdown', e => {
+  if (e.button !== 0 || sd || drag) return;
+  const item = e.target.closest('.li[data-drag]'); if (!item) return;
+  sd = { item, x: e.clientX, y: e.clientY, pid: e.pointerId, active: false, touch: e.pointerType !== 'mouse', timer: 0 };
+  if (sd.touch) sd.timer = setTimeout(() => { if (sd && !sd.active) sdStart(); }, 380);
+});
+document.addEventListener('pointermove', e => {
+  if (!sd || e.pointerId !== sd.pid) return;
+  if (!sd.active) {
+    const moved = Math.hypot(e.clientX - sd.x, e.clientY - sd.y);
+    if (sd.touch) { if (moved > 8) sdEnd(false); return; }
+    if (moved < 6) return;
+    sdStart();
+  }
+  e.preventDefault();
+  sdMove(e.clientX, e.clientY);
+}, { passive: false });
+document.addEventListener('touchmove', e => { if (sd && sd.active) e.preventDefault(); }, { passive: false });
+document.addEventListener('pointerup', e => { if (sd && e.pointerId === sd.pid) sdEnd(true); });
+document.addEventListener('pointercancel', e => { if (sd && e.pointerId === sd.pid) sdEnd(false); });
+function sdStart() {
+  closeMenu();
+  sd.active = true;
+  sd.list = $('#side-list'); sd.grid = sd.list.classList.contains('grid');
+  sd.items = [...sd.list.querySelectorAll('.li[data-drag]')];
+  sd.from = sd.items.indexOf(sd.item); sd.to = sd.from;
+  sd.item.classList.add('drag-src');
+  document.body.classList.add('dragging-row');
+  sd.ghost = document.createElement('div'); sd.ghost.className = 'drag-ghost';
+  const img = sd.item.querySelector('.li-art img');
+  sd.ghost.innerHTML = (img ? `<img src="${esc(img.getAttribute('src'))}" alt="">` : '') + `<span>${esc(sd.item.title)}</span>`;
+  document.body.appendChild(sd.ghost);
+  sd.line = document.createElement('div'); sd.line.className = 'drop-line' + (sd.grid ? ' vertical' : '');
+  sd.list.appendChild(sd.line);
+  if (sd.touch && navigator.vibrate) { try { navigator.vibrate(12); } catch (e) {} }
+  sdMove(sd.x, sd.y);
+}
+function sdMove(x, y) {
+  sd.ghost.style.transform = `translate(${x + 14}px, ${y - 20}px)`;
+  const rects = sd.items.map(el => el.getBoundingClientRect());
+  let to = rects.length;
+  for (let i = 0; i < rects.length; i++) {
+    const r = rects[i];
+    if (y < r.top || (y <= r.bottom && (!sd.grid || x < r.left + r.width / 2))) { if (!sd.grid && y > r.top + r.height / 2) continue; to = i; break; }
+  }
+  sd.to = to;
+  const L = sd.list.getBoundingClientRect(), st = sd.list.scrollTop;
+  if (sd.grid) {
+    const r = to < rects.length ? rects[to] : rects[rects.length - 1], left = to < rects.length ? r.left - 2 : r.right + 1;
+    Object.assign(sd.line.style, { left: (left - L.left) + 'px', top: (r.top - L.top + st + 8) + 'px', height: (r.height - 16) + 'px', width: '2px', right: 'auto' });
+  } else {
+    const edge = to < rects.length ? rects[to].top : rects[rects.length - 1].bottom;
+    Object.assign(sd.line.style, { top: (edge - L.top + st - 1) + 'px', left: '8px', right: '8px', width: 'auto', height: '2px' });
+  }
+  if (y < L.top + 40) sd.list.scrollBy(0, -10); else if (y > L.bottom - 40) sd.list.scrollBy(0, 10);
+}
+function sdEnd(commit) {
+  const d = sd; sd = null;
+  clearTimeout(d.timer);
+  if (!d.active) return;
+  suppressClick = true; setTimeout(() => { suppressClick = false; }, 80);
+  d.ghost.remove(); d.line.remove(); d.item.classList.remove('drag-src');
+  document.body.classList.remove('dragging-row');
+  if (!commit) return;
+  let to = d.to; if (to > d.from) to--;
+  if (to === d.from) return;
+  const shown = d.items.map(el => el.dataset.open);
+  const key = shown[d.from];
+  shown.splice(d.from, 1); shown.splice(to, 0, key);
+  // Start from the full list as it looks right now, then move the item next to its new neighbour.
+  const full = libItems(true).filter(it => !it.pinned).map(it => it.key).filter(k => k !== key);
+  const next = shown[to + 1], prev = shown[to - 1];
+  let at = next ? full.indexOf(next) : (prev ? full.indexOf(prev) + 1 : 0);
+  if (at < 0) at = full.length;
+  full.splice(at, 0, key);
+  const switched = S.libSort !== 'custom';
+  S.libOrder = full; S.libSort = 'custom';
+  userActed = true; save(); renderSide();
+  if (switched) toast('Sorted by Custom Sort');
+}
+
 /* ================= drag songs to reorder a playlist ================= */
 let drag = null, suppressClick = false;
 document.addEventListener('click', e => { if (suppressClick) { suppressClick = false; e.stopPropagation(); e.preventDefault(); } }, true);
@@ -2221,11 +2322,11 @@ async function uploadLocal(btn) {
 function refreshUsage() { loadLibrary(); }
 function applyState(st) {
   if (st) {
-    const json = JSON.stringify({ playlists: Array.isArray(st.playlists) ? st.playlists : [], liked: Array.isArray(st.liked) ? st.liked : [] });
+    const json = JSON.stringify({ playlists: Array.isArray(st.playlists) ? st.playlists : [], liked: Array.isArray(st.liked) ? st.liked : [], libOrder: Array.isArray(st.libOrder) ? st.libOrder : S.libOrder });
     cloud.lastJSON = json;
-    if (json !== JSON.stringify({ playlists: S.playlists, liked: S.liked }) && !cloud.writing) {
-      const v = JSON.parse(json); S.playlists = v.playlists; S.liked = v.liked;
-      try { const p = JSON.parse(localStorage.getItem(STORE_KEY) || '{}'); p.playlists = S.playlists; p.liked = S.liked; localStorage.setItem(STORE_KEY, JSON.stringify(p)); } catch (e) {}
+    if (json !== JSON.stringify({ playlists: S.playlists, liked: S.liked, libOrder: S.libOrder }) && !cloud.writing) {
+      const v = JSON.parse(json); S.playlists = v.playlists; S.liked = v.liked; S.libOrder = v.libOrder;
+      try { const p = JSON.parse(localStorage.getItem(STORE_KEY) || '{}'); p.playlists = S.playlists; p.liked = S.liked; p.libOrder = S.libOrder; localStorage.setItem(STORE_KEY, JSON.stringify(p)); } catch (e) {}
     }
   } else cloud.lastJSON = null;
   cloud.stateLoaded = true;
@@ -2252,7 +2353,7 @@ async function loadLibrary(first) {
 }
 async function pushState() {
   if (!cloud.canWrite || !cloud.stateLoaded || !userActed) return;
-  const json = JSON.stringify({ playlists: S.playlists, liked: S.liked });
+  const json = JSON.stringify({ playlists: S.playlists, liked: S.liked, libOrder: S.libOrder });
   if (json === cloud.lastJSON) return;
   if (cloud.writing) { cloud.again = true; return; }
   cloud.writing = true;

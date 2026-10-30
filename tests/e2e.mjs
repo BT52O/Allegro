@@ -123,6 +123,30 @@ try {
   await A.click('#side-toggle', { force: true }); await A.waitForTimeout(700);
   check((await (await A.$('.side')).boundingBox()).width > 200, 'sidebar expands again');
 
+  // --- My Library: Custom Sort is listed first, Creator is gone, dragging rearranges and saves
+  await A.click('#sl-sort'); await A.waitForTimeout(200);
+  const sorts = await A.$$eval('#menu [data-sort-opt] span', x => x.map(e => e.textContent));
+  check(sorts[0] === 'Custom Sort' && !sorts.includes('Creator'), 'sort menu starts with Custom Sort, no Creator', JSON.stringify(sorts));
+  await A.keyboard.press('Escape');
+  const sideBefore = await A.$$eval('#side-list .li[data-drag]', x => x.map(e => e.dataset.open));
+  const s0 = await (await A.$('#side-list .li[data-drag] >> nth=0')).boundingBox(), s2 = await (await A.$('#side-list .li[data-drag] >> nth=2')).boundingBox();
+  await A.mouse.move(s0.x + 40, s0.y + s0.height / 2); await A.mouse.down();
+  await A.mouse.move(s0.x + 45, s0.y + 30, { steps: 4 }); await A.mouse.move(s2.x + 45, s2.y + s2.height * .8, { steps: 8 });
+  await A.mouse.up(); await A.waitForTimeout(1200);
+  const sideAfter = await A.$$eval('#side-list .li[data-drag]', x => x.map(e => e.dataset.open));
+  check(sideAfter[2] === sideBefore[0] && sideAfter[0] === sideBefore[1], 'dragging rearranges My Library');
+  data = await lib(A);
+  check(Array.isArray(data.state.libOrder) && data.state.libOrder.indexOf(sideBefore[0]) > data.state.libOrder.indexOf(sideBefore[2]), 'custom library order saves online');
+  check(await A.textContent('#sl-sort-label') === 'Custom Sort', 'library is on Custom Sort after dragging');
+
+  // --- clicking the page you are already on refreshes it
+  await A.click('.nav-btn[data-nav="home"]'); await A.waitForTimeout(500);
+  await A.evaluate(() => { window.__marker = document.querySelector('#view h1'); });
+  await A.click('.nav-btn[data-nav="home"]'); await A.waitForTimeout(600);
+  check(await A.evaluate(() => window.__marker !== document.querySelector('#view h1') && document.querySelector('#view').classList.contains('enter-fwd')), 'clicking the current page refreshes it');
+  await A.hover('.logo'); await A.waitForTimeout(300);
+  check(await A.$eval('.logo', e => getComputedStyle(e).backgroundColor !== 'rgba(0, 0, 0, 0)'), 'Allegro logo shows hover on the Home page');
+
   // --- remove a song (the server delete runs after the 8-second undo window)
   await B.reload(); await B.waitForTimeout(1500);
   await B.click('.tab[data-nav=library]'); await B.click('[data-chip="songs"]'); await B.waitForTimeout(400);
