@@ -193,25 +193,34 @@ try {
   check(atExplore && backOff && atLib && fwdOff, 'back and forward go one page only');
 
   // --- collapsible sidebar
-  const dragEdge = async dx => {
+  const dragEdge = async toX => {
     const hb = await (await A.$('#side-toggle')).boundingBox(), x = hb.x + hb.width / 2, y = hb.y + hb.height / 2;
     await A.mouse.move(x, y); await A.mouse.down();
-    await A.mouse.move(x + dx, y, { steps: 8 }); await A.mouse.up(); await A.waitForTimeout(700);
+    await A.mouse.move(toX, y, { steps: 8 }); await A.mouse.up(); await A.waitForTimeout(700);
   };
+  const sideX = (await (await A.$('.side')).boundingBox()).x;
   const w0 = Math.round((await (await A.$('.side')).boundingBox()).width);
   const ic0 = await A.$eval('.nav-btn[data-nav="home"] .ic', e => e.getBoundingClientRect().left);
-  await dragEdge(-80);
+  await dragEdge(sideX + 60);
   const rail = Math.round((await (await A.$('.side')).boundingBox()).width);
   const ic1 = await A.$eval('.nav-btn[data-nav="home"] .ic', e => e.getBoundingClientRect().left);
-  await dragEdge(-150);
+  await dragEdge(sideX + 20);
   const stillRail = Math.round((await (await A.$('.side')).boundingBox()).width);
-  await dragEdge(80);
+  await dragEdge(sideX + 300);
   const back = Math.round((await (await A.$('.side')).boundingBox()).width);
   check(rail === 64 && stillRail === 64 && back === w0 && Math.abs(ic0 - ic1) < 1, 'dragging the edge switches between full and collapsed only, icons stay put', JSON.stringify([w0, rail, back, Math.round(ic0), Math.round(ic1)]));
   await A.dblclick('#side-toggle'); await A.waitForTimeout(700);
   const dbl = Math.round((await (await A.$('.side')).boundingBox()).width);
   await A.dblclick('#side-toggle'); await A.waitForTimeout(700);
   check(dbl === 64 && Math.round((await (await A.$('.side')).boundingBox()).width) === w0, 'double-clicking the edge collapses and expands it');
+  {
+    const hb = await (await A.$('#side-toggle')).boundingBox(), y = hb.y + hb.height / 2, sx = hb.x + hb.width / 2;
+    const widths = [];
+    await A.mouse.move(sx, y); await A.mouse.down();
+    for (const x of [sideX + 30, sideX + 300, sideX + 30, sideX + 300]) { await A.mouse.move(x, y, { steps: 6 }); await A.waitForTimeout(600); widths.push(Math.round((await (await A.$('.side')).boundingBox()).width)); }
+    await A.mouse.up(); await A.waitForTimeout(500);
+    check(widths.join() === [64, w0, 64, w0].join(), 'one drag can collapse and expand back and forth', JSON.stringify(widths));
+  }
 
   // --- My Library: Custom Sort is listed first, Creator is gone, dragging rearranges and saves
   await A.click('#sl-sort'); await A.waitForTimeout(200);
