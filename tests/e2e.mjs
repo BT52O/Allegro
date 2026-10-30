@@ -754,6 +754,28 @@ try {
   const vhTop = await A.$eval('#view .vh-item', e => e.textContent).catch(() => '');
   check(oldName === 'Late Night Study' && restored.name === 'Late Night Study' && vhTop.includes('Restored the version from'), 'an old version can be restored, and the restore is listed too', JSON.stringify({ oldName, restoredName: restored.name, vhTop: vhTop.slice(0, 120) }));
 
+  // --- Appearance: dark mode and languages
+  await A.click('#acct-btn'); await A.waitForTimeout(250); await A.click('#menu .mi:has-text("Settings")'); await A.waitForTimeout(500);
+  await A.click('[data-theme-opt="dark"]'); await A.waitForTimeout(400);
+  const darkNow = await A.evaluate(() => [document.documentElement.dataset.theme, getComputedStyle(document.body).backgroundColor, getComputedStyle(document.querySelector('.main')).backgroundColor]);
+  await shot(A, 'settings-dark');
+  await A.reload(); await A.waitForTimeout(1500);
+  const darkKept = await A.evaluate(() => document.documentElement.dataset.theme);
+  check(darkNow[0] === 'dark' && darkNow[1] === 'rgb(11, 11, 12)' && darkKept === 'dark', 'dark mode turns on from Settings and stays after reloading', JSON.stringify([...darkNow, darkKept]));
+  await A.click('[data-lang-opt="zh-Hans"]'); await A.waitForTimeout(2500);
+  const zh = await A.evaluate(() => [document.querySelector('.nav-btn[data-nav="home"] span').textContent, document.querySelector('#view h1').textContent, document.documentElement.lang, document.querySelector('#search-input').placeholder, document.querySelector('#side-list .li-create .li-name').textContent, document.querySelector('#side-list [data-open="liked"] .li-name').textContent]);
+  await shot(A, 'settings-zh');
+  await A.click('.nav-btn[data-nav="library"]'); await A.waitForTimeout(400); await A.click('[data-chip="songs"]'); await A.waitForTimeout(400);
+  const zhLib = await A.evaluate(() => [document.querySelector('[data-chip="songs"]').textContent, [...document.querySelectorAll('#view .t-name')].map(e => e.textContent)]);
+  check(zh[0] === '首页' && zh[1] === '设置' && zh[2] === 'zh-Hans' && zh[3] === '搜索' && zh[4] === '新建' && zh[5] === '喜欢的歌曲' && zhLib[0] === '歌曲' && zhLib[1].includes('Rain on Glass'), 'switching to 简体中文 translates Allegro but not your song names', JSON.stringify({ zh, chip: zhLib[0] }));
+  await A.click('#acct-btn'); await A.waitForTimeout(250); await A.click('#menu .mi >> nth=0'); await A.waitForTimeout(500);
+  await A.click('[data-lang-opt="zh-Hant"]'); await A.waitForTimeout(2500);
+  const zht = await A.evaluate(() => [document.querySelector('.nav-btn[data-nav="home"] span').textContent, document.querySelector('#view h1').textContent]);
+  await A.click('[data-lang-opt="en"]'); await A.waitForTimeout(2500);
+  await A.click('[data-theme-opt="light"]'); await A.waitForTimeout(300);
+  const backEn = await A.evaluate(() => [document.querySelector('.nav-btn[data-nav="home"] span').textContent, document.documentElement.dataset.theme]);
+  check(zht[0] === '首頁' && zht[1] === '設定' && backEn.join() === 'Home,light', '繁體中文 works too, and switching back restores English and light mode', JSON.stringify({ zht, backEn }));
+
   // --- nothing is reachable without a session
   const anon = await (await browser.newContext()).newPage();
   check((await anon.goto(URL + 'api/library')).status() === 401, 'library needs sign-in');
@@ -764,6 +786,7 @@ try {
 } catch (e) {
   failures++;
   console.error('FAIL  test crashed:', e && e.stack);
+  console.error('page errors:', pageErrors.join(' | '));
   gh(`test crashed: ${e && e.message}`);
 } finally {
   await browser.close();

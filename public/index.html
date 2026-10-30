@@ -4,6 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#e8e8e8">
+<script>
+  // Light or dark, chosen in Settings (or following the device). Applied before anything draws, so there's no flash.
+  try { var th = localStorage.getItem('allegro.theme') || 'system'; document.documentElement.dataset.theme = th === 'dark' || (th === 'system' && matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light'; } catch (e) {}
+</script>
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Allegro">
@@ -41,6 +45,20 @@
   color-scheme: light;
 }
 
+:root[data-theme="dark"] {
+  --bg: #0b0b0c; --panel: #161618; --nav: #2a2a2d; --raise: #1f1f22; --chip: #26262a; --hover: rgba(255, 255, 255, .07);
+  --ink: #f1f1f2; --muted: #a2a2a8; --line: #2d2d31; --accent: #f1f1f2; --accent-ink: #111111; --gold: #8c8c8c;
+  --tint-def: 70 70 76; --scrim: rgba(0, 0, 0, .62); --shadow: 0 14px 40px -14px rgba(0, 0, 0, .85); color-scheme: dark;
+}
+[data-theme="dark"] .storage-note { background: #3a1517; color: #ffb4b0; border-color: #5c2226; }
+[data-theme="dark"] .storage-bar { background: #5c2226; } [data-theme="dark"] .storage-bar i { background: #ff8a80; }
+[data-theme="dark"] .vh-row.added { background: #12321d; box-shadow: inset 3px 0 0 #4caf6e; } [data-theme="dark"] .vh-row.removed { background: #3a1517; box-shadow: inset 3px 0 0 #e5534b; }
+[data-theme="dark"] .vh-tag.add { background: #1d4d2c; color: #a8e6b8; } [data-theme="dark"] .vh-tag.del { background: #5c2226; color: #ffb4b0; }
+[data-theme="dark"] .pw-msg.bad { color: #ff8a80; } [data-theme="dark"] .pw-msg.good { color: #7ddc96; }
+[data-theme="dark"] .artist-ph { background: #2c2c30; color: #6e6e74; }
+[data-theme="dark"] .pl-pen { background: rgba(30, 30, 33, .92); color: #f1f1f2; } [data-theme="dark"] .pl-pen:hover { background: #2a2a2e; }
+[data-theme="dark"] .switch i { background: #111; } [data-theme="dark"] .switch:not(.on) i { background: #f1f1f2; }
+[data-theme="dark"] .vh-item.on { box-shadow: 0 1px 4px rgba(0, 0, 0, .4), inset 3px 0 0 var(--ink); }
 html { height: 100%; box-sizing: border-box; }
 *, *::before, *::after { box-sizing: border-box; }
 body {
@@ -791,6 +809,10 @@ body.dragging-row .tr:hover .like:not(.on), body.dragging-row .tr:hover .more { 
 .pw-form .btn { justify-self: start; }
 .pw-msg { margin: 0; font-size: .82rem; min-height: 0; }
 .pw-msg.bad { color: #b3261e; } .pw-msg.good { color: #1e7a3a; }
+.seg { display: inline-flex; padding: 3px; border-radius: 999px; background: var(--chip); flex: none; flex-wrap: wrap; }
+.seg-btn { height: 34px; padding: 0 14px; border-radius: 999px; font-size: .88rem; font-weight: 600; color: var(--muted); }
+.seg-btn:hover { color: var(--ink); }
+.seg-btn.on { background: var(--panel); color: var(--ink); box-shadow: 0 1px 3px rgba(0, 0, 0, .14); }
 .switch { position: relative; width: 46px; height: 28px; border-radius: 999px; background: color-mix(in srgb, var(--ink) 22%, transparent); flex: none; transition: background-color .2s; }
 .switch i { position: absolute; top: 3px; left: 3px; width: 22px; height: 22px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.25); transition: transform .2s cubic-bezier(.2, .8, .2, 1); }
 .switch.on { background: var(--ink); }
@@ -1143,6 +1165,151 @@ body.touch-input .has-pen::after { display: none; }
 <input type="file" id="folder-input" class="sr-only" webkitdirectory multiple tabindex="-1" aria-hidden="true">
 
 <script>
+/* ================= languages: English, 简体中文, 繁體中文 ================= */
+// The page is written in English; when another language is chosen, Allegro swaps its own words as they appear
+// on screen. Your song, artist, album, playlist and folder names are never changed.
+const LANGS = [['en', 'English'], ['zh-Hans', '简体中文'], ['zh-Hant', '繁體中文']];
+let LANG = 'en';
+try { LANG = localStorage.getItem('allegro.lang') || 'en'; } catch (e) {}
+if (!LANGS.some(l => l[0] === LANG)) LANG = 'en';
+const I18N = [
+  ['Home', '首页', '首頁'], ['Explore', '探索', '探索'], ['My Library', '我的音乐库', '我的音樂庫'], ['Uploads', '上传', '上傳'],
+  ['My Playlists', '我的歌单', '我的歌單'], ['Create', '新建', '新增'], ['Create a Playlist or Folder', '新建歌单或文件夹', '新增歌單或資料夾'],
+  ['Playlist', '歌单', '歌單'], ['Folder', '文件夹', '資料夾'], ['Playlists', '歌单', '歌單'], ['Albums', '专辑', '專輯'], ['Artists', '艺人', '藝人'], ['Songs', '歌曲', '歌曲'],
+  ['Album', '专辑', '專輯'], ['Artist', '艺人', '藝人'], ['Title', '标题', '標題'], ['Date Released', '发行日期', '發行日期'], ['Duration', '时长', '時長'], ['Song Cover', '歌曲封面', '歌曲封面'],
+  ['Liked Songs', '喜欢的歌曲', '喜歡的歌曲'], ['Search', '搜索', '搜尋'], ['Search your music', '搜索你的音乐', '搜尋你的音樂'], ['Search in My Playlists', '在我的歌单中搜索', '在我的歌單中搜尋'],
+  ['Custom Sort', '自定义排序', '自訂排序'], ['Recents', '最近播放', '最近播放'], ['Recently Added', '最近添加', '最近新增'], ['Alphabetical', '按字母顺序', '按字母順序'],
+  ['Sort by', '排序方式', '排序方式'], ['View as', '显示方式', '顯示方式'], ['Recently Played', '最近播放', '最近播放'], ['Track History', '播放记录', '播放紀錄'],
+  ['View All', '查看全部', '查看全部'], ['Show All', '显示全部', '顯示全部'], ['Top Result', '最佳结果', '最佳結果'], ['All Matching Songs', '所有匹配的歌曲', '所有符合的歌曲'],
+  ['All Albums', '所有专辑', '所有專輯'], ['All Artists', '所有艺人', '所有藝人'], ['Discography', '作品', '作品'], ['No songs match.', '没有匹配的歌曲。', '沒有符合的歌曲。'],
+  ['Check the spelling, or search for a different song, artist or album.', '检查拼写，或搜索其他歌曲、艺人或专辑。', '檢查拼字，或搜尋其他歌曲、藝人或專輯。'],
+  ['Play', '播放', '播放'], ['Pause', '暂停', '暫停'], ['Shuffle', '随机播放', '隨機播放'], ['Previous', '上一首', '上一首'], ['Next', '下一首', '下一首'],
+  ['Repeat off', '不循环', '不循環'], ['Repeat all', '列表循环', '列表循環'], ['Repeat one', '单曲循环', '單曲循環'], ['Queue', '播放队列', '播放佇列'], ['Volume', '音量', '音量'], ['Mute', '静音', '靜音'],
+  ['Now Playing', '正在播放', '正在播放'], ['Playing From', '播放来源', '播放來源'], ['Nothing Playing', '未在播放', '未在播放'], ['Pick a song to start', '选一首歌开始', '選一首歌開始'],
+  ['Next Up', '接下来', '接下來'], ['Play Next', '下一首播放', '下一首播放'], ['Add to Queue', '添加到播放队列', '加入播放佇列'], ['Add to Playlist', '添加到歌单', '加入歌單'],
+  ['Save to Liked Songs', '添加到喜欢的歌曲', '加入喜歡的歌曲'], ['Remove from Liked Songs', '从喜欢的歌曲中移除', '從喜歡的歌曲中移除'], ['Saved to Liked Songs', '已添加到喜欢的歌曲', '已加入喜歡的歌曲'], ['Removed from Liked Songs', '已从喜欢的歌曲中移除', '已從喜歡的歌曲中移除'],
+  ['Go to Artist', '查看艺人', '查看藝人'], ['Go to Album', '查看专辑', '查看專輯'], ['Remove from This Playlist', '从此歌单中移除', '從此歌單中移除'], ['Remove from Library', '从音乐库中移除', '從音樂庫中移除'],
+  ['Edit Details', '编辑详情', '編輯詳情'], ['Delete Playlist', '删除歌单', '刪除歌單'], ['Move to Folder', '移到文件夹', '移到資料夾'], ['Version History', '版本历史', '版本歷史'],
+  ['New Playlist', '新歌单', '新歌單'], ['New Folder', '新文件夹', '新資料夾'], ['New Folder Here', '在此新建文件夹', '在此新增資料夾'], ['Remove from Folder', '移出文件夹', '移出資料夾'],
+  ['Rename', '重命名', '重新命名'], ['Delete Folder', '删除文件夹', '刪除資料夾'], ['Add Playlists', '添加歌单', '加入歌單'], ['Add to This Folder', '添加到此文件夹', '加入此資料夾'],
+  ['Create Playlist', '新建歌单', '新增歌單'], ['Create Folder', '新建文件夹', '新增資料夾'], ['Rename Folder', '重命名文件夹', '重新命名資料夾'], ['Name', '名称', '名稱'], ['Description', '简介', '簡介'],
+  ['Add an optional description', '添加简介（可选）', '加入簡介（選填）'], ['Save', '保存', '儲存'], ['Saving…', '正在保存…', '正在儲存…'], ['Cancel', '取消', '取消'], ['Apply', '应用', '套用'], ['Done', '完成', '完成'], ['Close', '关闭', '關閉'],
+  ['Undo', '撤销', '復原'], ['Open', '打开', '開啟'], ['Add', '添加', '加入'], ['Added', '已添加', '已加入'], ['Move Here', '移到这里', '移到這裡'], ['Reset', '重置', '重設'], ['Try Again', '重试', '重試'], ['Loading…', '加载中…', '載入中…'],
+  ['Choose Photo', '选择图片', '選擇圖片'], ['Remove Photo', '移除图片', '移除圖片'], ['View Full Image', '查看大图', '查看大圖'], ['Crop Photo', '裁剪图片', '裁切圖片'], ['Center Image', '居中图片', '置中圖片'],
+  ['Drag to move. Scroll or pinch to zoom.', '拖动以移动，滚动或双指缩放。', '拖曳以移動，捲動或雙指縮放。'],
+  ['Cover photos: JPG, PNG, WebP or GIF. You can crop and zoom after choosing one.', '封面图片：JPG、PNG、WebP 或 GIF。选好后可以裁剪和缩放。', '封面圖片：JPG、PNG、WebP 或 GIF。選好後可以裁切和縮放。'],
+  ['Give the playlist a name.', '请给歌单取个名字。', '請為歌單取個名字。'], ['Give the folder a name.', '请给文件夹取个名字。', '請為資料夾取個名字。'], ['Give the page break a name.', '请给分段取个名字。', '請為分段取個名字。'], ['Give the song a name.', '请填写歌名。', '請填寫歌名。'],
+  ['Playlist updated', '歌单已更新', '歌單已更新'], ['Folder renamed', '文件夹已重命名', '資料夾已重新命名'], ['Columns reset', '列已重置', '欄位已重設'],
+  ['Add a Song', '添加歌曲', '加入歌曲'], ['Add a Page Break', '添加分段', '加入分段'], ['Add to This Playlist', '添加到此歌单', '加入此歌單'], ['Edit Page Break', '编辑分段', '編輯分段'],
+  ['Rename or Move', '重命名或移动', '重新命名或移動'], ['Remove Page Break', '移除分段', '移除分段'], ['Starts After', '开始于此歌曲之后', '開始於此歌曲之後'], ['The very top', '最前面', '最前面'],
+  ['The page break goes right after the song you pick. Songs after it belong to this section.', '分段会放在你选择的歌曲之后，之后的歌曲都属于这一段。', '分段會放在你選擇的歌曲之後，之後的歌曲都屬於這一段。'],
+  ['Page break updated', '分段已更新', '分段已更新'], ['Untitled Section', '未命名分段', '未命名分段'], ['Search your songs', '搜索你的歌曲', '搜尋你的歌曲'], ['Search your playlists and folders', '搜索你的歌单和文件夹', '搜尋你的歌單和資料夾'],
+  ['This Playlist Is Empty', '这个歌单是空的', '這個歌單是空的'], ['Use the + button above, or open the ⋯ menu on any song and choose Add to Playlist.', '使用上方的 + 按钮，或打开任意歌曲的 ⋯ 菜单，选择“添加到歌单”。', '使用上方的 + 按鈕，或開啟任一歌曲的 ⋯ 選單，選擇「加入歌單」。'],
+  ['Browse Songs', '浏览歌曲', '瀏覽歌曲'], ['This Folder Is Empty', '这个文件夹是空的', '這個資料夾是空的'], ['Use the + button to add playlists or make a folder inside this one.', '使用 + 按钮添加歌单，或在里面新建文件夹。', '使用 + 按鈕加入歌單，或在裡面新增資料夾。'],
+  ['Nothing here yet. Drag a playlist onto this folder to add it.', '这里还没有内容。把歌单拖到这个文件夹即可添加。', '這裡還沒有內容。把歌單拖到這個資料夾即可加入。'],
+  ['Show Columns', '显示的列', '顯示的欄位'], ['Choose Columns', '选择列', '選擇欄位'], ['Played', '播放时间', '播放時間'],
+  ['Upload Songs', '上传歌曲', '上傳歌曲'], ['Find Missing Info', '查找缺少的信息', '尋找缺少的資訊'], ['No Uploads Yet', '还没有上传', '還沒有上傳'], ['Choose Upload Songs to add your MP3s.', '选择“上传歌曲”来添加你的 MP3。', '選擇「上傳歌曲」來加入你的 MP3。'],
+  ['Choose Audio Files', '选择音频文件', '選擇音訊檔案'], ['Choose a Whole Folder', '选择整个文件夹', '選擇整個資料夾'], ['Click a cover to edit a song', '点击封面编辑歌曲', '點擊封面編輯歌曲'],
+  ['Edit Song', '编辑歌曲', '編輯歌曲'], ['Song Name', '歌名', '歌名'], ['Release Date', '发行日期', '發行日期'], ['Find Info Online', '在线查找信息', '線上尋找資訊'], ['Searching…', '正在搜索…', '正在搜尋…'],
+  ['Pick the right one to fill in the details and art.', '选择正确的一项来填入信息和封面。', '選擇正確的一項來填入資訊和封面。'], ['Type a song name first.', '请先输入歌名。', '請先輸入歌名。'],
+  ['No matches. Check the spelling, or fill it in yourself.', '没有匹配结果。请检查拼写，或自己填写。', '沒有符合結果。請檢查拼字，或自行填寫。'],
+  ['Write the release date like Oct 24, 2024, 10/24/2024, or just 2024.', '请按 Oct 24, 2024、10/24/2024 或 2024 的格式填写发行日期。', '請按 Oct 24, 2024、10/24/2024 或 2024 的格式填寫發行日期。'],
+  ['Choose Artist Photo', '选择艺人照片', '選擇藝人照片'], ['Change Artist Photo', '更换艺人照片', '更換藝人照片'], ['Remove Artist Photo', '移除艺人照片', '移除藝人照片'], ['Uploading photo…', '正在上传图片…', '正在上傳圖片…'], ['Uploading cover…', '正在上传封面…', '正在上傳封面…'],
+  ['Settings', '设置', '設定'], ['Allegro Account', 'Allegro 账户', 'Allegro 帳戶'], ['Sign Out', '退出登录', '登出'], ['Sign In', '登录', '登入'], ['Account', '账户', '帳戶'], ['Password', '密码', '密碼'],
+  ['Change the password you use to sign in. Your other devices will need to sign in again.', '更改你的登录密码。其他设备需要重新登录。', '變更你的登入密碼。其他裝置需要重新登入。'],
+  ['Current password', '当前密码', '目前密碼'], ['New password (8+ characters)', '新密码（至少 8 个字符）', '新密碼（至少 8 個字元）'], ['New password again', '再次输入新密码', '再次輸入新密碼'], ['Change Password', '更改密码', '變更密碼'],
+  ['Sign out of Allegro on this device.', '在这台设备上退出 Allegro。', '在這台裝置上登出 Allegro。'], ['Library', '音乐库', '音樂庫'], ['Show Demo Songs', '显示示例歌曲', '顯示範例歌曲'],
+  ['The generated sample songs that came with Allegro. Turning this off hides them everywhere, on all your devices.', 'Allegro 自带的示例歌曲。关闭后会在你所有的设备上隐藏。', 'Allegro 內建的範例歌曲。關閉後會在你所有的裝置上隱藏。'],
+  ['Column Choices', '列设置', '欄位設定'], ['Every list shows the usual columns.', '所有列表都显示默认的列。', '所有清單都顯示預設的欄位。'], ['Storage', '存储空间', '儲存空間'], ['Your Uploads', '你的上传', '你的上傳'],
+  ['See, edit and add the songs you\'ve uploaded.', '查看、编辑和添加你上传的歌曲。', '查看、編輯和加入你上傳的歌曲。'], ['Open Uploads', '打开上传', '開啟上傳'], ['About', '关于', '關於'], ['View on GitHub', '在 GitHub 上查看', '在 GitHub 上查看'],
+  ['Your own music library, saved online on Cloudflare. The code is on GitHub.', '你自己的音乐库，在线保存在 Cloudflare。代码在 GitHub 上。', '你自己的音樂庫，線上儲存在 Cloudflare。程式碼在 GitHub 上。'],
+  ['Appearance', '外观', '外觀'], ['Theme', '主题', '主題'], ['Language', '语言', '語言'], ['System', '跟随系统', '跟隨系統'], ['Light', '浅色', '淺色'], ['Dark', '深色', '深色'],
+  ['Match your device, or always use light or dark.', '跟随设备，或始终使用浅色或深色。', '跟隨裝置，或一律使用淺色或深色。'], ['The language for Allegro on this device. Your song and playlist names stay as they are.', '这台设备上 Allegro 使用的语言。歌曲和歌单名称保持不变。', '這台裝置上 Allegro 使用的語言。歌曲和歌單名稱保持不變。'],
+  ['Current Version', '当前版本', '目前版本'], ['Back to Playlist', '返回歌单', '返回歌單'], ['Restore This Version', '恢复此版本', '還原此版本'], ['Removed in This Version', '此版本中移除的歌曲', '此版本中移除的歌曲'],
+  ['No Versions Yet', '还没有版本', '還沒有版本'], ['Earlier version', '更早的版本', '更早的版本'], ['How it was before the changes above', '上面这些更改之前的样子', '上面這些變更之前的樣子'], ['Created the playlist', '创建了歌单', '建立了歌單'],
+  ['Changed the description', '修改了简介', '修改了簡介'], ['Changed the cover photo', '更换了封面', '更換了封面'], ['Removed the cover photo', '移除了封面', '移除了封面'], ['Changed the song order', '调整了歌曲顺序', '調整了歌曲順序'], ['Small changes', '少量修改', '少量修改'],
+  ['No songs in this version.', '此版本中没有歌曲。', '此版本中沒有歌曲。'], ["Couldn't Load the History", '无法加载历史', '無法載入歷史'], ['Removed', '已移除', '已移除'], ['A song no longer in your library', '已不在音乐库中的歌曲', '已不在音樂庫中的歌曲'],
+  ['Today', '今天', '今天'], ['Yesterday', '昨天', '昨天'], ['Just now', '刚刚', '剛剛'], ['Demo', '示例', '範例'], ['Not Found', '找不到', '找不到'], ['Go Home', '返回首页', '返回首頁'],
+  ['Nothing Played Yet', '还没有播放记录', '還沒有播放紀錄'], ['Songs you play will show up here.', '你播放的歌曲会显示在这里。', '你播放的歌曲會顯示在這裡。'], ['Playlists you play will show up here.', '你播放的歌单会显示在这里。', '你播放的歌單會顯示在這裡。'],
+  ['Albums, singles and EPs you play will show up here.', '你播放的专辑、单曲和 EP 会显示在这里。', '你播放的專輯、單曲和 EP 會顯示在這裡。'], ['Songs You Like Will Appear Here', '你喜欢的歌曲会出现在这里', '你喜歡的歌曲會出現在這裡'], ['Tap the heart on any song to save it.', '点击任意歌曲上的爱心即可收藏。', '點擊任一歌曲上的愛心即可收藏。'],
+  ['Bring Your Own Music', '带上你自己的音乐', '帶上你自己的音樂'], ['Add Music', '添加音乐', '加入音樂'], ['Explore', '探索', '探索'],
+  ['Enter your password to open your music.', '输入密码打开你的音乐。', '輸入密碼開啟你的音樂。'], ['Setup Code', '设置码', '設定碼'], ['Type It Again', '再输入一次', '再輸入一次'], ['Wrong password.', '密码错误。', '密碼錯誤。'],
+  ['Your current password is not right.', '当前密码不正确。', '目前密碼不正確。'], ['Use at least 8 characters.', '请至少使用 8 个字符。', '請至少使用 8 個字元。'], ['Type your current password.', '请输入当前密码。', '請輸入目前密碼。'],
+  ['Use at least 8 characters for the new password.', '新密码请至少使用 8 个字符。', '新密碼請至少使用 8 個字元。'], ["The new passwords don't match.", '两次输入的新密码不一致。', '兩次輸入的新密碼不一致。'], ['Password changed. Use the new one next time you sign in.', '密码已更改。下次登录请使用新密码。', '密碼已變更。下次登入請使用新密碼。'],
+  ['Demo songs hidden', '已隐藏示例歌曲', '已隱藏範例歌曲'], ['Demo songs are back', '示例歌曲已恢复', '範例歌曲已恢復'], ['Every upload already has its artist, album and art.', '所有上传的歌曲都已有艺人、专辑和封面。', '所有上傳的歌曲都已有藝人、專輯和封面。'],
+  ['No audio files found. Choose MP3, M4A, WAV, FLAC or OGG files.', '没有找到音频文件。请选择 MP3、M4A、WAV、FLAC 或 OGG 文件。', '沒有找到音訊檔案。請選擇 MP3、M4A、WAV、FLAC 或 OGG 檔案。'],
+  ['Still adding the last batch. Try again in a moment.', '还在添加上一批，请稍后再试。', '還在加入上一批，請稍後再試。'], ['Play something first.', '请先播放点什么。', '請先播放點什麼。'], ['Nothing to play here yet.', '这里还没有可以播放的内容。', '這裡還沒有可以播放的內容。'],
+  ['Nothing in the queue. Play an album or playlist to fill it.', '播放队列是空的。播放一张专辑或一个歌单来填充它。', '播放佇列是空的。播放一張專輯或一個歌單來填充它。'], ["A folder can't go inside itself.", '文件夹不能放进它自己里面。', '資料夾不能放進它自己裡面。'],
+  ['Open now playing', '打开正在播放', '開啟正在播放'], ['Close now playing', '关闭正在播放', '關閉正在播放'], ['Show queue', '显示播放队列', '顯示播放佇列'], ['Go back', '后退', '上一頁'], ['Go forward', '前进', '下一頁'],
+  ['More options', '更多选项', '更多選項'], ['Playlist options', '歌单选项', '歌單選項'], ['Folder options', '文件夹选项', '資料夾選項'], ['Page break options', '分段选项', '分段選項'], ['Add a song or page break', '添加歌曲或分段', '加入歌曲或分段'], ['Add to this folder', '添加到此文件夹', '加入此資料夾'],
+  ['Collapse Sidebar', '收起侧边栏', '收合側邊欄'], ['Expand Sidebar', '展开侧边栏', '展開側邊欄'], ['Song position', '播放进度', '播放進度'], ['Zoom', '缩放', '縮放'], ['Start an Empty One', '新建一个空歌单', '新增一個空歌單'], ['Player', '播放器', '播放器'],
+  ['Saved Online · MP3, M4A, WAV, FLAC, OGG', '在线保存 · MP3、M4A、WAV、FLAC、OGG', '線上儲存 · MP3、M4A、WAV、FLAC、OGG'], ['Saved in This Browser · MP3, M4A, WAV, FLAC, OGG', '保存在此浏览器 · MP3、M4A、WAV、FLAC、OGG', '儲存在此瀏覽器 · MP3、M4A、WAV、FLAC、OGG']
+];
+const pickL = (h, t) => LANG === 'zh-Hant' ? t : h;
+const PAT = [
+  [/^(\d+) songs?$/, m => pickL(`${m[1]} 首歌曲`, `${m[1]} 首歌曲`)], [/^(\d+) playlists?$/, m => pickL(`${m[1]} 个歌单`, `${m[1]} 個歌單`)],
+  [/^(\d+) folders?$/, m => pickL(`${m[1]} 个文件夹`, `${m[1]} 個資料夾`)], [/^(\d+) albums?$/, m => pickL(`${m[1]} 张专辑`, `${m[1]} 張專輯`)], [/^(\d+) lists?$/, m => pickL(`${m[1]} 个列表`, `${m[1]} 個清單`)],
+  [/^(\d+) min (\d+) sec$/, m => `${m[1]} 分 ${m[2]} 秒`], [/^(\d+) hr (\d+) min$/, m => pickL(`${m[1]} 小时 ${m[2]} 分`, `${m[1]} 小時 ${m[2]} 分`)], [/^(\d+) sec$/, m => `${m[1]} 秒`],
+  [/^(\d+) days ago$/, m => `${m[1]} 天前`], [/^(\d+) min ago$/, m => pickL(`${m[1]} 分钟前`, `${m[1]} 分鐘前`)],
+  [/^(Jan\.|Feb\.|March|April|May|June|July|Aug\.|Sept\.|Oct\.|Nov\.|Dec\.) (\d+), (\d{4})$/, m => `${m[3]}年${['Jan.', 'Feb.', 'March', 'April', 'May', 'June', 'July', 'Aug.', 'Sept.', 'Oct.', 'Nov.', 'Dec.'].indexOf(m[1]) + 1}月${m[2]}日`],
+  [/^Allegro has (.+) of free storage\.$/, m => pickL(`Allegro 有 ${m[1]} 免费存储空间。`, `Allegro 有 ${m[1]} 免費儲存空間。`)],
+  [/^You've used (.+) \((.+)%\), so (.+) is left\.$/, m => pickL(`你已使用 ${m[1]}（${m[2].replace('under ', '不到 ')}%），还剩 ${m[3]}。`, `你已使用 ${m[1]}（${m[2].replace('under ', '不到 ')}%），還剩 ${m[3]}。`)],
+  [/^Added to (.+)$/, m => pickL(`已添加到“${m[1]}”`, `已加入「${m[1]}」`)], [/^Already in (.+)$/, m => pickL(`已在“${m[1]}”中`, `已在「${m[1]}」中`)],
+  [/^Removed from (.+)$/, m => pickL(`已从“${m[1]}”中移除`, `已從「${m[1]}」中移除`)], [/^Removed (.+)$/, m => pickL(`已移除“${m[1]}”`, `已移除「${m[1]}」`)],
+  [/^Created (.+)$/, m => pickL(`已创建“${m[1]}”`, `已建立「${m[1]}」`)], [/^Deleted (.+?)\. .*$/, m => pickL(`已删除“${m[1]}”，里面的内容已移到上一层。`, `已刪除「${m[1]}」，裡面的內容已移到上一層。`)], [/^Deleted (.+)$/, m => pickL(`已删除“${m[1]}”`, `已刪除「${m[1]}」`)],
+  [/^Moved (.+) to (.+)$/, m => pickL(`已将“${m[1]}”移到“${m[2]}”`, `已將「${m[1]}」移到「${m[2]}」`)], [/^Moved (.+) out of its folder$/, m => pickL(`已将“${m[1]}”移出文件夹`, `已將「${m[1]}」移出資料夾`)],
+  [/^Saved (.+)$/, m => pickL(`已保存“${m[1]}”`, `已儲存「${m[1]}」`)], [/^New photo for (.+)$/, m => pickL(`已更换“${m[1]}”的照片`, `已更換「${m[1]}」的照片`)], [/^New cover for (.+)$/, m => pickL(`已更换“${m[1]}”的封面`, `已更換「${m[1]}」的封面`)],
+  [/^Add to (.+)$/, m => pickL(`添加到“${m[1]}”`, `加入「${m[1]}」`)], [/^Restored (.+)$/, m => pickL(`已恢复${m[1].replace('the version from ', '').replace('the earlier version', '更早的版本')}`, `已還原${m[1].replace('the version from ', '').replace('the earlier version', '更早的版本')}`)],
+  [/^Renamed from “(.+)” to “(.+)”$/, m => pickL(`将“${m[1]}”重命名为“${m[2]}”`, `將「${m[1]}」重新命名為「${m[2]}」`)], [/^Added “(.+)”$/, m => pickL(`添加了“${m[1]}”`, `加入了「${m[1]}」`)], [/^Removed “(.+)”$/, m => pickL(`移除了“${m[1]}”`, `移除了「${m[1]}」`)],
+  [/^Added (\d+) songs$/, m => pickL(`添加了 ${m[1]} 首歌曲`, `加入了 ${m[1]} 首歌曲`)], [/^Removed (\d+) songs$/, m => `移除了 ${m[1]} 首歌曲`],
+  [/^Added page break “(.+)”$/, m => pickL(`添加了分段“${m[1]}”`, `加入了分段「${m[1]}」`)], [/^Removed page break “(.+)”$/, m => pickL(`移除了分段“${m[1]}”`, `移除了分段「${m[1]}」`)],
+  [/^Renamed page break “(.+)” to “(.+)”$/, m => pickL(`将分段“${m[1]}”重命名为“${m[2]}”`, `將分段「${m[1]}」重新命名為「${m[2]}」`)], [/^and (\d+) more$/, m => pickL(`还有 ${m[1]} 项`, `還有 ${m[1]} 項`)],
+  [/^Volume (\d+)$/, m => pickL(`第 ${m[1]} 卷`, `第 ${m[1]} 卷`)], [/^Uploading (\d+) of (\d+): (.+)$/, m => pickL(`正在上传第 ${m[1]}/${m[2]} 首：${m[3]}`, `正在上傳第 ${m[1]}/${m[2]} 首：${m[3]}`)],
+  [/^Uploaded (\d+) songs?\. .*$/, m => pickL(`已上传 ${m[1]} 首歌曲，可在所有设备上播放`, `已上傳 ${m[1]} 首歌曲，可在所有裝置上播放`)], [/^Adding (\d+) songs?…$/, m => pickL(`正在添加 ${m[1]} 首歌曲…`, `正在加入 ${m[1]} 首歌曲…`)]
+];
+const I18N_IDX = LANG === 'zh-Hans' ? 1 : LANG === 'zh-Hant' ? 2 : 0;
+const I18N_MAP = new Map(I18N_IDX ? I18N.map(r => [r[0], r[I18N_IDX]]) : []);
+function tr1(s) {
+  const d = I18N_MAP.get(s); if (d) return d;
+  for (const [re, fn] of PAT) { const m = s.match(re); if (m) return fn(m); }
+  return null;
+}
+function tr(s) {
+  if (!I18N_IDX || !s) return s;
+  const key = s.trim(); if (!key || !/[A-Za-z]/.test(key)) return s;
+  const one = tr1(key); if (one) return s.replace(key, one);
+  for (const sep of [' · ', ' • ', ', ']) {
+    if (!key.includes(sep)) continue;
+    const parts = key.split(sep), out = parts.map(p => tr1(p) || p);
+    if (out.some((p, i) => p !== parts[i])) return s.replace(key, out.join(sep));
+  }
+  return s;
+}
+// Names you chose (songs, artists, albums, playlists, folders) are left alone.
+const NO_TR = '[data-nt], .t-name, .t-artist .link, [data-go-artist], [data-go-album], .card-t, .li-name, .vhead h1, .qt-name, #p-title, #p-artist, #s-title, #s-artist, #s-ctx, .fp-t b, .fp-head b, .sp-t b, .fd-path .link, .folder-head h1, .pl-break h3, .vh-head h2, .vh-break, .vh-t b, .se-hit b, .tr-card h3, .genre span, .q-name, .q-artist, .greet, input, textarea, select, script, style';
+function translateTree(root) {
+  if (!I18N_IDX || !root) return;
+  if (root.nodeType === 3) { const p = root.parentElement; if (p && !p.closest(NO_TR)) { const v = tr(root.nodeValue); if (v !== root.nodeValue) root.nodeValue = v; } return; }
+  if (root.nodeType !== 1) return;
+  if (root.closest(NO_TR)) { if (root.matches('input, textarea')) translateAttrs(root); return; }
+  translateAttrs(root);
+  const w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT | NodeFilter.SHOW_ELEMENT, { acceptNode: n => n.nodeType === 1 ? (n.matches(NO_TR) ? (n.matches('input, textarea') ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT) : NodeFilter.FILTER_ACCEPT) : NodeFilter.FILTER_ACCEPT });
+  let n; while ((n = w.nextNode())) { if (n.nodeType === 1) translateAttrs(n); else { const v = tr(n.nodeValue); if (v !== n.nodeValue) n.nodeValue = v; } }
+}
+function translateAttrs(el) {
+  for (const a of ['aria-label', 'title', 'placeholder']) { const v = el.getAttribute(a); if (v) { const t = tr(v); if (t !== v) el.setAttribute(a, t); } }
+}
+if (I18N_IDX) {
+  document.documentElement.lang = LANG;
+  translateTree(document.body);
+  new MutationObserver(ms => { for (const m of ms) {
+    if (m.type === 'childList') m.addedNodes.forEach(translateTree);
+    else if (m.type === 'characterData') translateTree(m.target);
+    else if (m.type === 'attributes') translateAttrs(m.target);
+  } }).observe(document.body, { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ['aria-label', 'title', 'placeholder'] });
+}
+
+
 (() => {
 'use strict';
 const $ = s => document.querySelector(s);
@@ -1751,8 +1918,8 @@ function ctxInfo(key) {
   if (type === 'album') { const a = IDX.albums.get(id); return a && { key, type, name: a.name, sub: 'Album · ' + a.artist, ids: a.ids, art: `<img src="${esc(a.cover)}" alt="">`, cover: a.cover }; }
   if (type === 'artist') { const a = IDX.artists.get(id); return a && { key, type, name: a.name, sub: 'Artist', ids: a.ids, art: artistArt(a), cover: a.cover, round: true }; }
   if (type === 'playlist') { const p = S.playlists.find(x => x.id === id); if (!p) return null; const ids = live(p.ids); return { key, type, name: p.name, sub: 'Playlist · ' + plural(ids.length, 'song'), ids, art: plArt(p), cover: p.cover ? plCoverUrl(p) : plCovers(ids)[0] }; }
-  if (type === 'liked') { const ids = live(S.liked); return { key, type, name: 'Liked Songs', sub: 'Playlist · ' + plural(ids.length, 'song'), ids, art: likedArt(), cover: null }; }
-  if (type === 'library') return { key, type, name: 'My Library', sub: plural(S.tracks.size, 'song'), ids: librarySorted(), art: '', cover: null };
+  if (type === 'liked') { const ids = live(S.liked); return { key, type, name: tr('Liked Songs'), sub: 'Playlist · ' + plural(ids.length, 'song'), ids, art: likedArt(), cover: null }; }
+  if (type === 'library') return { key, type, name: tr('My Library'), sub: plural(S.tracks.size, 'song'), ids: librarySorted(), art: '', cover: null };
   if (type === 'genre') { const g = IDX.genres.get(id); return g && { key, type, name: id, sub: 'Genre', ids: g, art: '', cover: tk(g[0])?.cover }; }
   return null;
 }
@@ -2060,7 +2227,7 @@ const albumCard = a => card('album:' + a.key, a.name, (a.year ? a.year + ' · ' 
 const artistCard = a => card('artist:' + a.name, a.name, 'Artist', artistArt(a), true);
 const penFor = id => `<span class="pl-pen" data-pen="${esc(id)}" role="button" aria-label="Choose a cover photo" title="Choose Photo">${ic('edit')}</span>`;
 const plCard = p => card('playlist:' + p.id, p.name, 'Playlist · ' + plural(live(p.ids).length, 'song'), plArt(p));
-const likedCard = () => card('liked', 'Liked Songs', 'Playlist · ' + plural(live(S.liked).length, 'song'), likedArt());
+const likedCard = () => card('liked', tr('Liked Songs'), 'Playlist · ' + plural(live(S.liked).length, 'song'), likedArt());
 function qtile(key) {
   const c = ctxInfo(key); if (!c) return '';
   return `<div class="qt" data-open="${esc(key)}" tabindex="0" role="link"><div class="art${c.round ? ' round' : ''}">${c.art}</div><span class="qt-name">${esc(c.name)}</span><button class="card-play" data-card-play="${esc(key)}" aria-label="Play ${esc(c.name)}">${ic('play')}</button></div>`;
@@ -2097,10 +2264,15 @@ function titleCase(str) {
     return w.split('-').map(part => part.charAt(0).toUpperCase() + part.slice(1)).join('-');
   }).join(' ');
 }
+const GREETINGS_ZH = {
+  'zh-Hans': { late: ['夜深了，再听一首', '夜猫子的专属歌单', '安静的夜，好听的歌', '月亮也想听安可'], morning: ['早上好', '先来杯咖啡，再来首歌', '新的一天，新的旋律', '早安，今天也要好好听歌'], afternoon: ['下午好', '午后来点音乐吧', '让下午的节奏继续', '来一段轻快的间奏'], evening: ['晚上好', '黄昏需要一首配乐', '调暗灯光，调高音量', '慢下来，好好听歌'] },
+  'zh-Hant': { late: ['夜深了，再聽一首', '夜貓子的專屬歌單', '安靜的夜，好聽的歌', '月亮也想聽安可'], morning: ['早安', '先來杯咖啡，再來首歌', '新的一天，新的旋律', '早安，今天也要好好聽歌'], afternoon: ['午安', '午後來點音樂吧', '讓下午的節奏繼續', '來一段輕快的間奏'], evening: ['晚安', '黃昏需要一首配樂', '調暗燈光，調高音量', '慢下來，好好聽歌'] }
+};
 function greeting(h) {
-  const pool = h < 5 || h >= 23 ? GREETINGS.late : h < 12 ? GREETINGS.morning : h < 18 ? GREETINGS.afternoon : GREETINGS.evening;
+  const G = GREETINGS_ZH[LANG] || GREETINGS;
+  const pool = h < 5 || h >= 23 ? G.late : h < 12 ? G.morning : h < 18 ? G.afternoon : G.evening;
   const d = new Date(), seed = d.getFullYear() * 10000 + (d.getMonth() + 1) * 100 + d.getDate() + h * 7;
-  return titleCase(pool[seed % pool.length]);
+  return G === GREETINGS ? titleCase(pool[seed % pool.length]) : pool[seed % pool.length];
 }
 const VIEWS = {
   home() {
@@ -2170,6 +2342,10 @@ const VIEWS = {
           </form></div>
         <div class="set-row"><div><h3>Sign Out</h3><p>Sign out of Allegro on this device.</p></div><button class="btn ghost-sm" data-action="sign-out">Sign Out</button></div>
       </section>
+      <section class="set-sec"><h2>Appearance</h2>
+        <div class="set-row"><div><h3>Theme</h3><p>Match your device, or always use light or dark.</p></div><div class="seg" role="radiogroup" aria-label="Theme">${[['system', 'System'], ['light', 'Light'], ['dark', 'Dark']].map(([k, l]) => `<button class="seg-btn${themePref() === k ? ' on' : ''}" data-theme-opt="${k}" role="radio" aria-checked="${themePref() === k}">${l}</button>`).join('')}</div></div>
+        <div class="set-row"><div><h3>Language</h3><p>The language for Allegro on this device. Your song and playlist names stay as they are.</p></div><div class="seg" role="radiogroup" aria-label="Language" data-nt>${LANGS.map(([k, l]) => `<button class="seg-btn${LANG === k ? ' on' : ''}" data-lang-opt="${k}" role="radio" aria-checked="${LANG === k}">${l}</button>`).join('')}</div></div>
+      </section>
       <section class="set-sec"><h2>Library</h2>
         <div class="set-row"><div><h3>Show Demo Songs</h3><p>The generated sample songs that came with Allegro. Turning this off hides them everywhere, on all your devices.</p></div>${toggle('set-demos', demos, 'Show demo songs')}</div>
         <div class="set-row"><div><h3>Column Choices</h3><p>${nCols ? `You've picked columns for ${plural(nCols, 'list')}. Reset them all to the usual Song Cover, Title, Artist, Album, Date Released and Duration.` : 'Every list shows the usual columns.'}</p></div><button class="btn ghost-sm" data-action="reset-cols"${nCols ? '' : ' disabled'}>Reset</button></div>
@@ -2205,10 +2381,10 @@ const VIEWS = {
     if (!q) {
       const tiles = [];
       for (const [g, ids] of IDX.genres) tiles.push({ label: g, key: 'genre:' + g, hue: hash(g) % 360, cover: tk(ids[0]).cover });
-      tiles.push({ label: 'Liked Songs', key: 'liked', hue: 350, cover: null });
-      tiles.push({ label: 'Recently Added', key: 'library:songs', hue: 40, cover: albumsSorted()[0]?.cover });
-      tiles.push({ label: 'All Albums', key: 'library:albums', hue: 260, cover: albumsSorted()[1]?.cover });
-      tiles.push({ label: 'All Artists', key: 'library:artists', hue: 130, cover: artistsSorted().find(a => a.cover)?.cover || albumsSorted()[2]?.cover });
+      tiles.push({ label: tr('Liked Songs'), key: 'liked', hue: 350, cover: null });
+      tiles.push({ label: tr('Recently Added'), key: 'library:songs', hue: 40, cover: albumsSorted()[0]?.cover });
+      tiles.push({ label: tr('All Albums'), key: 'library:albums', hue: 260, cover: albumsSorted()[1]?.cover });
+      tiles.push({ label: tr('All Artists'), key: 'library:artists', hue: 130, cover: artistsSorted().find(a => a.cover)?.cover || albumsSorted()[2]?.cover });
       return `<h1 class="page-title">Explore</h1><div class="genre-grid">${tiles.map(t => `<button class="genre" data-open="${esc(t.key)}" style="background:hsl(${t.hue} 52% 40%)"><span>${esc(t.label)}</span>${t.cover ? `<img src="${esc(t.cover)}" alt="">` : ''}</button>`).join('')}</div>`;
     }
     const m = s => s && s.toLowerCase().includes(q);
@@ -2275,9 +2451,9 @@ const VIEWS = {
   },
   liked() {
     const ids = live(S.liked);
-    return head({ art: likedArt(), type: 'Playlist', title: '<h1>Liked Songs</h1>', meta: `<span>${plural(ids.length, 'song')}</span>` }).replace('class="view-bg"', 'class="view-bg" style="--tint:120 70 200"')
+    return head({ art: likedArt(), type: 'Playlist', title: `<h1>${tr('Liked Songs')}</h1>`, meta: `<span>${plural(ids.length, 'song')}</span>` }).replace('class="view-bg"', 'class="view-bg" style="--tint:120 70 200"')
       + actions('liked')
-      + trackList(ids, { key: 'liked', name: 'Liked Songs' }, { empty: `<div class="empty"><h3>Songs You Like Will Appear Here</h3><p>Tap the heart on any song to save it.</p></div>` });
+      + trackList(ids, { key: 'liked', name: tr('Liked Songs') }, { empty: `<div class="empty"><h3>Songs You Like Will Appear Here</h3><p>Tap the heart on any song to save it.</p></div>` });
   },
   genre(v) {
     const ids = IDX.genres.get(v.key);
@@ -2339,7 +2515,7 @@ const VIEWS_AS = [['list', 'List', 'viewList'], ['grid', 'Grid', 'viewGrid']];
 function libItems(all = false) {
   const items = [];
   const img = u => `<img src="${esc(u)}" alt="" loading="lazy">`;
-  items.push({ key: 'liked', name: 'Liked Songs', type: 'Playlist', sub: `Playlist • ${plural(live(S.liked).length, 'song')}`, art: likedArt(), pinned: true, added: Infinity, creator: 'You' });
+  items.push({ key: 'liked', name: tr('Liked Songs'), type: 'Playlist', sub: `Playlist • ${plural(live(S.liked).length, 'song')}`, art: likedArt(), pinned: true, added: Infinity, creator: 'You' });
   const q0 = all ? '' : S.libQ.trim();
   const filed = new Set(S.folders.flatMap(f => f.ids));
   S.folders.filter(f => q0 || all || !filed.has(f.id)).forEach(f => items.push({ key: 'folder:' + f.id, name: f.name, type: 'Folder', sub: `Folder • ${folderDesc(f)}`, art: folderArt(), added: f.created || 0, creator: 'You' }));
@@ -2366,7 +2542,7 @@ function renderSide() {
   const items = libItems();
   const cls = S.libView === 'grid' ? ' grid' : '';
   $('#side-list').classList.toggle('grid', S.libView === 'grid');
-  const create = S.libQ.trim() ? '' : `<button class="li li-create${cls}" data-action="create" title="Create a Playlist or Folder" aria-haspopup="menu"><div class="li-art create-art">${ic('plus')}</div><div class="li-text"><div class="li-name">Create</div></div></button>`;
+  const create = S.libQ.trim() ? '' : `<button class="li li-create${cls}" data-action="create" title="Create a Playlist or Folder" aria-haspopup="menu"><div class="li-art create-art">${ic('plus')}</div><div class="li-text"><div class="li-name">${tr('Create')}</div></div></button>`;
   $('#side-list').innerHTML = create + (items.length ? items.map(it =>
     `<button class="li${cls}${it.key === key ? ' active' : ''}${it.key === pctx ? ' playing' : ''}" data-open="${esc(it.key)}" title="${esc(it.name)}"${it.pinned ? '' : ' data-drag="1"'}>`
     + `<div class="li-art${it.round ? ' round' : ''}">${it.art}</div>`
@@ -2968,6 +3144,21 @@ document.addEventListener('click', e => {
 });
 
 /* ================= settings ================= */
+const themePref = () => { try { return localStorage.getItem('allegro.theme') || 'system'; } catch (e) { return 'system'; } };
+const darkMQ = matchMedia('(prefers-color-scheme: dark)');
+function applyTheme() {
+  const t = themePref(), dark = t === 'dark' || (t === 'system' && darkMQ.matches);
+  document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+  const m = document.querySelector('meta[name="theme-color"]'); if (m) m.content = dark ? '#0b0b0c' : '#e8e8e8';
+}
+applyTheme();
+darkMQ.addEventListener('change', applyTheme);
+document.addEventListener('click', e => {
+  const th = e.target.closest('[data-theme-opt]');
+  if (th) { try { localStorage.setItem('allegro.theme', th.dataset.themeOpt); } catch (ex) {} applyTheme(); render(); return; }
+  const lg = e.target.closest('[data-lang-opt]');
+  if (lg && lg.dataset.langOpt !== LANG) { try { localStorage.setItem('allegro.lang', lg.dataset.langOpt); } catch (ex) {} location.reload(); }
+});
 const pref = k => S.prefs.includes(k);
 function setPref(k, on) { S.prefs = on ? [...new Set([...S.prefs, k])] : S.prefs.filter(x => x !== k); userActed = true; save(); }
 // Demo songs come and go with the "Show Demo Songs" setting.
@@ -3372,7 +3563,7 @@ function uploadsTab() {
     + (missing && cloud.canWrite ? `<button class="btn ghost-sm" data-action="fill-info" title="Look up missing artists, albums and art">${ic('search')}Find Missing Info</button>` : '')
     + `<button class="btn" data-action="add">${ic('upload')}Upload Songs</button></div>`;
   const empty = `<div class="empty"><h3>No Uploads Yet</h3><p>Choose Upload Songs to add your MP3s.</p></div>`;
-  return storageNote() + localBanner() + tools + trackList(ids, { key: 'uploads', name: 'Uploads' }, { edit: true, empty });
+  return storageNote() + localBanner() + tools + trackList(ids, { key: 'uploads', name: tr('Uploads') }, { edit: true, empty });
 }
 
 /* ---- finding a song's artist, album and art ---- */
