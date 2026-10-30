@@ -1791,9 +1791,9 @@ let LISTS = {}, listSeq = 0;
 function trackRow(t, i, opt) {
   const liked = isLiked(t.id), n = opt.nums ? opt.nums[i] : opt.trackNo ? (t.trackNo || i + 1) : i + 1, c = opt.cols;
   const artistLink = `<span class="t-artist">${t.kind === 'demo' ? '<b class="demo-tag">Demo</b>' : ''}<button class="link" data-go-artist="${esc(t.artist)}">${esc(t.artist)}</button></span>`;
-  const cover = opt.cover === false || !c.has('title') ? '' : opt.edit && t.kind === 'cloud' ? `<button class="tr-art-edit" data-edit-song="${esc(t.id)}" aria-label="Edit ${esc(t.title)}" title="Edit Song"><img src="${esc(t.cover)}" alt="" loading="lazy"><span class="pen">${ic('edit')}</span></button>` : `<img src="${esc(t.cover)}" alt="" loading="lazy">`;
+  const cover = !c.has('cover') ? '' : opt.edit && t.kind === 'cloud' ? `<button class="tr-art-edit" data-edit-song="${esc(t.id)}" aria-label="Edit ${esc(t.title)}" title="Edit Song"><img src="${esc(t.cover)}" alt="" loading="lazy"><span class="pen">${ic('edit')}</span></button>` : `<img src="${esc(t.cover)}" alt="" loading="lazy">`;
   let cells = `<span class="c-n"><span class="num">${n}</span><span class="eq" aria-hidden="true"><i></i><i></i><i></i></span><span class="hov">${ic('play')}</span></span>`;
-  if (c.has('title') || c.has('artist')) cells += `<span class="c-title">${cover}<span class="tt${c.has('title') ? '' : ' tt-artist-only'}">${c.has('title') ? `<span class="t-name">${esc(t.title)}</span>` : ''}${c.has('artist') ? artistLink : ''}</span></span>`;
+  if (c.has('cover') || c.has('title') || c.has('artist')) cells += `<span class="c-title">${cover}<span class="tt${c.has('title') ? '' : ' tt-artist-only'}">${c.has('title') ? `<span class="t-name">${esc(t.title)}</span>` : ''}${c.has('artist') ? artistLink : ''}</span></span>`;
   if (c.has('album')) cells += `<span class="c-album"><button class="link" data-go-album="${esc(t.albumKey)}">${esc(t.album)}</button></span>`;
   if (c.has('date')) cells += `<span class="c-added">${opt.played ? playedWhen(opt.played[i]) : t.released ? longDate(t.released) : (t.year || '–')}</span>`;
   cells += `<span class="c-like"><button class="like${liked ? ' on' : ''}" data-like="${esc(t.id)}" aria-pressed="${liked}" aria-label="${liked ? 'Remove from' : 'Save to'} Liked Songs">${ic(liked ? 'heartFill' : 'heart')}</button></span>`;
@@ -1802,16 +1802,21 @@ function trackRow(t, i, opt) {
   return `<div class="tr" data-id="${esc(t.id)}" data-i="${i}" tabindex="0">${cells}</div>`;
 }
 /* Columns: each list remembers which ones you picked (saved online, so every device matches). */
-const COLS = [['title', 'Title'], ['artist', 'Artist'], ['album', 'Album'], ['date', 'Date Released'], ['duration', 'Duration']];
-const DEFAULT_COLS = ['title', 'artist', 'album', 'date', 'duration'];
+const COLS = [['cover', 'Song Cover'], ['title', 'Title'], ['artist', 'Artist'], ['album', 'Album'], ['date', 'Date Released'], ['duration', 'Duration']];
+const DEFAULT_COLS = ['cover', 'title', 'artist', 'album', 'date', 'duration'];
+// Covers are on by default (album pages start without them, since every song there shares one). Lists saved before
+// the Song Cover option existed keep their covers: a hidden cover is remembered as "nocover".
 function colsFor(key) {
+  const isAlbum = !!key && key.startsWith('album:');
   const e = key && S.listCols.find(x => x.key === key);
-  if (e) return new Set(e.cols.filter(c => COLS.some(x => x[0] === c)));
-  return new Set(key && key.startsWith('album:') ? ['title', 'artist', 'date', 'duration'] : DEFAULT_COLS);
+  if (!e) return new Set(isAlbum ? ['title', 'artist', 'date', 'duration'] : DEFAULT_COLS);
+  const set = new Set(e.cols.filter(c => COLS.some(x => x[0] === c)));
+  if (!isAlbum && !e.cols.includes('nocover')) set.add('cover');
+  return set;
 }
 function colTemplate(cols, nW, narrow) {
   const t = [nW];
-  if (cols.has('title') || cols.has('artist')) t.push('minmax(0, 4fr)');
+  if (cols.has('cover') || cols.has('title') || cols.has('artist')) t.push('minmax(0, 4fr)');
   if (cols.has('album')) t.push('minmax(0, 3fr)');
   if (cols.has('date') && !narrow) t.push('minmax(0, 2fr)');
   t.push('34px');
@@ -1835,7 +1840,7 @@ function trackList(ids, ctx, opt = {}) {
   let head = '';
   if (!opt.noHead) {
     head = `<div class="tl-head"><span class="c-n"><button class="col-btn" data-cols="${lid}" aria-haspopup="menu" aria-expanded="false" aria-label="Choose Columns" title="Choose Columns">${ic('columns')}</button><span aria-hidden="true">#</span></span>`;
-    if (cols.has('title') || cols.has('artist')) head += `<span aria-hidden="true">${cols.has('title') ? 'Title' : 'Artist'}</span>`;
+    if (cols.has('cover') || cols.has('title') || cols.has('artist')) head += `<span aria-hidden="true">${cols.has('title') ? 'Title' : cols.has('artist') ? 'Artist' : ''}</span>`;
     if (cols.has('album')) head += `<span class="c-album" aria-hidden="true">Album</span>`;
     if (cols.has('date')) head += `<span class="c-added" aria-hidden="true">${opt.played ? 'Played' : 'Date Released'}</span>`;
     head += `<span></span>${cols.has('duration') ? `<span class="c-dur" aria-hidden="true">${ic('clock')}</span>` : ''}<span></span></div>`;
@@ -1855,7 +1860,7 @@ function trackList(ids, ctx, opt = {}) {
       body += trackRow(tk(x), ti, o2); ti++;
     }
   } else body = ids.map((id, i) => trackRow(tk(id), i, o)).join('');
-  return `<div class="tl${opt.cover === false ? ' no-cover' : ''}${opt.playlist ? ' reorder' : ''}" data-list="${lid}" style="${style}">${head}${body}</div>`;
+  return `<div class="tl${cols.has('cover') ? '' : ' no-cover'}${opt.playlist ? ' reorder' : ''}" data-list="${lid}" style="${style}">${head}${body}</div>`;
 }
 // Redraws one list in place (after changing its columns) without rebuilding the page.
 function redrawList(el) {
@@ -1881,7 +1886,9 @@ function drawColMenu(key) {
 function toggleCol(key, col) {
   const cols = colsFor(key);
   cols.has(col) ? cols.delete(col) : cols.add(col);
-  S.listCols = [...S.listCols.filter(x => x.key !== key), { key, cols: COLS.map(c => c[0]).filter(c => cols.has(c)) }];
+  const keep = COLS.map(c => c[0]).filter(c => cols.has(c));
+  if (!cols.has('cover') && !key.startsWith('album:')) keep.push('nocover');
+  S.listCols = [...S.listCols.filter(x => x.key !== key), { key, cols: keep }];
   userActed = true; save();
   // redraw every list on the page that uses this key, and keep the menu open on the new button
   let btn = null;

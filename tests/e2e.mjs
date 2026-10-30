@@ -629,7 +629,7 @@ try {
   await A.click('#view [data-cols]'); await A.waitForTimeout(250);
   const colOpts = await A.$$eval('#menu [data-col-opt]', x => x.map(e => e.textContent.trim()));
   for (const c of ['album', 'duration']) { await A.click(`#menu [data-col-opt="${c}"]`); await A.waitForTimeout(250); }
-  const stillOpen = await A.isVisible('#menu') && (await A.$$eval('#menu [data-col-opt][aria-checked="true"]', x => x.map(e => e.dataset.colOpt))).join() === 'title,artist,date';
+  const stillOpen = await A.isVisible('#menu') && (await A.$$eval('#menu [data-col-opt][aria-checked="true"]', x => x.map(e => e.dataset.colOpt))).join() === 'cover,title,artist,date';
   await shot(A, 'columns-menu');
   const menuInPanel = await A.evaluate(() => document.getElementById('menu').getBoundingClientRect().left >= document.getElementById('main').getBoundingClientRect().left);
   await A.keyboard.press('Escape'); await A.waitForTimeout(200);
@@ -639,7 +639,7 @@ try {
   const durCells = await A.$$eval('#view .tr .c-dur', x => x.length);
   const upAlbums = await A.$$eval('#view .tr .c-album', x => x.length);
   const colsLeft = await A.evaluate(() => { const b = document.querySelector('#view .col-btn').getBoundingClientRect(), n = [...document.querySelectorAll('#view .tl-head .c-n span')].pop().getBoundingClientRect(); return b.right <= n.left; });
-  check(colOpts.join('|') === 'Title|Artist|Album|Date Released|Duration' && stillOpen && colsLeft && menuInPanel, 'column menu sits left of # and lists Title, Artist, Album, Date Released and Duration (no BPM or Key)', JSON.stringify(colOpts));
+  check(colOpts.join('|') === 'Song Cover|Title|Artist|Album|Date Released|Duration' && stillOpen && colsLeft && menuInPanel, 'column menu sits left of # and lists Song Cover, Title, Artist, Album, Date Released and Duration (no BPM or Key)', JSON.stringify(colOpts));
   check(upAlbums === 0 && !upHead.includes('Album') && durCells === 0 && !(await A.$('#view .tl-head .c-dur')), 'checked columns show and unchecked ones hide', JSON.stringify({ upHead, durCells, upAlbums }));
   check(relHead && relCells.includes('Feb. 2, 2021') && relCells.includes('Jan. 1, 2019'), 'the date column shows when each song was released', JSON.stringify(relCells));
   await A.click('.nav-btn[data-nav="library"]'); await A.waitForTimeout(400); await A.click('[data-chip="songs"]'); await A.waitForTimeout(300);
@@ -652,12 +652,22 @@ try {
   await B.reload(); await B.waitForTimeout(2000);
   const onB = await B.evaluate(() => JSON.stringify((JSON.parse(localStorage.getItem('waxwing.state.v1') || '{}').listCols || []).find(x => x.key === 'uploads') || null));
   check(afterReload.join() === 'false,false,true' && onB && !onB.includes('duration') && onB.includes('date'), 'column choices stay after reloading, and on other devices', JSON.stringify({ afterReload, onB }));
+  // Song Cover can be switched off for one list
+  await A.click('.nav-btn[data-nav="uploads"]'); await A.waitForTimeout(500);
+  const coversBefore = await A.$$eval('#view .tr .c-title img', x => x.length);
+  await A.click('#view [data-cols]'); await A.waitForTimeout(250);
+  await A.click('#menu [data-col-opt="cover"]'); await A.waitForTimeout(300);
+  await A.keyboard.press('Escape'); await A.waitForTimeout(200);
+  const coversAfter = await A.$$eval('#view .tr .c-title img', x => x.length), titlesAfter = await A.$$eval('#view .tr .t-name', x => x.length);
+  await A.click('.nav-btn[data-nav="library"]'); await A.waitForTimeout(400); await A.click('[data-chip="songs"]'); await A.waitForTimeout(300);
+  const libCovers = await A.$$eval('#view .tr .c-title img', x => x.length);
+  check(coversBefore > 0 && coversAfter === 0 && titlesAfter > 0 && libCovers > 0, 'Song Cover can be hidden for one list and stays on elsewhere', JSON.stringify({ coversBefore, coversAfter, titlesAfter, libCovers }));
   await A.click('#side-list [data-open="playlist:pl-example"]'); await A.waitForTimeout(600);
   const wantTop = await A.evaluate(() => { const m = document.getElementById('main'); m.scrollTop = 120; return m.scrollTop; }); await A.waitForTimeout(500);
   await A.reload(); await A.waitForTimeout(2500);
   const stayed = [await A.textContent('#view h1').catch(() => ''), await A.evaluate(() => document.getElementById('main').scrollTop)];
   check(stayed[0] === 'Renamed In Test' && wantTop > 20 && Math.abs(stayed[1] - wantTop) <= 4, 'reloading keeps you on the same page and scroll spot', JSON.stringify([...stayed, wantTop]));
-  check(libCols[0] > 0 && libCols[1] && !!savedCols && savedCols.cols.join() === 'title,artist,date', 'each list keeps its own columns, saved online', JSON.stringify({ libCols, savedCols }));
+  check(libCols[0] > 0 && libCols[1] && !!savedCols && savedCols.cols.join() === 'cover,title,artist,date', 'each list keeps its own columns, saved online', JSON.stringify({ libCols, savedCols }));
   // Find Missing Info repairs older uploads
   await A.evaluate(async id => {
     const s = (await (await fetch('/api/library')).json()).songs.find(x => x.id === id);
