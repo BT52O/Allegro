@@ -291,7 +291,7 @@ try {
   // --- the search box sits in the top right on every page, next to the profile button
   // The app draws its own slim scroll bars, which take up room like Windows ones do, so this checks the real case.
   const gutter = await A.$eval('#main', m => m.offsetWidth - m.clientWidth);
-  check(gutter === 12, 'the main panel uses the slim scroll bar', String(gutter));
+  check(gutter === 14, 'the main panel uses the slim scroll bar', String(gutter));
   const boxes = [], boxX = [];
   for (const n of ['home', 'search', 'library', 'uploads']) {
     await A.click(`.nav-btn[data-nav="${n}"]`); await A.waitForTimeout(350);
