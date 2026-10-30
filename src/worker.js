@@ -79,7 +79,8 @@ function cleanMeta(d) {
     title: str(d.title) || 'Untitled', artist: str(d.artist) || 'Unknown artist', albumArtist: str(d.albumArtist),
     album: str(d.album) || 'Unknown album', year: str(d.year, 10), trackNo: Number(d.trackNo) || 0, genre: str(d.genre, 80),
     duration: Number(d.duration) || 0, added: Number(d.added) || Date.now(), fileName: str(d.fileName),
-    mime: str(d.mime, 60), cover: !!d.cover, coverV: Number(d.coverV) || 0
+    mime: str(d.mime, 60), cover: !!d.cover, coverV: Number(d.coverV) || 0,
+    released: /^\d{4}(-\d{2}-\d{2})?$/.test(str(d.released, 10)) ? str(d.released, 10) : ''
   };
 }
 
@@ -180,7 +181,8 @@ async function api(request, env, path) {
       liked: v => v.filter(x => typeof x === 'string'),
       libOrder: v => v.filter(k => typeof k === 'string').slice(0, 5000),
       history: v => v.filter(h => h && typeof h.id === 'string' && typeof h.at === 'number').slice(0, 100),
-      recent: v => v.filter(k => typeof k === 'string').slice(0, 50)
+      recent: v => v.filter(k => typeof k === 'string').slice(0, 50),
+      artistPics: v => v.filter(x => x && typeof x.name === 'string' && ID_RE.test(x.id) && typeof x.v === 'number').slice(0, 5000)
     };
     // PATCH changes only the parts it sends; PUT (older pages) replaces everything.
     const state = method === 'PATCH' ? ((await kvGet(env, 'state')) || {}) : {};
@@ -214,7 +216,7 @@ async function api(request, env, path) {
       .then(d => (d.results || []).filter(x => x && x.trackName && x.artistName).map(x => ({
         title: str(x.trackName), artist: str(x.artistName), album: str(x.collectionName),
         albumArtist: x.collectionArtistName && x.collectionArtistName !== x.artistName ? str(x.collectionArtistName) : '',
-        year: str(x.releaseDate, 4), genre: str(x.primaryGenreName, 80), trackNo: Number(x.trackNumber) || 0,
+        year: str(x.releaseDate, 4), released: str(x.releaseDate, 10), genre: str(x.primaryGenreName, 80), trackNo: Number(x.trackNumber) || 0,
         duration: (Number(x.trackTimeMillis) || 0) / 1000,
         art: typeof x.artworkUrl100 === 'string' ? x.artworkUrl100.replace(/\/\d+x\d+(bb)?\.(jpg|png|webp)$/i, '/600x600bb.jpg') : ''
       })));
@@ -222,7 +224,7 @@ async function api(request, env, path) {
       .then(d => { if (d.error) throw new Error('Deezer ' + (d.error.message || 'error')); return d; })
       .then(d => (d.data || []).filter(x => x && x.title && x.artist && x.artist.name).map(x => ({
         title: str(x.title), artist: str(x.artist.name), album: str(x.album && x.album.title), albumArtist: '',
-        year: '', genre: '', trackNo: 0, duration: Number(x.duration) || 0,
+        year: '', released: '', genre: '', trackNo: 0, duration: Number(x.duration) || 0,
         art: str(x.album && (x.album.cover_xl || x.album.cover_big), 500)
       })));
     const [a, b] = await Promise.allSettled([apple, deezer]);
@@ -255,6 +257,15 @@ async function api(request, env, path) {
   if (m && method === 'GET') return ID_RE.test(m[1]) ? serveObject(request, env, 'audio/' + m[1], true) : fail(404, 'Not found');
   m = path.match(/^cover\/([^/]+)$/);
   if (m && method === 'GET') return ID_RE.test(m[1]) ? serveObject(request, env, 'cover/' + m[1], false) : fail(404, 'Not found');
+
+  m = path.match(/^artist-photo\/([^/]+)$/);
+  if (m) {
+    const id = m[1];
+    if (!ID_RE.test(id)) return fail(400, 'Bad artist id.');
+    if (method === 'GET') return serveObject(request, env, 'arphoto/' + id, false);
+    if (method === 'PUT') return putObject(request, env, 'arphoto/' + id, MAX_COVER, t => /^image\/(jpeg|png|gif|webp)$/.test(t));
+    if (method === 'DELETE') { await env.BUCKET.delete('arphoto/' + id); return json({ ok: true }); }
+  }
 
   m = path.match(/^playlist-cover\/([^/]+)$/);
   if (m) {

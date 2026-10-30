@@ -337,6 +337,9 @@ try {
   await A.click(`#view [data-edit-song="${tagged.id}"]`); await A.waitForTimeout(400);
   const seOpen = await A.isVisible('#song-edit');
   await A.fill('#se-name', 'Sunny Day'); await A.fill('#se-artist', 'Edited Artist'); await A.fill('#se-album', 'Edited Album');
+  await A.fill('#se-date', 'someday'); await A.click('#se-save'); await A.waitForTimeout(300);
+  const dateErr = (await A.textContent('#se-err')).includes('release date') && await A.isVisible('#song-edit');
+  await A.fill('#se-date', '4/11/2024');
   const artChooser = A.waitForEvent('filechooser');
   await A.click('#se-cover');
   await (await artChooser).setFiles(join(fixtures, 'wide.png')); await A.waitForTimeout(600);
@@ -347,6 +350,7 @@ try {
   const ed = data.songs.find(s => s.id === tagged.id);
   const edImg = await A.$eval(`#view [data-edit-song="${tagged.id}"] img`, i => i.getAttribute('src')).catch(() => '');
   const edDims = await A.evaluate(src => new Promise(r => { const i = new Image(); i.onload = () => r([i.naturalWidth, i.naturalHeight]); i.onerror = () => r(null); i.src = src; }), edImg);
+  check(dateErr && ed.released === '2024-04-11' && ed.year === '2024', 'release date is checked and saved from 4/11/2024 as 2024-04-11', JSON.stringify([dateErr, ed.released, ed.year]));
   check(seOpen && ed.title === 'Sunny Day' && ed.artist === 'Edited Artist' && ed.album === 'Edited Album' && ed.coverV > 0 && edImg.includes('?v=') && !!edDims && edDims[0] === edDims[1], 'editing a song saves its name, artist, album and new square art', JSON.stringify({ ed, edImg, edDims }));
   // Find Info Online in the editor fills everything in from the pick
   await A.click(`#view [data-edit-song="${tagged.id}"]`); await A.waitForTimeout(400);
@@ -361,13 +365,41 @@ try {
   await A.waitForFunction(() => document.getElementById('song-edit').hidden, null, { timeout: 10000 }).catch(() => {});
   data = await lib(A);
   const hit = data.songs.find(s => s.id === tagged.id);
-  check(filled.join('|') === 'Mock Hit|Mock Artist|Mock Hit Album' && hit.album === 'Mock Hit Album' && hit.year === '2021' && hit.coverV > ed.coverV, 'Find Info Online fills in the song from the search', JSON.stringify({ filled, hit }));
+  check(filled.join('|') === 'Mock Hit|Mock Artist|Mock Hit Album' && hit.album === 'Mock Hit Album' && hit.year === '2021' && hit.released === '2021-02-02' && hit.coverV > ed.coverV, 'Find Info Online fills in the song from the search', JSON.stringify({ filled, hit }));
   // when Apple turns the server away, Deezer still answers
   const dz = await A.evaluate(async () => (await fetch('/api/lookup?term=deezer%20song')).json());
   const dzHit = dz.results && dz.results.find(r => r.title === 'Deezer Song');
   const dzArt = dzHit ? await A.evaluate(async u => (await fetch('/api/art?url=' + encodeURIComponent(u))).status, dzHit.art) : 0;
   check(!!dzHit && dzHit.artist === 'Deezer Band' && dzHit.album === 'Deezer Album' && /403/.test(dz.sources.apple) && dzArt === 200, 'song search falls back to Deezer when Apple refuses', JSON.stringify({ dz, dzArt }));
+  // artists show a blank picture until you choose one; songs never set it
+  await A.click('.nav-btn[data-nav="library"]'); await A.waitForTimeout(400);
+  await A.click('[data-chip="artists"]'); await A.waitForTimeout(300);
+  const blankCard = await A.$eval('#view .card[data-open="artist:Mock Artist"] .card-art', c => !!c.querySelector('.artist-ph') && !c.querySelector('img')).catch(() => false);
+  await A.click('#view .card[data-open="artist:Mock Artist"]'); await A.waitForTimeout(500);
+  await A.hover('.vhead .art'); await A.waitForTimeout(300);
+  await shot(A, 'artist-hover');
+  const arDim = await A.$eval('.vhead .art', a => getComputedStyle(a, '::after').opacity === '1');
+  const arPen = await A.$eval('.vhead .art [data-artist-pen]', e => getComputedStyle(e).opacity === '1').catch(() => false);
+  const noLabel = !(await A.$('.vhead .eyebrow'));
+  const fromFont = await A.$eval('.s-from .eyebrow', e => [getComputedStyle(e).fontFamily, getComputedStyle(e).textTransform]);
+  check(noLabel && fromFont[0].startsWith('Onest') && fromFont[1] === 'none', 'page headers have no type label, and Playing From uses the site font', JSON.stringify(fromFont));
+  check(blankCard && arDim && arPen, 'artists start blank, and the artist picture dims and shows a pen on hover', JSON.stringify([blankCard, arDim, arPen]));
+  const arChooser = A.waitForEvent('filechooser');
+  await A.click('.vhead .art [data-artist-pen]');
+  await (await arChooser).setFiles(join(fixtures, 'wide.png')); await A.waitForTimeout(600);
+  await A.click('#crop-apply'); await A.waitForTimeout(1500);
+  data = await lib(A);
+  const pic = (data.state.artistPics || []).find(x => x.name === 'Mock Artist');
+  const arImg = await A.$eval('.vhead .art img', i => i.complete && i.naturalWidth > 0 && i.naturalWidth === i.naturalHeight).catch(() => false);
+  const otherBlank = (await B.evaluate(async () => (await (await fetch('/api/library')).json()).state.artistPics.length)) === 1;
+  check(!!pic && arImg && otherBlank, 'choosing an artist photo crops, saves online and shows it', JSON.stringify({ pic, arImg }));
+  await A.click('.actions [data-ctx-more]'); await A.waitForTimeout(250);
+  await A.click('#menu .mi:has-text("Remove Artist Photo")'); await A.waitForTimeout(800);
+  data = await lib(A);
+  check(!(data.state.artistPics || []).some(x => x.name === 'Mock Artist') && !!(await A.$('.vhead .art .artist-ph')), 'an artist photo can be removed');
+
   // the menu offers Edit Song in Uploads but not elsewhere
+  await A.click('.nav-btn[data-nav="uploads"]'); await A.waitForTimeout(400);
   await A.click(`#view .tr[data-id="${tagged.id}"] .more`, { force: true }); await A.waitForTimeout(250);
   const upMenu = await A.$$eval('#menu .mi', x => x.map(e => e.textContent.trim()));
   await A.keyboard.press('Escape');
