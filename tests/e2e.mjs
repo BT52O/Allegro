@@ -812,11 +812,17 @@ try {
   const sizes = await A.evaluate(() => { const a = document.getElementById('s-art').getBoundingClientRect(), p = document.getElementById('s-panel').getBoundingClientRect(); return [Math.round(a.height), Math.round(p.height), Math.round(a.top), Math.round(p.top), Math.round(a.width)]; });
   check(Math.abs(sizes[0] - sizes[1]) <= 2 && Math.abs(sizes[2] - sizes[3]) <= 2 && sizes[0] === sizes[4] && sizes[0] > 300, 'the cover and the panel are the same size, side by side', JSON.stringify(sizes));
   check(bar[0] && bar[1] === 'none' && bar[2] && bar[3] <= 28 && bar[4] === 'rgb(255, 255, 255)', 'on desktop, the play controls stay in the bar along the bottom, in white; the tabs are compact', JSON.stringify(bar));
-  check(np[0] === 'flex' && np[1] === 'Wiki|Lyrics|Comments' && np[2] === 'Mock Hit' && np[3].startsWith('Singer|Album'), 'Now Playing shows Wiki, Lyrics and Comments beside the cover, Wiki first', JSON.stringify(np));
+  check(np[0] === 'flex' && np[1] === 'Wiki|Queue|Lyrics|Comments' && np[2] === 'Mock Hit' && np[3].startsWith('Singer|Album'), 'Now Playing shows Wiki, Queue, Lyrics and Comments beside the cover, Wiki first', JSON.stringify(np));
   { const b = await (await A.$('#s-art')).boundingBox(); await A.mouse.move(b.x + b.width * .2, b.y + b.height * .3); await A.mouse.move(b.x + b.width * .25, b.y + b.height * .3, { steps: 3 }); await A.waitForTimeout(200); }
-  const tilt = await A.evaluate(() => [document.getElementById('s-art').style.transform, document.getElementById('s-art').classList.contains('tilting'), getComputedStyle(document.querySelector('.s-shine')).backgroundImage.includes('radial')]);
+  const tilt = await A.evaluate(() => { const bg = getComputedStyle(document.querySelector('.s-shine')).backgroundImage, m = bg.match(/at ([\d.]+)% ([\d.]+)%/); return [document.getElementById('s-art').style.transform, document.getElementById('s-art').classList.contains('tilting'), bg.includes('radial') && !!m && +m[1] > 50 && +m[2] > 50]; });
   await shot(A, 'now-playing-wiki');
-  check(/rotateX/.test(tilt[0]) && tilt[1] && tilt[2], 'the cover tilts toward the mouse with a shine', JSON.stringify(tilt));
+  check(/rotateX/.test(tilt[0]) && tilt[1] && tilt[2], 'the cover eases toward the mouse, with the light on the far side', JSON.stringify(tilt));
+  const gapNp = await A.evaluate(() => [Math.round(document.getElementById('player').getBoundingClientRect().top - document.getElementById('s-art').getBoundingClientRect().bottom), !document.querySelector('#player [data-act="sheet"]'), !document.getElementById('s-qtoggle'), getComputedStyle(document.querySelector('#p-cover .p-exp')).display]);
+  check(gapNp[0] >= 40 && gapNp[1] && gapNp[2] && gapNp[3] === 'grid', 'a wider gap above the player bar; the expand and queue buttons are gone, the bar cover has the arrows instead', JSON.stringify(gapNp));
+  await A.click('[data-sp-tab="queue"]'); await A.waitForTimeout(300);
+  const qTab = await A.evaluate(() => [document.querySelectorAll('#sp-body .sp-queue .qrow.now').length, (document.querySelector('#sp-body .q-sec') || {}).textContent]);
+  check(qTab[0] === 1, 'the queue is a page of the Now Playing panel', JSON.stringify(qTab));
+  await A.click('[data-sp-tab="wiki"]'); await A.waitForTimeout(200);
   await A.click('[data-w-edit]'); await A.waitForTimeout(200);
   await A.fill('#w-lyricist', 'Writer A'); await A.fill('#w-composer', 'Composer B'); await A.fill('#w-about', 'A song about tests.');
   await A.click('[data-w-save]'); await A.waitForTimeout(1200);
@@ -843,7 +849,38 @@ try {
   const cmList = await A.evaluate(async id => (await (await fetch('/api/comments/' + id)).json()).comments, tagged.id);
   await shot(A, 'now-playing-comments');
   check(cmList.length === 1 && cmList[0].text === 'This chorus is great' && cmList[0].liked === 1 && (await A.textContent('.cm-text')) === 'This chorus is great', 'comments can be posted and liked, saved online', JSON.stringify(cmList));
-  await A.keyboard.press('Escape'); await A.waitForTimeout(300);
+  await A.click('#p-cover'); await A.waitForTimeout(80);
+  const closingNp = await A.evaluate(() => [document.getElementById('sheet').hidden, document.getElementById('sheet').classList.contains('closing')]);
+  await A.waitForTimeout(450);
+  const closedNp = await A.evaluate(() => document.getElementById('sheet').hidden);
+  await A.click('#p-cover'); await A.waitForTimeout(600);
+  const reopened = await A.evaluate(() => !document.getElementById('sheet').hidden);
+  check(closingNp.join() === 'false,true' && closedNp && reopened, 'clicking the bar cover closes Now Playing smoothly and opens it again', JSON.stringify([closingNp, closedNp, reopened]));
+  await A.keyboard.press('Escape'); await A.waitForTimeout(450);
+
+  // --- the play queue floats under the search bar, lined up with it, and fades in and out
+  await A.locator('#view .tr').first().locator('.t-name').click(); await A.waitForTimeout(800);
+  const mainW = await A.evaluate(() => document.getElementById('main').getBoundingClientRect().width);
+  await A.click('#q-btn'); await A.waitForTimeout(60);
+  const qMid = await A.evaluate(() => +getComputedStyle(document.getElementById('queue-panel')).opacity);
+  await A.waitForTimeout(500);
+  const qp = await A.evaluate(() => { const q = document.getElementById('queue-panel').getBoundingClientRect(), s = document.getElementById('search-box').getBoundingClientRect(), a = document.getElementById('acct-btn').getBoundingClientRect(), pl = document.getElementById('player').getBoundingClientRect();
+    return { dl: Math.round(q.left - s.left), dr: Math.round(q.right - a.right), below: q.top > s.bottom, abovePlayer: q.bottom <= pl.top, op: getComputedStyle(document.getElementById('queue-panel')).opacity, main: document.getElementById('main').getBoundingClientRect().width,
+      secs: [...document.querySelectorAll('#queue-list .q-sec')].map(e => e.textContent.trim()), now: document.querySelectorAll('#queue-list .qrow.now').length, next: document.querySelectorAll('#queue-list .qrow.next').length, past: document.querySelectorAll('#queue-list .qrow.past').length }; });
+  await shot(A, 'queue-open');
+  check(qMid < 1 && qp.op === '1' && qp.dl === 0 && qp.dr === 0 && qp.below && qp.abovePlayer && Math.abs(qp.main - mainW) < 1, 'the queue fades in as a card under the search bar, the same width as the search bar and account button, over the page', JSON.stringify({ qMid, ...qp, mainW }));
+  check(qp.secs[0] === 'History' && /^Playing from: /.test(qp.secs[1]) && /Clear$/.test(qp.secs[1]) && /^Next Up from: /.test(qp.secs[2]) && qp.now === 1 && qp.past >= 1 && qp.next >= 1, 'the queue shows History, Playing from (with Clear) and Next Up', JSON.stringify(qp.secs));
+  const nextN = qp.next;
+  await A.click('[data-qclear]'); await A.waitForTimeout(300);
+  const cleared = await A.evaluate(() => document.querySelectorAll('#queue-list .qrow.next').length);
+  await A.click('#toast-act'); await A.waitForTimeout(300);
+  const undone = await A.evaluate(() => document.querySelectorAll('#queue-list .qrow.next').length);
+  check(cleared === 0 && undone === nextN, 'Clear empties what is coming up, and Undo brings it back', JSON.stringify([nextN, cleared, undone]));
+  await A.click('#queue-panel [data-act="queue"]'); await A.waitForTimeout(60);
+  const qOut = await A.evaluate(() => [+getComputedStyle(document.getElementById('queue-panel')).opacity, getComputedStyle(document.getElementById('queue-panel')).visibility]);
+  await A.waitForTimeout(450);
+  const qGone = await A.evaluate(() => [getComputedStyle(document.getElementById('queue-panel')).opacity, getComputedStyle(document.getElementById('queue-panel')).visibility, document.getElementById('queue-panel').inert]);
+  check(qOut[0] > 0 && qOut[1] === 'visible' && qGone.join() === '0,hidden,true', 'closing the queue fades it out smoothly', JSON.stringify([qOut, qGone]));
 
   // --- nothing is reachable without a session
   const anon = await (await browser.newContext()).newPage();

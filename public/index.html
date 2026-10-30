@@ -83,7 +83,6 @@ img { display: block; }
   grid-template-rows: minmax(0, 1fr) auto;
   grid-template-areas: "side main" "player player";
 }
-.shell.q-open { grid-template-columns: clamp(224px, 15vw, 264px) minmax(0, 1fr) auto; grid-template-areas: "side main queue" "player player player"; }
 .side { grid-area: side; display: flex; flex-direction: column; gap: var(--gap); min-height: 0; }
 .box { background: var(--panel); border-radius: 16px; }
 .circ { width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; color: var(--muted); }
@@ -150,8 +149,20 @@ body.is-playing .li.grid.playing .spk { display: grid; }
 .sl-empty { padding: 16px 10px; color: var(--muted); font-size: .88rem; }
 
 .main { grid-area: main; position: relative; overflow-y: auto; scrollbar-gutter: stable; min-height: 0; container-type: inline-size; overscroll-behavior: contain; }
-.queue-panel { grid-area: queue; width: 330px; overflow-y: auto; min-height: 0; }
-.queue-panel[hidden] { display: none; }
+/* The queue floats over the page as a card tucked under the search bar: its left edge lines up with the search box and its
+   right edge with the account button (placeQueue sets the numbers). It fades and drops in, and runs the same way back out. */
+.queue-panel {
+  position: fixed; z-index: 25; top: 76px; right: 24px; width: 440px; max-height: 70vh; display: flex; flex-direction: column; min-height: 0;
+  background: var(--raise); border: 1px solid var(--line); border-radius: 22px; overflow: hidden;
+  box-shadow: 0 24px 60px -18px rgba(0, 0, 0, .38), 0 2px 10px rgba(0, 0, 0, .08);
+  opacity: 0; visibility: hidden; pointer-events: none; transform: translateY(-12px) scale(.97); transform-origin: 80% 0;
+  transition: opacity .2s ease, transform .26s cubic-bezier(.4, 0, .2, 1), visibility 0s linear .26s;
+}
+.queue-panel.open {
+  opacity: 1; visibility: visible; pointer-events: auto; transform: none;
+  transition: opacity .22s ease, transform .38s cubic-bezier(.2, .9, .25, 1.08), visibility 0s;
+}
+@media (prefers-reduced-motion: reduce) { .queue-panel, .queue-panel.open { transition: opacity .15s, visibility 0s linear .15s; transform: none; } }
 
 /* ---------- top bar ---------- */
 .topbar {
@@ -399,20 +410,45 @@ body.touch-input .tr .more { opacity: 1; }
 .empty p { margin: 0; max-width: 46ch; }
 
 /* ---------- queue panel ---------- */
-.qp-head { position: sticky; top: 0; display: flex; align-items: center; justify-content: space-between; padding: 14px 12px 10px 18px; background: var(--panel); z-index: 1; }
-.qp-head h2 { margin: 0; font: 600 1.05rem var(--f-display); }
-.queue-list { padding: 0 8px 16px; display: flex; flex-direction: column; gap: 2px; }
-.q-label { font-weight: 600; font-size: .9rem; padding: 12px 10px 6px; }
-.qrow { display: grid; grid-template-columns: 44px minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 6px 4px 6px 8px; border-radius: 8px; cursor: pointer; }
+.qp-head { flex: none; display: flex; align-items: center; gap: 4px; padding: 22px 16px 6px 28px; }
+.qp-head h2 { margin: 0; flex: 1; min-width: 0; font: 700 1.6rem var(--f-display); letter-spacing: -.015em; }
+.qp-head .circ { width: 40px; height: 40px; }
+.qp-head .circ .ic { width: 22px; height: 22px; }
+.queue-panel .queue-list { overflow-y: auto; min-height: 0; padding: 0 10px 16px 16px; }
+.queue-panel .queue-list::-webkit-scrollbar-track { margin: 6px 0 14px; }
+.queue-list { display: flex; flex-direction: column; gap: 2px; }
+.q-sec { display: flex; align-items: baseline; gap: 6px; padding: 22px 12px 10px; font-weight: 700; font-size: 1rem; min-width: 0; }
+.q-sec:first-child { padding-top: 12px; }
+.q-sec .q-from { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.q-sec .link { text-decoration: underline; text-underline-offset: 3px; text-decoration-thickness: 1.5px; }
+.q-sec .q-from .link { font: inherit; color: inherit; text-decoration: underline; text-underline-offset: 3px; text-decoration-thickness: 1.5px; }
+.q-clear { margin-left: auto; flex: none; color: var(--muted); font-weight: 700; font-size: .95rem; padding: 2px 4px; border-radius: 6px; }
+.q-clear:hover { color: var(--ink); }
+.q-gap { height: 18px; flex: none; }
+.qrow { display: grid; grid-template-columns: 52px minmax(0, 1fr) auto; gap: 14px; align-items: center; padding: 6px 6px 6px 10px; border-radius: 10px; cursor: pointer; }
 .qrow:hover { background: var(--hover); }
-.qrow img { width: 44px; height: 44px; border-radius: 4px; object-fit: cover; }
-.qrow .t-name { font-size: .92rem; }
-.qrow.now .t-name { color: var(--accent); }
-.qrm { width: 32px; height: 32px; display: grid; place-items: center; color: var(--muted); border-radius: 50%; opacity: 0; }
-.qrow:hover .qrm, .qrm:focus-visible { opacity: 1; }
-body.touch-input .qrm { opacity: 1; }
-.qrm .ic { width: 16px; height: 16px; }
-.q-empty { padding: 8px 10px; color: var(--muted); font-size: .88rem; }
+.q-art { position: relative; width: 52px; height: 52px; }
+.q-art img { width: 100%; height: 100%; border-radius: 5px; object-fit: cover; display: block; }
+.q-art .spk { position: absolute; inset: 0; display: none; place-items: center; border-radius: 5px; background: rgba(0, 0, 0, .45); color: #fff; }
+.q-art .spk .ic { width: 24px; height: 24px; }
+body.is-playing .qrow.now .q-art .spk { display: grid; }
+.qrow .tt { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.qrow .t-name { font-size: 1rem; font-weight: 600; }
+.qrow .t-artist { font-size: .92rem; color: var(--muted); }
+.qrow .t-name, .qrow .t-artist { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.qrow.now .t-name { color: var(--accent); font-weight: 700; }
+.qrow.past .t-name, .qrow.past img { opacity: .55; }
+.qrow.past .t-artist { opacity: .75; }
+.q-acts { display: flex; align-items: center; gap: 2px; }
+.qmore, .qrm { width: 34px; height: 34px; display: grid; place-items: center; color: var(--muted); border-radius: 50%; }
+.qmore:hover, .qrm:hover { color: var(--ink); background: var(--hover); }
+.qmore { opacity: 0; }
+.qrow:hover .qmore, .qrow.now .qmore, .qrow.past .qmore, .qmore:focus-visible, body.touch-input .qmore { opacity: 1; }
+.qrow:not(:hover) .qmore { color: var(--muted); }
+.qrm { color: var(--ink); }
+.qmore .ic { width: 20px; height: 20px; }
+.qrm .ic { width: 18px; height: 18px; }
+.q-empty { padding: 8px 12px; color: var(--muted); font-size: .9rem; }
 
 /* ---------- player bar ---------- */
 .player {
@@ -422,6 +458,13 @@ body.touch-input .qrm { opacity: 1; }
 .p-now { display: flex; align-items: center; gap: 12px; min-width: 0; }
 .p-cover { width: 56px; height: 56px; border-radius: 6px; overflow: hidden; flex: none; position: relative; background: var(--hover); }
 .p-cover img { width: 100%; height: 100%; object-fit: cover; }
+/* hovering the cover dims it and shows the open / close arrows; clicking it opens or closes Now Playing */
+.p-exp { position: absolute; inset: 0; display: grid; place-items: center; background: rgba(0, 0, 0, .45); color: #fff; opacity: 0; transition: opacity .18s; }
+.p-exp .ic { grid-area: 1 / 1; width: 22px; height: 22px; filter: drop-shadow(0 1px 2px rgba(0, 0, 0, .4)); transition: opacity .2s, transform .25s; }
+.p-exp .ic:last-child, body.sheet-open .p-exp .ic:first-child { opacity: 0; transform: scale(.7); }
+body.sheet-open .p-exp .ic:last-child { opacity: 1; transform: none; }
+.p-cover:hover .p-exp, .p-cover:focus-visible .p-exp { opacity: 1; }
+body.touch-input .p-exp { display: none; }
 .p-meta { min-width: 0; display: flex; flex-direction: column; }
 .p-title { font-weight: 600; font-size: .92rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: left; }
 .p-artist { font-size: .8rem; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: left; }
@@ -464,9 +507,11 @@ input[type="range"]:disabled { opacity: .4; cursor: default; }
 .sheet {
   position: fixed; inset: 0; z-index: 30; background: var(--bg); display: flex; flex-direction: column;
   padding: calc(env(safe-area-inset-top, 0px) + 10px) max(20px, env(safe-area-inset-right, 0px)) calc(env(safe-area-inset-bottom, 0px) + 20px) max(20px, env(safe-area-inset-left, 0px));
-  animation: rise .32s cubic-bezier(.2, .8, .2, 1);
+  animation: rise .42s cubic-bezier(.2, .8, .2, 1);
 }
-@keyframes rise { from { transform: translateY(40px); opacity: 0; } }
+.sheet.closing { animation: sink .28s cubic-bezier(.4, 0, .9, .5) forwards; pointer-events: none; }
+@keyframes rise { from { transform: translateY(48px) scale(.985); opacity: 0; } }
+@keyframes sink { to { transform: translateY(48px) scale(.985); opacity: 0; } }
 .sheet-tint { position: absolute; inset: 0; background: linear-gradient(180deg, rgb(var(--tint, var(--tint-def)) / .75), rgb(var(--tint, var(--tint-def)) / .12) 75%); pointer-events: none; transition: background .5s; }
 .sheet > :not(.sheet-tint) { position: relative; }
 .sheet-top { display: grid; grid-template-columns: 96px minmax(0, 1fr) 96px; align-items: center; gap: 8px; max-width: 1180px; width: 100%; margin: 0 auto; }
@@ -483,14 +528,18 @@ input[type="range"]:disabled { opacity: .4; cursor: default; }
 .s-art img { width: 100%; height: 100%; object-fit: cover; }
 /* the cover leans toward the pointer with a glint of light, like Tidal */
 .s-art { position: relative; transition: transform .6s cubic-bezier(.2, .8, .2, 1), box-shadow .6s; will-change: transform; }
-.s-art.tilting { transition: transform .08s linear, box-shadow .3s; box-shadow: 0 46px 90px -30px rgba(0, 0, 0, .75); }
+.s-art.tilting { transition: box-shadow .5s; box-shadow: 0 46px 90px -30px rgba(0, 0, 0, .75); }
 .s-shine { position: absolute; inset: 0; pointer-events: none; opacity: 0; transition: opacity .45s; border-radius: inherit; }
-.s-art.tilting .s-shine { opacity: 1; }
+.s-art.tilting .s-shine { transition: none; }
 /* Now Playing panel: Wiki, Lyrics, Comments */
 .s-panel { display: none; flex-direction: column; min-height: 0; border-radius: 24px; background: rgba(255, 255, 255, .1); -webkit-backdrop-filter: blur(24px); backdrop-filter: blur(24px); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .08); overflow: hidden; color: #fff; }
 .sp-tabs { display: inline-flex; align-self: flex-start; gap: 1px; margin: 12px 14px 0; padding: 3px; border-radius: 999px; background: rgba(0, 0, 0, .28); flex: none; }
 .sp-tab { height: 26px; padding: 0 12px; border-radius: 999px; color: rgba(255, 255, 255, .68); font-weight: 700; font-size: .78rem; transition: background-color .2s, color .2s; }
 .sp-tab:hover { color: #fff; }
+.s-panel { --ink: #fff; --muted: rgba(255, 255, 255, .66); --accent: #fff; --hover: rgba(255, 255, 255, .1); --line: rgba(255, 255, 255, .14); }
+.sp-queue { padding: 2px 0 8px; }
+.sp-queue .q-sec:first-child { padding-top: 4px; }
+.sp-queue .qrow { padding-left: 6px; }
 .sp-tab.on { background: rgba(255, 255, 255, .2); color: #fff; }
 .sp-body { flex: 1; min-height: 0; overflow-y: auto; padding: 20px 28px 28px; overscroll-behavior: contain; }
 .sp-body.lyr { -webkit-mask-image: linear-gradient(to bottom, transparent, #000 10%, #000 82%, transparent); mask-image: linear-gradient(to bottom, transparent, #000 10%, #000 82%, transparent); padding-top: 0; padding-bottom: 0; }
@@ -563,12 +612,12 @@ input[type="range"]:disabled { opacity: .4; cursor: default; }
   .sheet-top .circ:hover { background: rgba(255, 255, 255, .2); }
   .sheet-top .circ.on { color: #fff; background: rgba(255, 255, 255, .28); }
   .s-from .eyebrow { color: rgba(255, 255, 255, .7); } .s-from .link { color: #fff; }
-  .sheet { padding-bottom: calc(var(--pbar, 96px) + 16px); }
+  .sheet { padding-bottom: calc(var(--pbar, 96px) + 44px); }
   .sheet-body { grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr); gap: clamp(24px, 3vw, 48px); max-width: 1600px; padding-top: 12px; }
   .s-main { max-width: none; justify-content: center; align-items: center; }
   .sheet-body { align-items: center; }
   /* the cover and the Wiki / Lyrics / Comments panel are the same height, side by side */
-  .sheet:not(.show-queue) .s-panel { height: var(--np, 70vh); }
+  .s-panel { height: var(--np, 70vh); }
   .sheet .s-info, .sheet .s-prog, .sheet .s-ctrls { display: none; }
   .s-art { width: var(--np, min(100%, calc(100vh - var(--pbar, 96px) - 120px))); height: var(--np, auto); max-width: none; border-radius: 14px; }
   /* while Now Playing is open, the player bar sits on top of it in white, over the cover's color */
@@ -582,9 +631,6 @@ input[type="range"]:disabled { opacity: .4; cursor: default; }
   .s-ctrls .cbtn { color: rgba(255, 255, 255, .65); } .s-ctrls .cbtn:hover, .s-ctrls .cbtn.main-skip, .s-ctrls .cbtn.on { color: #fff; } .s-ctrls .cbtn.on::after { background: #fff; }
   .s-ctrls .pbtn { background: #fff; color: rgb(var(--deep, 40 40 44)); }
   .s-panel { display: flex; }
-  .s-queue { display: none; color: var(--ink); }
-  .sheet.show-queue .s-queue { display: block; }
-  .sheet.show-queue .s-panel { display: none; }
 }
 .s-info { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .s-info > div { min-width: 0; }
@@ -601,7 +647,6 @@ input[type="range"]:disabled { opacity: .4; cursor: default; }
 .s-ctrls .main-skip .ic { width: 32px; height: 32px; }
 .s-ctrls .pbtn { width: 68px; height: 68px; }
 .s-ctrls .pbtn .ic { width: 30px; height: 30px; }
-.s-queue { overflow-y: auto; min-height: 0; border-radius: 14px; background: color-mix(in srgb, var(--panel) 70%, transparent); padding: 8px 6px; }
 
 /* ---------- menu, drop, toast ---------- */
 .menu-scrim { position: fixed; inset: 0; z-index: 39; }
@@ -683,9 +728,6 @@ img { -webkit-user-drag: none; user-select: none; }
   .tab .ic { width: 24px; height: 24px; }
   .toast { bottom: calc(132px + env(safe-area-inset-bottom, 0px)); }
   .sheet-body { grid-template-columns: minmax(0, 1fr); gap: 0; padding-top: 12px; }
-  .s-queue { display: none; }
-  .sheet.show-queue .s-queue { display: block; }
-  .sheet.show-queue .s-main { display: none; }
   .s-art { max-width: min(100%, 46vh); }
   /* Phone now playing: the cover fills the top and melts into a deep color taken from the art; white text on it. */
   .sheet { padding: 0; background: rgb(var(--deep, 52 52 58)); background: linear-gradient(to bottom, rgb(var(--deep, 52 52 58)) 50%, rgb(var(--deep2, 36 36 40)) 100%); color: #fff; }
@@ -717,7 +759,7 @@ img { -webkit-user-drag: none; user-select: none; }
   .s-ctrls .cbtn.on::after { background: #fff; }
   .s-ctrls .pbtn { background: transparent; color: #fff; width: 76px; height: 76px; }
   .s-ctrls .pbtn .ic { width: 46px; height: 46px; }
-  .sheet.show-queue .sheet-body, .sheet.show-panel .sheet-body { padding: calc(env(safe-area-inset-top, 0px) + 64px) 12px calc(env(safe-area-inset-bottom, 0px) + 16px); }
+  .sheet.show-panel .sheet-body { padding: calc(env(safe-area-inset-top, 0px) + 64px) 12px calc(env(safe-area-inset-bottom, 0px) + 16px); }
   #s-ptoggle { visibility: visible; }
   .sheet.show-panel .s-main { display: none; }
   .sheet.show-panel .s-panel { display: flex; height: 100%; }
@@ -725,7 +767,6 @@ img { -webkit-user-drag: none; user-select: none; }
 }
 @media (min-width: 760px) and (max-width: 1080px) {
   .shell { grid-template-columns: 64px minmax(0, 1fr); }
-  .shell.q-open { grid-template-columns: 64px minmax(0, 1fr) auto; }
   .nav-box { --pl: 0px; padding: 8px; }
   .logo, .nav-btn { justify-content: center; padding: 0; }
   .logo > span:not(.clef), .nav-btn span { display: none; }
@@ -827,7 +868,6 @@ img { -webkit-user-drag: none; user-select: none; }
    so only the width, the panel header and the words animate. */
 .shell { transition: grid-template-columns .4s cubic-bezier(.32, .72, 0, 1); }
 .shell.side-collapsed { grid-template-columns: 64px minmax(0, 1fr); }
-.shell.side-collapsed.q-open { grid-template-columns: 64px minmax(0, 1fr) auto; }
 .side { position: relative; }
 .side .box { overflow: hidden; }
 .side-edge { position: absolute; top: 0; bottom: 0; right: calc(var(--gap) / -2 - 6px); width: 12px; z-index: 8; cursor: col-resize; display: flex; justify-content: center; touch-action: none; }
@@ -1126,14 +1166,14 @@ body.touch-input .has-pen::after { display: none; }
     <div id="view"></div>
   </main>
 
-  <aside class="queue-panel box" id="queue-panel" hidden aria-label="Queue">
-    <div class="qp-head"><h2>Queue</h2><button class="circ" data-act="queue" aria-label="Close queue"><i data-ic="close"></i></button></div>
+  <aside class="queue-panel" id="queue-panel" aria-label="Play queue" aria-hidden="true" inert>
+    <div class="qp-head"><h2>Play queue</h2><button class="circ" id="q-save" aria-label="Add the queue to a playlist" title="Add the queue to a playlist"><i data-ic="noteplus"></i></button><button class="circ" data-act="queue" aria-label="Close queue"><i data-ic="close"></i></button></div>
     <div class="queue-list" id="queue-list"></div>
   </aside>
 
   <footer class="player box" id="player" aria-label="Player">
     <div class="p-now">
-      <button class="p-cover" id="p-cover" aria-label="Open now playing"><img id="p-cover-img" alt=""></button>
+      <button class="p-cover" id="p-cover" aria-label="Open now playing"><img id="p-cover-img" alt=""><span class="p-exp" aria-hidden="true"><i data-ic="expand"></i><i data-ic="collapse"></i></span></button>
       <div class="p-meta">
         <button class="p-title link" id="p-title">Nothing Playing</button>
         <button class="p-artist link" id="p-artist"></button>
@@ -1151,7 +1191,6 @@ body.touch-input .has-pen::after { display: none; }
       <div class="prog"><span class="t-cur">0:00</span><input type="range" class="seek" id="seek" min="0" max="1000" value="0" aria-label="Song position"><span class="t-dur">0:00</span></div>
     </div>
     <div class="p-right">
-      <button class="cbtn" data-act="sheet" aria-label="Now playing view"><i data-ic="expand"></i></button>
       <button class="cbtn" data-act="queue" id="q-btn" aria-label="Queue" aria-pressed="false"><i data-ic="queue"></i></button>
       <button class="cbtn vol-btn" id="vol-btn" aria-label="Mute"><i data-ic="volume"></i></button>
       <input type="range" class="vol" id="vol" min="0" max="100" value="80" aria-label="Volume">
@@ -1173,7 +1212,7 @@ body.touch-input .has-pen::after { display: none; }
   <div class="sheet-top">
     <button class="circ" data-act="sheet" aria-label="Close now playing"><i data-ic="down"></i></button>
     <div class="s-from"><span class="eyebrow">Playing From</span><button class="link" id="s-ctx"></button></div>
-    <div class="s-topr"><button class="circ" id="s-ptoggle" aria-label="Show song details and lyrics" aria-pressed="false"><i data-ic="lyrics"></i></button><button class="circ" id="s-qtoggle" aria-label="Show queue" aria-pressed="false"><i data-ic="queue"></i></button></div>
+    <div class="s-topr"><button class="circ" id="s-ptoggle" aria-label="Show song details and lyrics" aria-pressed="false"><i data-ic="lyrics"></i></button></div>
   </div>
   <div class="sheet-body">
     <div class="s-main">
@@ -1189,10 +1228,9 @@ body.touch-input .has-pen::after { display: none; }
       </div>
     </div>
     <div class="s-panel" id="s-panel">
-      <div class="sp-tabs" role="tablist" aria-label="About this song"><button class="sp-tab" data-sp-tab="wiki" role="tab">Wiki</button><button class="sp-tab" data-sp-tab="lyrics" role="tab">Lyrics</button><button class="sp-tab" data-sp-tab="comments" role="tab">Comments</button></div>
+      <div class="sp-tabs" role="tablist" aria-label="About this song"><button class="sp-tab" data-sp-tab="wiki" role="tab">Wiki</button><button class="sp-tab" data-sp-tab="queue" role="tab">Queue</button><button class="sp-tab" data-sp-tab="lyrics" role="tab">Lyrics</button><button class="sp-tab" data-sp-tab="comments" role="tab">Comments</button></div>
       <div class="sp-body" id="sp-body"></div>
     </div>
-    <div class="s-queue queue-list" id="s-queue"></div>
   </div>
 </div>
 
@@ -1326,6 +1364,8 @@ const I18N = [
   ['Play', '播放', '播放'], ['Pause', '暂停', '暫停'], ['Shuffle', '随机播放', '隨機播放'], ['Previous', '上一首', '上一首'], ['Next', '下一首', '下一首'],
   ['Repeat off', '不循环', '不循環'], ['Repeat all', '列表循环', '列表循環'], ['Repeat one', '单曲循环', '單曲循環'], ['Queue', '播放队列', '播放佇列'], ['Volume', '音量', '音量'], ['Mute', '静音', '靜音'],
   ['Now Playing', '正在播放', '正在播放'], ['Playing From', '播放来源', '播放來源'], ['Nothing Playing', '未在播放', '未在播放'], ['Pick a song to start', '选一首歌开始', '選一首歌開始'],
+  ['Play queue', '播放队列', '播放佇列'], ['History', '播放历史', '播放歷史'], ['Playing from:', '播放来源：', '播放來源：'], ['Next Up from:', '接下来播放：', '接下來播放：'], ['Clear', '清空', '清空'], ['Cleared the queue', '已清空播放队列', '已清空播放佇列'],
+  ['Add the queue to a playlist', '将播放队列添加到歌单', '將播放佇列加入歌單'], ['Nothing in the queue yet', '播放队列还是空的', '播放佇列還是空的'], ['Close queue', '关闭播放队列', '關閉播放佇列'],
   ['Next Up', '接下来', '接下來'], ['Play Next', '下一首播放', '下一首播放'], ['Add to Queue', '添加到播放队列', '加入播放佇列'], ['Add to Playlist', '添加到歌单', '加入歌單'],
   ['Save to Liked Songs', '添加到喜欢的歌曲', '加入喜歡的歌曲'], ['Remove from Liked Songs', '从喜欢的歌曲中移除', '從喜歡的歌曲中移除'], ['Saved to Liked Songs', '已添加到喜欢的歌曲', '已加入喜歡的歌曲'], ['Removed from Liked Songs', '已从喜欢的歌曲中移除', '已從喜歡的歌曲中移除'],
   ['Go to Artist', '查看艺人', '查看藝人'], ['Go to Album', '查看专辑', '查看專輯'], ['Remove from This Playlist', '从此歌单中移除', '從此歌單中移除'], ['Remove from Library', '从音乐库中移除', '從音樂庫中移除'],
@@ -1434,7 +1474,7 @@ function tr(s) {
   return s;
 }
 // Names you chose (songs, artists, albums, playlists, folders) are left alone.
-const NO_TR = '[data-nt], .w-title, .w-row .link, .cm-text, .ly, .t-name, .t-artist .link, [data-go-artist], [data-go-album], .card-t, .li-name, .vhead h1, .qt-name, #p-title, #p-artist, #s-title, #s-artist, #s-ctx, .fp-t b, .fp-head b, .sp-t b, .fd-path .link, .folder-head h1, .pl-break h3, .vh-head h2, .vh-break, .vh-t b, .se-hit b, .tr-card h3, .genre span, .q-name, .q-artist, .greet, input, textarea, select, script, style';
+const NO_TR = '[data-nt], .w-title, .w-row .link, .cm-text, .ly, .t-name, .t-artist .link, [data-go-artist], [data-go-album], .card-t, .li-name, .vhead h1, .qt-name, #p-title, #p-artist, #s-title, #s-artist, #s-ctx, [data-qctx], .q-from span, .qrow .t-artist, .fp-t b, .fp-head b, .sp-t b, .fd-path .link, .folder-head h1, .pl-break h3, .vh-head h2, .vh-break, .vh-t b, .se-hit b, .tr-card h3, .genre span, .q-name, .q-artist, .greet, input, textarea, select, script, style';
 function translateTree(root) {
   if (!I18N_IDX || !root) return;
   if (root.nodeType === 3) { const p = root.parentElement; if (p && !p.closest(NO_TR)) { const v = tr(root.nodeValue); if (v !== root.nodeValue) root.nodeValue = v; } return; }
@@ -1484,6 +1524,7 @@ const STROKE = {
   volume: '<path d="M4 9.5h3.5L12 6v12l-4.5-3.5H4z"/><path d="M15.5 9.5a3.5 3.5 0 0 1 0 5M18 7a7 7 0 0 1 0 10"/>',
   mute: '<path d="M4 9.5h3.5L12 6v12l-4.5-3.5H4z"/><path d="m16 9.5 5 5M21 9.5l-5 5"/>',
   down: '<path d="m6 9 6 6 6-6"/>',
+  collapse: '<path d="M14 4v6h6M10 20v-6H4M20 4l-6 6M4 20l6-6"/>',
   expand: '<path d="M14 4h6v6M10 20H4v-6M20 4l-6.5 6.5M4 20l6.5-6.5"/>',
   clock: '<circle cx="12" cy="12" r="8"/><path d="M12 7.5V12l3 2"/>',
   music: '<path d="M9 18V6l10-2v12"/><circle cx="6.5" cy="18" r="2.5"/><circle cx="16.5" cy="16" r="2.5"/>',
@@ -1499,6 +1540,7 @@ const STROKE = {
   album: '<circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="2"/>',
   user: '<circle cx="12" cy="8.5" r="3.5"/><path d="M5 20c.8-3.6 3.6-5.5 7-5.5s6.2 1.9 7 5.5"/>',
   playnext: '<path d="M4 6h10M4 11h10M4 16h6M17 13v8M13 17h8"/>',
+  noteplus: '<circle cx="7" cy="17.5" r="2.5"/><path d="M9.5 17.5V4.5l3.5 1.6"/><path d="M17.5 9v8M13.5 13h8"/>',
   addq: '<path d="M4 6h12M4 11h12M4 16h7M18 14v6M15 17h6"/>',
   list: '<path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01"/>',
   speaker: '<path d="M4 9.5h3.5L12 6v12l-4.5-3.5H4z"/><path d="M15.5 9.5a3.5 3.5 0 0 1 0 5"/>',
@@ -2750,7 +2792,9 @@ function syncToggles() {
     const one = b.querySelector('.one'); if (one) one.hidden = S.repeat !== 'one';
   });
   $('#q-btn').classList.toggle('on', S.queueOpen); $('#q-btn').setAttribute('aria-pressed', S.queueOpen);
-  $('#queue-panel').hidden = !S.queueOpen;
+  const qp = $('#queue-panel'), was = qp.classList.contains('open');
+  if (S.queueOpen && !was) placeQueue();
+  qp.classList.toggle('open', S.queueOpen); qp.inert = !S.queueOpen; qp.setAttribute('aria-hidden', !S.queueOpen);
   $('#shell').classList.toggle('q-open', S.queueOpen);
 }
 function updateMeta() {
@@ -2769,20 +2813,46 @@ function updateMeta() {
   }
   syncLikes();
 }
-function queueRow(id, i, now) {
+/* One queue row. kind: 'past' (history), 'now' or 'next'. History rows carry data-qh (the song id) instead of a queue index. */
+function queueRow(id, i, kind) {
   const t = tk(id); if (!t) return '';
-  return `<div class="qrow${now ? ' now' : ''}" data-qi="${i}"><img src="${esc(t.cover)}" alt="" loading="lazy"><div class="tt"><span class="t-name">${esc(t.title)}</span><span class="t-artist">${esc(t.artist)}</span></div>${now ? '' : `<button class="qrm" data-qrm="${i}" aria-label="Remove ${esc(t.title)} from queue">${ic('close')}</button>`}</div>`;
+  const at = kind === 'past' ? `data-qh="${esc(id)}"` : `data-qi="${i}"`;
+  return `<div class="qrow ${kind}" ${at} tabindex="0"><span class="q-art"><img src="${esc(t.cover)}" alt="" loading="lazy"><span class="spk" aria-label="Playing">${ic('speaker')}</span></span>`
+    + `<div class="tt"><span class="t-name">${esc(t.title)}</span><span class="t-artist">${esc(t.artist)}</span></div>`
+    + `<div class="q-acts"><button class="qmore" data-qmore="${esc(id)}" aria-label="More options for ${esc(t.title)}">${ic('more')}</button>`
+    + (kind === 'next' ? `<button class="qrm" data-qrm="${i}" aria-label="Remove ${esc(t.title)} from queue">${ic('close')}</button>` : '') + '</div></div>';
+}
+/* The songs played before this one, oldest first, so the list reads top to bottom into the current song. */
+function queueHistory() {
+  const h = S.history.slice(), out = [];
+  if (h[0] && h[0].id === S.current) h.shift();
+  for (const e of h) { if (out.length >= 10) break; if (e.id !== S.current && tk(e.id) && !out.includes(e.id)) out.push(e.id); }
+  return out.reverse();
 }
 function queueHTML() {
   if (S.qi < 0 || !S.current) return '<p class="q-empty">Nothing in the queue. Play an album or playlist to fill it.</p>';
-  const nextIds = S.queue.slice(S.qi + 1, S.qi + 81);
-  return `<div class="q-label">Now Playing</div>${queueRow(S.current, S.qi, true)}
-    <div class="q-label">Next Up${S.context ? ` <span class="sm">from ${esc(S.context.name)}</span>` : ''}</div>
-    ${nextIds.length ? nextIds.map((id, k) => queueRow(id, S.qi + 1 + k)).join('') : `<p class="q-empty">${S.repeat === 'all' ? 'Starts over from the top.' : 'This is the last song.'}</p>`}`;
+  const nextIds = S.queue.slice(S.qi + 1, S.qi + 81), hist = queueHistory();
+  const ctx = S.context, name = ctx ? esc(ctx.name) : '';
+  const from = ctx ? (ctxInfo(ctx.key) ? `<button class="link" data-qctx>${name}</button>` : `<span>${name}</span>`) : '';
+  return (hist.length ? `<div class="q-sec">History</div>${hist.map(id => queueRow(id, -1, 'past')).join('')}<div class="q-gap"></div>` : '')
+    + `<div class="q-sec"><span class="q-from">${ctx ? '<b>Playing from:</b> ' + from : 'Now Playing'}</span>${nextIds.length ? '<button class="q-clear" data-qclear>Clear</button>' : ''}</div>`
+    + queueRow(S.current, S.qi, 'now') + '<div class="q-gap"></div>'
+    + `<div class="q-sec"><span class="q-from">${ctx ? '<b>Next Up from:</b> ' + from : 'Next Up'}</span></div>`
+    + (nextIds.length ? nextIds.map((id, k) => queueRow(id, S.qi + 1 + k, 'next')).join('') : `<p class="q-empty">${S.repeat === 'all' ? 'Starts over from the top.' : 'This is the last song.'}</p>`);
+}
+/* Line the floating queue up under the search bar: left edge with the search box, right edge with the account button,
+   and stop short of the player bar. */
+function placeQueue() {
+  if (innerWidth < 760) return;
+  const qp = $('#queue-panel'), s = $('#search-box').getBoundingClientRect(), a = $('#acct-btn').getBoundingClientRect(), p = $('#player').getBoundingClientRect();
+  let w = Math.round(a.right - s.left), l = Math.round(s.left);
+  if (w < 340) { l -= 340 - w; w = 340; }
+  const top = Math.round(s.bottom + 14);
+  Object.assign(qp.style, { left: l + 'px', right: 'auto', width: w + 'px', top: top + 'px', maxHeight: Math.max(220, Math.round(p.top - 14 - top)) + 'px' });
 }
 function renderQueue() {
-  if (S.queueOpen) $('#queue-list').innerHTML = queueHTML();
-  if (!$('#sheet').hidden) $('#s-queue').innerHTML = queueHTML();
+  if (S.queueOpen) { const l = $('#queue-list'), y = l.scrollTop; l.innerHTML = queueHTML(); l.scrollTop = y; }
+  if (spTab === 'queue' && panelShown()) { const b = $('#sp-body'), y = b.scrollTop; renderPanel(); b.scrollTop = y; }
 }
 
 /* ================= menus ================= */
@@ -3287,7 +3357,7 @@ fpop.addEventListener('click', () => setTimeout(() => hideFolderPop(true), 0));
 let spTab = 'wiki';
 try { spTab = localStorage.getItem('allegro.sptab') || 'wiki'; } catch (e) {}
 const SP = { lyr: { id: null }, cm: { id: null }, editWiki: false, editLyr: false, shownId: null, userScroll: 0, raf: 0 };
-const panelShown = () => { const sh = $('#sheet'); return !sh.hidden && (innerWidth >= 760 ? !sh.classList.contains('show-queue') : sh.classList.contains('show-panel')); };
+const panelShown = () => { const sh = $('#sheet'); return !sh.hidden && (innerWidth >= 760 || sh.classList.contains('show-panel')); };
 const ymd = at => { const d = new Date(at); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
 const songMeta = t => (t && t.meta) || {};
 function renderPanel() {
@@ -3297,6 +3367,7 @@ function renderPanel() {
   body.classList.toggle('lyr', spTab === 'lyrics' && !SP.editLyr && !!(SP.lyr.lines && SP.lyr.lines.length));
   if (!t) { body.innerHTML = '<p class="sp-msg">Nothing Playing</p>'; return; }
   if (spTab === 'wiki') body.innerHTML = wikiHTML(t);
+  else if (spTab === 'queue') body.innerHTML = `<div class="queue-list sp-queue">${queueHTML()}</div>`;
   else if (spTab === 'lyrics') {
     if (SP.lyr.id !== t.id) loadLyrics(t);
     body.innerHTML = lyricsHTML(t);
@@ -3482,8 +3553,7 @@ document.addEventListener('submit', async e => {
 ['wheel', 'touchmove'].forEach(ev => $('#sp-body').addEventListener(ev, () => { SP.userScroll = Date.now(); }, { passive: true }));
 $('#s-ptoggle').addEventListener('click', e => {
   const s = $('#sheet'), on = !s.classList.contains('show-panel');
-  s.classList.toggle('show-panel', on); s.classList.remove('show-queue');
-  $('#s-qtoggle').classList.remove('on'); $('#s-qtoggle').setAttribute('aria-pressed', 'false');
+  s.classList.toggle('show-panel', on);
   e.currentTarget.classList.toggle('on', on); e.currentTarget.setAttribute('aria-pressed', on);
   renderPanel();
 });
@@ -3491,14 +3561,30 @@ $('#s-ptoggle').addEventListener('click', e => {
 /* --- the cover leans toward the pointer, with a glint of light (mouse only) --- */
 (() => {
   const art = $('#s-art'), shine = art.querySelector('.s-shine');
+  // The cover eases toward the pointer instead of snapping to it: each frame it covers a small part of the distance left.
+  // The glint of light sits on the opposite side from the pointer, small and soft.
+  const cur = { x: .5, y: .5, k: 0 }, goal = { x: .5, y: .5, k: 0 };
+  let raf = 0;
+  const draw = () => {
+    const f = .075;
+    cur.x += (goal.x - cur.x) * f; cur.y += (goal.y - cur.y) * f; cur.k += (goal.k - cur.k) * f;
+    const dx = cur.x - .5, dy = cur.y - .5;
+    art.style.transform = `perspective(1100px) rotateX(${(-dy * 13 * cur.k).toFixed(2)}deg) rotateY(${(dx * 13 * cur.k).toFixed(2)}deg) scale(${(1 + .025 * cur.k).toFixed(4)})`;
+    const lx = (1 - cur.x) * 100, ly = (1 - cur.y) * 100;
+    shine.style.background = `radial-gradient(circle at ${lx.toFixed(1)}% ${ly.toFixed(1)}%, rgba(255, 255, 255, .34), rgba(255, 255, 255, .1) 11%, rgba(255, 255, 255, 0) 26%)`;
+    shine.style.opacity = cur.k.toFixed(3);
+    const still = Math.abs(goal.x - cur.x) + Math.abs(goal.y - cur.y) + Math.abs(goal.k - cur.k) < .002;
+    if (still && goal.k === 0) { art.classList.remove('tilting'); art.style.transform = ''; shine.style.opacity = ''; raf = 0; return; }
+    raf = requestAnimationFrame(draw);
+  };
   art.addEventListener('pointermove', e => {
     if (e.pointerType !== 'mouse' || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-    const r = art.getBoundingClientRect(), px = (e.clientX - r.left) / r.width, py = (e.clientY - r.top) / r.height;
+    const r = art.getBoundingClientRect();
+    goal.x = Math.min(1, Math.max(0, (e.clientX - r.left) / r.width)); goal.y = Math.min(1, Math.max(0, (e.clientY - r.top) / r.height)); goal.k = 1;
     art.classList.add('tilting');
-    art.style.transform = `perspective(1100px) rotateX(${((.5 - py) * 13).toFixed(2)}deg) rotateY(${((px - .5) * 13).toFixed(2)}deg) scale(1.025)`;
-    shine.style.background = `radial-gradient(circle at ${(px * 100).toFixed(1)}% ${(py * 100).toFixed(1)}%, rgba(255, 255, 255, .42), rgba(255, 255, 255, .1) 32%, rgba(255, 255, 255, 0) 62%), linear-gradient(${(105 + (px - .5) * 40).toFixed(0)}deg, rgba(255, 255, 255, 0) 30%, rgba(255, 255, 255, .14) 48%, rgba(255, 255, 255, 0) 66%)`;
+    if (!raf) raf = requestAnimationFrame(draw);
   });
-  art.addEventListener('pointerleave', () => { art.classList.remove('tilting'); art.style.transform = ''; });
+  art.addEventListener('pointerleave', () => { goal.x = goal.y = .5; goal.k = 0; if (!raf) raf = requestAnimationFrame(draw); });
 })();
 
 /* ================= playlist version history ================= */
@@ -4740,15 +4826,24 @@ function tryRestoreLast() {
 /* ================= sheet ================= */
 function openSheet() {
   if (!S.current) { toast('Play something first.'); return; }
-  const s = $('#sheet'); s.hidden = false; s.classList.remove('show-queue');
+  const s = $('#sheet'); clearTimeout(sheetT); s.classList.remove('closing'); s.hidden = false;
   document.body.classList.add('sheet-open'); placeSheet();
-  $('#s-qtoggle').classList.remove('on'); $('#s-qtoggle').setAttribute('aria-pressed', 'false');
+  if (S.queueOpen) { S.queueOpen = false; syncToggles(); save(); }
   s.classList.remove('show-panel'); $('#s-ptoggle').classList.remove('on'); $('#s-ptoggle').setAttribute('aria-pressed', 'false');
-  $('#s-queue').innerHTML = queueHTML(); updateMeta(); syncPlayIcons(); syncToggles();
+  updateMeta(); syncPlayIcons(); syncToggles();
   SP.shownId = S.current; SP.editWiki = SP.editLyr = false; renderPanel();
   setTimeout(() => s.querySelector('.circ').focus({ preventScroll: true }), 50);
 }
-function closeSheet() { $('#sheet').hidden = true; document.body.classList.remove('sheet-open'); }
+let sheetT = 0;
+function closeSheet() {
+  const s = $('#sheet'); if (s.hidden || s.classList.contains('closing')) return;
+  document.body.classList.remove('sheet-open');
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) { s.hidden = true; return; }
+  s.classList.add('closing');
+  sheetT = setTimeout(() => { s.hidden = true; s.classList.remove('closing'); }, 280);
+}
+const sheetOpen = () => { const s = $('#sheet'); return !s.hidden && !s.classList.contains('closing'); };
+function showSpTab(tab) { spTab = tab; SP.editWiki = SP.editLyr = false; renderPanel(); $('#sp-body').scrollTop = 0; }
 function placeSheet() {
   const sh = $('#sheet'), p = $('#player').getBoundingClientRect();
   sh.style.setProperty('--pbar', Math.max(0, Math.round(innerHeight - p.top)) + 'px');
@@ -4758,7 +4853,14 @@ function placeSheet() {
   const h = body.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
   sh.style.setProperty('--np', Math.max(220, Math.floor(Math.min(main.clientWidth, h))) + 'px');
 }
-window.addEventListener('resize', () => { if (!$('#sheet').hidden) placeSheet(); });
+window.addEventListener('resize', () => { if (!$('#sheet').hidden) placeSheet(); if (S.queueOpen) placeQueue(); });
+// The search box moves when the main panel changes width (the sidebar folding, say), so keep the queue lined up with it.
+if (window.ResizeObserver) new ResizeObserver(() => { if (S.queueOpen) placeQueue(); }).observe($('#main'));
+$('#q-save').addEventListener('click', e => {
+  const ids = S.queue.slice(Math.max(0, S.qi)).filter((id, i, a) => tk(id) && a.indexOf(id) === i);
+  if (!ids.length) { toast('Nothing in the queue yet'); return; }
+  openMenu(e.currentTarget, playlistSub(ids)(), 'Add the queue to a playlist');
+});
 
 /* ================= events ================= */
 document.addEventListener('click', e => {
@@ -4796,8 +4898,16 @@ document.addEventListener('click', e => {
     else if (a === 'prev') prev();
     else if (a === 'shuffle') { S.shuffle = !S.shuffle; S.shuffle ? applyShuffle() : unshuffle(); syncToggles(); renderQueue(); save(); toast(S.shuffle ? 'Shuffle on' : 'Shuffle off'); }
     else if (a === 'repeat') { S.repeat = S.repeat === 'off' ? 'all' : S.repeat === 'all' ? 'one' : 'off'; syncToggles(); renderQueue(); save(); toast(S.repeat === 'all' ? 'Repeating the queue' : S.repeat === 'one' ? 'Repeating this song' : 'Repeat off'); }
-    else if (a === 'queue') { if (innerWidth < 760) { openSheet(); $('#s-qtoggle').click(); return; } if (!$('#sheet').hidden) { $('#s-qtoggle').click(); return; } S.queueOpen = !S.queueOpen; syncToggles(); renderQueue(); save(); }
-    else if (a === 'sheet') { $('#sheet').hidden ? openSheet() : closeSheet(); }
+    else if (a === 'queue') {
+      // with Now Playing open (and always on phones) the queue is a page of the panel; otherwise it floats under the search bar
+      if (innerWidth < 760 || sheetOpen()) {
+        if (!sheetOpen()) openSheet();
+        if (innerWidth < 760 && !$('#sheet').classList.contains('show-panel')) $('#s-ptoggle').click();
+        showSpTab(spTab === 'queue' && innerWidth >= 760 ? 'wiki' : 'queue'); return;
+      }
+      S.queueOpen = !S.queueOpen; syncToggles(); renderQueue(); save();
+    }
+    else if (a === 'sheet') { sheetOpen() ? closeSheet() : openSheet(); }
     return;
   }
   const nav = T.closest('[data-nav]');
@@ -4820,6 +4930,16 @@ document.addEventListener('click', e => {
   const one = T.closest('[data-play-one]'); if (one) { const t = tk(one.dataset.playOne); if (t) playIds([t.id], 0, { key: 'search', name: 'Search results' }); return; }
   const qrm = T.closest('[data-qrm]');
   if (qrm) { const i = +qrm.dataset.qrm; if (i > S.qi) { const [id] = S.queue.splice(i, 1); if (S.origQueue) { const j = S.origQueue.lastIndexOf(id); if (j >= 0) S.origQueue.splice(j, 1); } renderQueue(); } return; }
+  if (T.closest('[data-qctx]')) { if (S.context && ctxInfo(S.context.key)) openKey(S.context.key); return; }
+  const qmo = T.closest('[data-qmore]'); if (qmo) { trackMenu(qmo, qmo.dataset.qmore); return; }
+  if (T.closest('[data-qclear]')) {
+    const gone = S.queue.slice(S.qi + 1), go2 = S.origQueue; if (!gone.length) return;
+    S.queue = S.queue.slice(0, S.qi + 1); if (S.origQueue) S.origQueue = S.origQueue.filter(x => !gone.includes(x) || x === S.current);
+    renderQueue(); save();
+    toast('Cleared the queue', { label: 'Undo', fn: () => { S.queue.push(...gone); S.origQueue = go2; renderQueue(); save(); } });
+    return;
+  }
+  const qh = T.closest('[data-qh]'); if (qh) { const id = qh.dataset.qh; if (tk(id)) { S.queue.splice(S.qi + 1, 0, id); jumpTo(S.qi + 1); } return; }
   const qr = T.closest('[data-qi]'); if (qr) { const i = +qr.dataset.qi; if (i !== S.qi) jumpTo(i); return; }
   const es = T.closest('[data-edit-song]'); if (es) { editSong(es.dataset.editSong); return; }
   const row = T.closest('.tr');
@@ -4838,7 +4958,7 @@ document.addEventListener('keydown', e => {
   if (e.key === 'Escape') { if (crop) { cropClose(null); return; } if (!$('#lightbox').hidden) { closeLightbox(); return; } if (fdlg) { closeFd(); return; } if (bk) { closeBk(); return; } if (fk) { closeFk(); return; } if (sp) { closeSp(); return; } if (se) { closeSe(); return; } if (pe) { closePe(); return; } if (!$('#menu').hidden) { closeMenu(); return; } if (!$('#sheet').hidden) { closeSheet(); return; } if (S.renaming) { S.renaming = null; render(); } return; }
   if (e.target.id === 'rename-input' && e.key === 'Enter') { e.preventDefault(); commitRename(); return; }
   const el = e.target;
-  if ((e.key === 'Enter' || e.key === ' ') && el.matches && el.matches('.tr, .card, .qt, [data-open][tabindex], [data-qi]')) { e.preventDefault(); el.click(); return; }
+  if ((e.key === 'Enter' || e.key === ' ') && el.matches && el.matches('.tr, .card, .qt, [data-open][tabindex], [data-qi], [data-qh]')) { e.preventDefault(); el.click(); return; }
   if (el.closest && el.closest('input, select, textarea, button, [contenteditable]')) return;
   if (e.code === 'Space') { e.preventDefault(); toggle(); }
   else if (e.key === 'ArrowRight' && audio.duration) audio.currentTime = Math.min(audio.duration, audio.currentTime + 5);
@@ -4867,14 +4987,13 @@ $('#search-input').addEventListener('input', e => {
   render();
 });
 $('#search-input').addEventListener('keydown', e => { if (e.key === 'Enter' && S.view.name !== 'search') go({ name: 'search' }); if (e.key === 'Escape') { e.target.value = ''; S.q = ''; if (S.view.name === 'search') render(); e.target.blur(); } });
-$('#p-cover').addEventListener('click', () => { if (innerWidth < 760 || S.current) openSheet(); });
+$('#p-cover').addEventListener('click', () => { if (sheetOpen()) closeSheet(); else if (innerWidth < 760 || S.current) openSheet(); });
 $('#p-title').addEventListener('click', () => { if (innerWidth < 760) { openSheet(); return; } const t = tk(S.current); if (t) go({ name: 'album', key: t.albumKey }); });
 $('#p-artist').addEventListener('click', () => { if (innerWidth < 760) { openSheet(); return; } const t = tk(S.current); if (t) go({ name: 'artist', key: t.artist }); });
 $('#p-like').addEventListener('click', () => { if (S.current) toggleLike(S.current); });
 $('#s-like').addEventListener('click', () => { if (S.current) toggleLike(S.current); });
 $('#s-artist').addEventListener('click', () => { const t = tk(S.current); if (t) go({ name: 'artist', key: t.artist }); });
 $('#s-ctx').addEventListener('click', () => { if (S.context && ctxInfo(S.context.key)) openKey(S.context.key); });
-$('#s-qtoggle').addEventListener('click', e => { const s = $('#sheet'), on = !s.classList.contains('show-queue'); s.classList.toggle('show-queue', on); s.classList.remove('show-panel'); $('#s-ptoggle').classList.remove('on'); if (!on) setTimeout(renderPanel, 0); e.currentTarget.classList.toggle('on', on); e.currentTarget.setAttribute('aria-pressed', on); $('#s-queue').innerHTML = queueHTML(); });
 $('#main').addEventListener('scroll', e => {
   const m = e.currentTarget; m.classList.toggle('scrolled', m.scrollTop > 10);
   clearTimeout(placeTimer); placeTimer = setTimeout(savePlace, 300);
