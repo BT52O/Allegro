@@ -266,9 +266,10 @@ body.is-playing .li.grid.playing .spk { display: grid; }
 .actions { display: flex; align-items: center; gap: 18px; margin-top: -8px; }
 /* playlist page: details on the left, songs on the right */
 .pl-layout { display: grid; grid-template-columns: minmax(240px, 300px) minmax(0, 1fr); gap: 32px; align-items: start; padding-top: 8px; }
-.vhead.pl-head { position: sticky; top: 72px; flex-direction: column; align-items: stretch; gap: 14px; padding: 0; text-align: center; }
+.vhead.pl-head { position: sticky; top: 72px; flex-direction: column; align-items: stretch; gap: 26px; padding: 0; text-align: center; }
 .pl-head .art { width: 100%; max-width: 280px; align-self: center; }
-.pl-head .vhead-text { align-items: center; gap: 4px; }
+.pl-head .vhead-text { align-items: center; gap: 10px; }
+.pl-icons.actions { margin-top: -8px !important; }
 .pl-head h1 { font-size: clamp(1.6rem, 3cqi, 2.4rem); }
 .pl-head .rename { font-size: 1.6rem; text-align: center; }
 .pl-head .desc { max-width: none; }
