@@ -129,11 +129,13 @@ try {
   check(made && h1 === 'Made In Test', 'pressing Create makes the playlist and opens it', JSON.stringify({ made, h1, err: await A.textContent('#pe-err'), open: await A.isVisible('#pl-edit') }));
   await A.evaluate(() => document.querySelector('.nav-btn[data-nav=library]').click()); await A.waitForTimeout(400);
   await A.click('[data-chip="playlists"]'); await A.waitForTimeout(300);
-  await A.hover('#view .card[data-open="playlist:pl-example"]'); await A.waitForTimeout(300);
-  const penVisible = await A.$eval('#view .card[data-open="playlist:pl-example"] .pl-pen', e => getComputedStyle(e).opacity === '1');
-  check(penVisible && !(await A.$('#view .card[data-open="liked"] .pl-pen')) && !(await A.$('#side-list .pl-pen')), 'pen appears on hover for your playlist covers, not Liked Songs or the sidebar');
+  const noCardPens = !(await A.$('#view .pl-pen')) && !(await A.$('#side-list .pl-pen'));
+  await A.click('#side-list [data-open="playlist:pl-example"]'); await A.waitForTimeout(600);
+  await A.hover('.vhead .art'); await A.waitForTimeout(300);
+  const penVisible = await A.$eval('.vhead .pl-pen', e => getComputedStyle(e).opacity === '1');
+  check(noCardPens && penVisible, 'pen shows only on the playlist page cover');
   const chooser = A.waitForEvent('filechooser');
-  await A.click('#view .card[data-open="playlist:pl-example"] .pl-pen');
+  await A.click('.vhead .pl-pen');
   await (await chooser).setFiles(join(fixtures, 'cover.png')); await A.waitForTimeout(1500);
   data = await lib(A);
   const cv = data.state.playlists.find(p => p.id === 'pl-example').cover;

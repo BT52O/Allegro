@@ -1641,7 +1641,7 @@ window.addEventListener('resize', () => syncShelves());
 const albumCard = a => card('album:' + a.key, a.name, (a.year ? a.year + ' · ' : '') + a.artist, `<img src="${esc(a.cover)}" alt="" loading="lazy">`);
 const artistCard = a => card('artist:' + a.name, a.name, 'Artist', `<img src="${esc(a.cover)}" alt="" loading="lazy">`, true);
 const penFor = id => `<span class="pl-pen" data-pen="${esc(id)}" role="button" aria-label="Choose a cover photo" title="Choose photo">${ic('edit')}</span>`;
-const plCard = p => card('playlist:' + p.id, p.name, 'Playlist · ' + plural(live(p.ids).length, 'song'), plArt(p) + penFor(p.id)).replace('class="card-art', 'class="card-art has-pen');
+const plCard = p => card('playlist:' + p.id, p.name, 'Playlist · ' + plural(live(p.ids).length, 'song'), plArt(p));
 const likedCard = () => card('liked', 'Liked Songs', 'Playlist · ' + plural(live(S.liked).length, 'song'), likedArt());
 function qtile(key) {
   const c = ctxInfo(key); if (!c) return '';
