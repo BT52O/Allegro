@@ -118,7 +118,7 @@ try {
   const firstSide = await A.$eval('#side-list .li', e => e.textContent.trim());
   const plCount = (await lib(A)).state.playlists.length;
   await A.click('#side-list .li-create'); await A.waitForTimeout(500);
-  const dlg = firstSide === 'Create Playlist' && await A.isVisible('#pl-edit') && (await A.textContent('#pe-title')) === 'Create playlist' && (await A.textContent('#pe-save')) === 'Create';
+  const dlg = firstSide === 'Create Playlist' && await A.isVisible('#pl-edit') && (await A.textContent('#pe-title')) === 'Create Playlist' && (await A.textContent('#pe-save')) === 'Create';
   await A.keyboard.press('Escape'); await A.waitForTimeout(800);
   const notYet = (await lib(A)).state.playlists.length === plCount && (await A.$$('#side-list .li[data-open^="playlist:"]')).length === plCount;
   check(dlg && notYet, 'Create Playlist asks first, and closing it creates nothing');
@@ -160,7 +160,7 @@ try {
   await A.keyboard.press('Escape'); await A.waitForTimeout(400);
   const lbClosed = !(await A.isVisible('#lightbox')) && await A.isVisible('#pl-edit');
   await A.keyboard.press('Escape'); await A.waitForTimeout(300);
-  check(bubbles.join('|') === 'Remove photo|View full image' && lbOk && lbClosed, 'Edit details has Remove photo and View full image buttons', JSON.stringify(bubbles));
+  check(bubbles.join('|') === 'Remove Photo|View Full Image' && lbOk && lbClosed, 'Edit details has Remove photo and View full image buttons', JSON.stringify(bubbles));
   const before = await A.$$eval('#view .tl .tr', x => x.map(e => e.dataset.id));
   const r0 = await (await A.$('#view .tl .tr >> nth=0')).boundingBox(), r2 = await (await A.$('#view .tl .tr >> nth=2')).boundingBox();
   await A.mouse.move(r0.x + 300, r0.y + r0.height / 2); await A.mouse.down();
