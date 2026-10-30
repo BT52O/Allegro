@@ -513,9 +513,9 @@ input[type="range"]:disabled { opacity: .4; cursor: default; }
 .sheet {
   position: fixed; inset: 0; z-index: 30; background: var(--bg); display: flex; flex-direction: column;
   padding: calc(env(safe-area-inset-top, 0px) + 10px) max(20px, env(safe-area-inset-right, 0px)) calc(env(safe-area-inset-bottom, 0px) + 20px) max(20px, env(safe-area-inset-left, 0px));
-  animation: rise .42s cubic-bezier(.2, .8, .2, 1);
+  animation: rise .36s cubic-bezier(.2, .8, .2, 1);
 }
-.sheet.closing { animation: sink .28s cubic-bezier(.4, 0, .9, .5) forwards; pointer-events: none; }
+.sheet.closing { animation: sink .36s cubic-bezier(.8, .2, .8, 0) forwards; pointer-events: none; }   /* the opening motion played backward */
 @keyframes rise { from { transform: translateY(48px) scale(.985); opacity: 0; } }
 @keyframes sink { to { transform: translateY(48px) scale(.985); opacity: 0; } }
 .sheet-tint { position: absolute; inset: 0; background: linear-gradient(180deg, rgb(var(--tint, var(--tint-def)) / .75), rgb(var(--tint, var(--tint-def)) / .12) 75%); pointer-events: none; transition: background .5s; }
@@ -554,7 +554,7 @@ input[type="range"]:disabled { opacity: .4; cursor: default; }
 .ly-status { display: flex; align-items: center; gap: 8px; margin: 0 0 14px; font-size: .85rem; color: rgba(255, 255, 255, .72); }
 .ly-status .ic { width: 16px; height: 16px; flex: none; }
 .ly-status.err { color: #ffd0cc; }
-.sp-btn { display: inline-flex; align-items: center; gap: 8px; height: 36px; padding: 0 16px; border-radius: 999px; background: rgba(255, 255, 255, .16); color: #fff; font-weight: 700; font-size: .88rem; }
+.sp-btn { text-decoration: none; display: inline-flex; align-items: center; gap: 8px; height: 36px; padding: 0 16px; border-radius: 999px; background: rgba(255, 255, 255, .16); color: #fff; font-weight: 700; font-size: .88rem; }
 .sp-btn:hover { background: rgba(255, 255, 255, .26); }
 .sp-btn.solid { background: #fff; color: #111; }
 .sp-btn .ic { width: 16px; height: 16px; }
@@ -618,6 +618,7 @@ input[type="range"]:disabled { opacity: .4; cursor: default; }
   /* desktop Now Playing: a deep color from the cover, the cover on the left, Wiki / Lyrics / Comments on the right */
   .sheet { background: linear-gradient(160deg, rgb(var(--deep, 52 52 58)) 0%, rgb(var(--deep2, 36 36 40)) 100%); color: #fff; }
   .sheet-tint { display: none; }
+  .sheet-top { max-width: none; }   /* the close arrow sits in the top-left corner */
   .sheet-top .circ { color: #fff; background: rgba(255, 255, 255, .1); }
   .sheet-top .circ:hover { background: rgba(255, 255, 255, .2); }
   .sheet-top .circ.on { color: #fff; background: rgba(255, 255, 255, .28); }
@@ -1439,7 +1440,7 @@ const I18N = [
   ['Open now playing', '打开正在播放', '開啟正在播放'], ['Close now playing', '关闭正在播放', '關閉正在播放'], ['Show queue', '显示播放队列', '顯示播放佇列'], ['Go back', '后退', '上一頁'], ['Go forward', '前进', '下一頁'],
   ['More options', '更多选项', '更多選項'], ['Playlist options', '歌单选项', '歌單選項'], ['Folder options', '文件夹选项', '資料夾選項'], ['Page break options', '分段选项', '分段選項'], ['Add a song or page break', '添加歌曲或分段', '加入歌曲或分段'], ['Add to this folder', '添加到此文件夹', '加入此資料夾'],
   ['Collapse Sidebar', '收起侧边栏', '收合側邊欄'], ['Expand Sidebar', '展开侧边栏', '展開側邊欄'], ['Song position', '播放进度', '播放進度'], ['Zoom', '缩放', '縮放'], ['Start an Empty One', '新建一个空歌单', '新增一個空歌單'], ['Player', '播放器', '播放器'],
-  ['Wiki', '百科', '百科'], ['Lyrics', '歌词', '歌詞'], ['Comments', '评论', '評論'], ['Singer', '歌手', '歌手'], ['Credits', '制作', '製作'], ['Lyricist', '作词', '作詞'], ['Composer', '作曲', '作曲'],
+  ['Wiki', '百科', '百科'], ['Lyrics', '歌词', '歌詞'], ['Comments', '评论', '評論'], ['Singer', '歌手', '歌手'], ['Find on Genius', '在 Genius 上查找', '在 Genius 上查找'], ['You can find the words on Genius and paste them in with Add Lyrics. Allegro times them to the song for you.', '你可以在 Genius 上找到歌词，用“添加歌词”粘贴进来，Allegro 会自动把它和歌曲对齐。', '你可以在 Genius 上找到歌詞，用「加入歌詞」貼上，Allegro 會自動把它和歌曲對齊。'], ['Credits', '制作', '製作'], ['Lyricist', '作词', '作詞'], ['Composer', '作曲', '作曲'],
   ['About This Song', '关于这首歌', '關於這首歌'], ['In Liked Songs', '已在喜欢的歌曲中', '已在喜歡的歌曲中'], ['Looking for lyrics…', '正在查找歌词…', '正在尋找歌詞…'], ['No lyrics found for this song.', '没有找到这首歌的歌词。', '沒有找到這首歌的歌詞。'],
   ['Instrumental', '纯音乐', '純音樂'], ['Add Lyrics', '添加歌词', '加入歌詞'], ['Edit Lyrics', '编辑歌词', '編輯歌詞'], ['Search Online Again', '重新在线查找', '重新線上尋找'], ['Lyrics saved', '歌词已保存', '歌詞已儲存'],
   ["Paste the lyrics. Put a time like [01:23.45] at the start of a line to make it light up with the song. For a duet, start a line with the singer's name and a colon (Name: …), and their lines go on their own side.", '粘贴歌词。在行首加上 [01:23.45] 这样的时间，歌词就会随歌曲高亮。对唱时，在行首写上歌手名字和冒号（名字：…），他们的歌词会显示在各自的一侧。', '貼上歌詞。在行首加上 [01:23.45] 這樣的時間，歌詞就會隨歌曲亮起。對唱時，在行首寫上歌手名字和冒號（名字：…），他們的歌詞會顯示在各自的一側。'],
@@ -3474,7 +3475,7 @@ function wikiHTML(t) {
   ].join('');
   const canEdit = t.kind === 'cloud' && cloud.canWrite;
   return `<h2 class="w-title" data-nt>${esc(t.title)}</h2>${released ? `<p class="w-sub">Released ${esc(released)}</p>` : '<div style="height:14px"></div>'}
-    <div class="w-row"><span class="w-av">${ar && ar.cover ? `<img src="${esc(ar.cover)}" alt="">` : ic('user')}</span><span class="w-k">Singer</span><button class="link" data-go-artist="${esc(t.artist)}">${esc(t.artist)}</button></div>
+    <div class="w-row"><span class="w-av">${ar && ar.cover ? `<img src="${esc(ar.cover)}" alt="">` : ic('user')}</span><span class="w-k">Artist</span><button class="link" data-go-artist="${esc(t.artist)}">${esc(t.artist)}</button></div>
     <div class="w-row"><span class="w-av sq">${al ? `<img src="${esc(al.cover)}" alt="">` : ic('album')}</span><span class="w-k">Album</span><button class="link" data-go-album="${esc(t.albumKey)}">${esc(t.album)}</button></div>
     ${credits ? `<div class="w-row"><span class="w-av">${ic('edit')}</span><span class="w-k">Credits</span><span class="w-credits">${credits}</span></div>` : ''}
     ${chips ? `<div class="w-chips">${chips}</div>` : ''}
@@ -3517,11 +3518,63 @@ function parseLyrics(d, t) {
   assignSingers(lines.length ? lines : (plain || []), t.artist);
   return { lines, plain, raw: d.synced || d.plain || '', saved: d.source === 'saved', needsSync: !!d.needsSync };
 }
+/* LRCLIB is asked straight from your browser. It limits requests per internet address, and Allegro's server shares its
+   address with many other sites on Cloudflare, so asking from the server often got turned away. */
+async function lrclibFind(base, q) {
+  const H = { 'Lrclib-Client': 'Allegro/1.0 (https://github.com/BT52O/Allegro)' };
+  const get = async u => {
+    const r = await fetch(u, { headers: H });
+    if (r.status === 404 || r.status === 400) return null;
+    if (!r.ok) throw new Error(r.status === 429 ? 'The lyrics library is busy. Try again in a minute.' : 'The lyrics library had a problem (' + r.status + '). Try again in a minute.');
+    return r.json();
+  };
+  const usable = x => x && !x.instrumental && (x.syncedLyrics || x.plainLyrics);
+  const near = x => !q.dur || !x.duration || Math.abs(x.duration - q.dur) <= 6;
+  let hit = null, loose = false, instrumental = false;
+  if (q.artist) {
+    const p = { track_name: q.title, artist_name: q.artist }; if (q.album) p.album_name = q.album; if (q.dur > 0 && q.dur <= 3600) p.duration = String(q.dur);
+    hit = await get(base + '/get?' + new URLSearchParams(p));
+    if (hit && hit.instrumental) instrumental = true;
+  }
+  if (!usable(hit)) {
+    hit = null;
+    const list = (await get(base + '/search?' + new URLSearchParams(q.artist ? { track_name: q.title, artist_name: q.artist } : { track_name: q.title }))) || [];
+    if (list.length && list.every(x => x.instrumental)) instrumental = true;
+    const ok = list.filter(usable), close = ok.filter(near);
+    close.sort((a, b) => (!!b.syncedLyrics - !!a.syncedLyrics) || (Math.abs((a.duration || q.dur) - q.dur) - Math.abs((b.duration || q.dur) - q.dur)));
+    hit = close[0] || null;
+    if (!hit && ok.length) { hit = ok[0]; loose = true; }
+    if (!hit && q.artist) {
+      // the uploader may not be the singer (a Nightcore channel, say): try the title alone, and allow a sped-up or slowed length
+      const any = ((await get(base + '/search?' + new URLSearchParams({ track_name: q.title }))) || []).filter(usable)
+        .filter(x => !q.dur || !x.duration || (q.dur / x.duration > .7 && q.dur / x.duration < 1.25));
+      const exact = any.find(x => near(x) && Math.abs(x.duration - q.dur) <= 3);
+      hit = exact || any[0] || null; loose = !!hit && !exact;
+    }
+  }
+  if (!hit) return { none: true, instrumental };
+  if (loose) return { synced: '', plain: hit.plainLyrics || String(hit.syncedLyrics || '').replace(/^\s*\[[^\]]*\]\s*/gm, ''), needsSync: true };
+  return { synced: hit.syncedLyrics || '', plain: hit.plainLyrics || '' };
+}
 async function loadLyrics(t) {
   SP.lyr = { id: t.id, loading: true };
-  const q = new URLSearchParams({ id: t.id, title: searchName(t.title) || t.title, artist: t.artist === 'Unknown artist' ? '' : t.artist, album: t.album === 'Unknown album' ? '' : t.album, duration: String(Math.round(t.duration || 0)) });
+  const info = { title: searchName(t.title) || t.title, artist: t.artist === 'Unknown artist' ? '' : t.artist, album: t.album === 'Unknown album' ? '' : t.album, dur: Math.round(t.duration || 0) };
+  const q = new URLSearchParams({ id: t.id, title: info.title, artist: info.artist, album: info.album, duration: String(info.dur) });
   let res;
-  try { res = { id: t.id, ...parseLyrics(await api('lyrics?' + q), t) }; } catch (e) { res = { id: t.id, err: e.message }; }
+  try {
+    let d = await api('lyrics?savedOnly=1&' + q);
+    if (d.missing) {
+      try {
+        d = await lrclibFind(d.lrclib || 'https://lrclib.net/api', info);
+        // keep a copy online so it loads instantly next time (timings for a different-length version are left for the AI to redo)
+        if (!d.none && !d.needsSync && canAiSync(t)) api('lyrics/' + encodeURIComponent(t.id), { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ synced: d.synced, plain: d.plain }) }).catch(() => {});
+      } catch (e) {
+        if (e instanceof TypeError) d = await api('lyrics?' + q);   // the browser couldn't connect at all: let the server try
+        else throw e;
+      }
+    }
+    res = { id: t.id, ...parseLyrics(d, t) };
+  } catch (e) { res = { id: t.id, err: e.message }; }
   if (SP.lyr.id !== t.id) return;
   SP.lyr = res;
   if (tk(S.current) === t && spTab === 'lyrics') renderPanel();
@@ -3670,18 +3723,20 @@ async function aiSyncLyrics(t) {
     if (SP.lyr.id === t.id) { SP.lyr = { id: t.id, ...parseLyrics({ synced: lrc, source: 'saved' }, t), aiTimed: true }; if (tk(S.current) === t && spTab === 'lyrics') { renderPanel(); lyrSync(true); lyrLoop(); } }
   } catch (e) { done(`Couldn't time the lyrics: ${e.message || 'something went wrong'}`); }
 }
+// Genius doesn't offer its lyrics to other apps, so this just opens a Genius search for the song in a new tab.
+const geniusLink = t => `<a class="sp-btn" href="https://genius.com/search?q=${encodeURIComponent(((searchName(t.title) || t.title) + ' ' + (t.artist === 'Unknown artist' ? '' : t.artist)).trim())}" target="_blank" rel="noopener">${ic('search')}<span>Find on Genius</span></a>`;
 function lyricsHTML(t) {
   const L = SP.lyr, canEdit = t.kind === 'cloud' && cloud.canWrite;
   if (SP.editLyr) return `<label class="sp-field">Lyrics<textarea id="ly-edit" style="min-height:42vh" placeholder="[00:12.30] First line&#10;[00:16.80] Next line">${esc(L.raw || '')}</textarea></label>
     <p class="sp-hint">Paste the lyrics. Put a time like [01:23.45] at the start of a line to make it light up with the song. For a duet, start a line with the singer's name and a colon (Name: …), and their lines go on their own side.</p>
-    <div class="sp-actions"><button class="sp-btn solid" data-ly-save>Save</button><button class="sp-btn" data-ly-cancel>Cancel</button>${L.saved ? '<button class="sp-btn" data-ly-reset>Search Online Again</button>' : ''}</div>`;
+    <div class="sp-actions"><button class="sp-btn solid" data-ly-save>Save</button><button class="sp-btn" data-ly-cancel>Cancel</button>${L.saved ? '<button class="sp-btn" data-ly-reset>Search Online Again</button>' : ''}${geniusLink(t)}</div>`;
   if (L.loading || L.id !== t.id) return '<p class="sp-msg">Looking for lyrics…</p>';
   if (L.err) return `<p class="sp-msg">${esc(L.err)}</p><div class="sp-actions"><button class="sp-btn" data-ly-retry>Try Again</button></div>`;
   const aiBtn = canEdit && !L.none && !L.syncing ? `<button class="sp-btn" data-ly-ai>${ic('sparkle')}<span>Sync with AI</span></button>` : '';
   const tools = canEdit ? `<div class="ly-tools"><button class="sp-btn" data-ly-edit>${ic('edit')}<span>${L.none ? 'Add Lyrics' : 'Edit Lyrics'}</span></button>${aiBtn}</div>` : '';
   const status = L.syncing ? `<p class="ly-status">${ic('sparkle')}<span>${L.syncing.total ? `Timing the lyrics to the song with AI… ${L.syncing.done} of ${L.syncing.total}` : 'Getting the song ready for AI timing…'}</span></p>`
     : L.syncErr ? `<p class="ly-status err">${esc(L.syncErr)}</p>` : L.aiTimed ? '<p class="ly-status">Timed by AI. If a line is off, try Sync with AI again or adjust the time with Edit Lyrics.</p>' : '';
-  if (L.none) return `<p class="sp-msg">${L.instrumental ? 'Instrumental' : 'No lyrics found for this song.'}</p>${tools.replace('ly-tools', 'sp-actions')}`;
+  if (L.none) return `<p class="sp-msg">${L.instrumental ? 'Instrumental' : 'No lyrics found for this song.'}</p>${canEdit && !L.instrumental ? '<p class="sp-hint">You can find the words on Genius and paste them in with Add Lyrics. Allegro times them to the song for you.</p>' : ''}${tools.replace('ly-tools', 'sp-actions').replace('</div>', geniusLink(t) + '</div>')}`;
   const singerTag = l => l.singer ? `<span class="ly-singer" data-nt>${esc(l.singer)}</span>` : '';
   const sideCls = l => l.side === 1 ? ' side-1' : l.side === 'c' ? ' side-c' : '';
   if (L.lines.length) return `${status}<div class="ly" id="ly" data-nt>${L.lines.map((l, i) => `<p class="ly-line${sideCls(l)}${l.text ? '' : ' gap'}" data-ly-i="${i}">${singerTag(l)}<span class="ly-t" data-text="${esc(l.text || '♪')}">${l.text ? esc(l.text) : '♪'}</span></p>`).join('')}</div>${tools}`;
@@ -5074,7 +5129,7 @@ function closeSheet() {
   document.body.classList.remove('sheet-open');
   if (matchMedia('(prefers-reduced-motion: reduce)').matches) { s.hidden = true; return; }
   s.classList.add('closing');
-  sheetT = setTimeout(() => { s.hidden = true; s.classList.remove('closing'); }, 280);
+  sheetT = setTimeout(() => { s.hidden = true; s.classList.remove('closing'); }, 360);
 }
 const sheetOpen = () => { const s = $('#sheet'); return !s.hidden && !s.classList.contains('closing'); };
 function showSpTab(tab) { spTab = tab; SP.editWiki = SP.editLyr = false; renderPanel(); $('#sp-body').scrollTop = 0; }

@@ -317,14 +317,16 @@ async function api(request, env, path) {
       const saved = await env.BUCKET.get('lyrics/' + id);
       if (saved) return json({ source: 'saved', ...JSON.parse(await saved.text()) });
     }
+    // the app looks lyrics up on LRCLIB itself (see lrclibFind) and only asks here for your saved copy
+    if (q.get('savedOnly')) return json({ missing: true, lrclib: env.LYRICS_URL || 'https://lrclib.net/api' });
     const title = (q.get('title') || '').trim().slice(0, 200), artist = (q.get('artist') || '').trim().slice(0, 200);
     const album = (q.get('album') || '').trim().slice(0, 200), dur = Math.round(Number(q.get('duration')) || 0);
     if (!title) return json({ none: true });
     const base = env.LYRICS_URL || 'https://lrclib.net/api', headers = { 'user-agent': 'Allegro/1.0 (https://github.com/BT52O/Allegro)', accept: 'application/json' };
-    const get = async u => { const r = await fetch(u, { headers }); if (r.status === 404) return null; if (!r.ok) throw new Error('LRCLIB ' + r.status); return r.json(); };
+    const get = async u => { const r = await fetch(u, { headers }); if (r.status === 404 || r.status === 400) return null; if (!r.ok) throw new Error('LRCLIB ' + r.status); return r.json(); };
     let hit = null, loose = false;
     try {
-      if (artist && dur) hit = await get(`${base}/get?` + new URLSearchParams({ track_name: title, artist_name: artist, album_name: album, duration: String(dur) }));
+      if (artist && dur) hit = await get(`${base}/get?` + new URLSearchParams({ track_name: title, artist_name: artist, ...(album ? { album_name: album } : {}), duration: String(dur) }));
       if (!hit || (!hit.syncedLyrics && !hit.plainLyrics)) {
         const list = ((await get(`${base}/search?` + new URLSearchParams(artist ? { track_name: title, artist_name: artist } : { track_name: title }))) || []).filter(x => x && (x.syncedLyrics || x.plainLyrics));
         const ok = list.filter(x => !dur || !x.duration || Math.abs(x.duration - dur) <= 6);

@@ -32,16 +32,19 @@ const SONGS = [
   { trackName: 'Swapped Song', artistName: 'Mock Band', collectionName: 'Swap Album', releaseDate: '2019-01-01T07:00:00Z', primaryGenreName: 'Rock', trackNumber: 1 },
   { trackName: 'Mock Hit', artistName: 'Mock Artist', collectionName: 'Mock Hit Album', releaseDate: '2021-02-02T07:00:00Z', primaryGenreName: 'Pop', trackNumber: 7 }
 ];
-const lookups = [], transcribed = [];
+const lookups = [], transcribed = [], lrclibAsks = [];
 const mock = createServer((req, res) => {
   const u = new globalThis.URL(req.url, MOCK);
   if (u.pathname === '/search' && (u.searchParams.get('term') || '').toLowerCase().includes('deezer')) {
     res.writeHead(403); res.end('Forbidden');   // Apple turning the server away
+  } else if (u.pathname.startsWith('/lrclib/') && req.method === 'OPTIONS') {
+    res.writeHead(204, { 'access-control-allow-origin': '*', 'access-control-allow-headers': '*', 'access-control-allow-methods': 'GET' }); res.end();
   } else if (u.pathname.startsWith('/lrclib/')) {
+    lrclibAsks.push(req.headers['lrclib-client'] || '');
     const name = (u.searchParams.get('track_name') || '').toLowerCase();
     const hit = name.includes('mock hit') ? { trackName: 'Mock Hit', artistName: 'Mock Artist', duration: 8, instrumental: false, plainLyrics: 'First line',
       syncedLyrics: '[00:00.20]Mock Artist: First line\n[00:01.60]Second line\n[00:03.00]Guest Singer: Third line by the guest\n[00:04.40]Guest Singer: Fourth line\n[00:05.80]Together: Both sing' } : null;
-    res.writeHead(hit || u.pathname.endsWith('/search') ? 200 : 404, { 'content-type': 'application/json' });
+    res.writeHead(hit || u.pathname.endsWith('/search') ? 200 : 404, { 'content-type': 'application/json', 'access-control-allow-origin': '*' });
     res.end(JSON.stringify(u.pathname.endsWith('/search') ? (hit ? [hit] : []) : (hit || { message: 'not found' })));
   } else if (u.pathname === '/transcribe') {
     // a stand-in for Whisper: it "hears" three lines at set times
@@ -849,7 +852,7 @@ try {
   const sizes = await A.evaluate(() => { const a = document.getElementById('s-art').getBoundingClientRect(), p = document.getElementById('s-panel').getBoundingClientRect(); return [Math.round(a.height), Math.round(p.height), Math.round(a.top), Math.round(p.top), Math.round(a.width)]; });
   check(Math.abs(sizes[0] - sizes[1]) <= 2 && Math.abs(sizes[2] - sizes[3]) <= 2 && sizes[0] === sizes[4] && sizes[0] > 300, 'the cover and the panel are the same size, side by side', JSON.stringify(sizes));
   check(bar[0] && bar[1] === 'none' && bar[2] && bar[3] <= 28 && bar[4] === 'rgb(255, 255, 255)', 'on desktop, the play controls stay in the bar along the bottom, in white; the tabs are compact', JSON.stringify(bar));
-  check(np[0] === 'flex' && np[1] === 'Wiki|Queue|Lyrics|Comments' && np[2] === 'Mock Hit' && np[3].startsWith('Singer|Album'), 'Now Playing shows Wiki, Queue, Lyrics and Comments beside the cover, Wiki first', JSON.stringify(np));
+  check(np[0] === 'flex' && np[1] === 'Wiki|Queue|Lyrics|Comments' && np[2] === 'Mock Hit' && np[3].startsWith('Artist|Album'), 'Now Playing shows Wiki, Queue, Lyrics and Comments beside the cover, Wiki first', JSON.stringify(np));
   { const b = await (await A.$('#s-art')).boundingBox(); await A.mouse.move(b.x + b.width * .2, b.y + b.height * .3); await A.mouse.move(b.x + b.width * .25, b.y + b.height * .3, { steps: 3 }); await A.waitForTimeout(200); }
   const tilt = await A.evaluate(() => { const bg = getComputedStyle(document.querySelector('.s-shine')).backgroundImage, m = bg.match(/at ([\d.]+)% ([\d.]+)%/); return [document.getElementById('s-art').style.transform, document.getElementById('s-art').classList.contains('tilting'), bg.includes('radial') && !!m && +m[1] > 50 && +m[2] > 50]; });
   await shot(A, 'now-playing-wiki');
@@ -876,6 +879,7 @@ try {
   const onVis = await A.evaluate(() => { const on = document.querySelector('#ly .ly-line.on .ly-t'); if (!on) return null; const st = getComputedStyle(on, '::after'); return [st.content, st.color]; });
   check(!!onVis && onVis[0].length > 2 && onVis[1] === 'rgb(255, 255, 255)', 'the line being sung shows in white as it fills', JSON.stringify(onVis));
   check(ly.length === 5 && !/side/.test(ly[0][1]) && /side-1/.test(ly[2][1]) && ly[2][0].startsWith('Guest Singer') && /side-c/.test(ly[4][1]) && ly.some(l => / on/.test(l[1])), 'lyrics load with timing; a duet partner sings on the right, together lines in the middle', JSON.stringify(ly));
+  check(lrclibAsks.some(x => x.startsWith('Allegro/')), 'lyrics are looked up on LRCLIB from the browser, naming Allegro', JSON.stringify(lrclibAsks.slice(0, 3)));
   await A.click('#ly .ly-line >> nth=3'); await A.waitForTimeout(400);
   const jumped = await A.evaluate(() => document.querySelector('#ly .ly-line.on') && document.querySelector('#ly .ly-line.on').dataset.lyI);
   check(jumped === '3' || jumped === '4', 'clicking a lyric line jumps there', String(jumped));
