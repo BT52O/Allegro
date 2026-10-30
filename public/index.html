@@ -7,7 +7,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Allegro">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext x='50' y='84' font-size='96' text-anchor='middle'%3E%F0%9D%84%9E%3C/text%3E%3C/svg%3E">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext x='50' y='50' font-size='64' text-anchor='middle' dominant-baseline='central'%3E%F0%9D%84%9E%3C/text%3E%3C/svg%3E">
 <style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
 <title>Allegro</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -685,13 +685,12 @@ body.dragging-row .tr:hover .like:not(.on), body.dragging-row .tr:hover .more { 
         </nav>
       </div>
     </div>
-    <section class="box side-lib" aria-label="My Library">
-      <div class="sl-head"><h2>My Library</h2></div>
-      <div class="sl-chips" id="sl-chips"></div>
+    <section class="box side-lib" aria-label="My Playlists">
+      <div class="sl-head"><h2>My Playlists</h2></div>
       <div class="sl-tools">
         <div class="sl-search" id="sl-search-wrap">
-          <button class="circ" id="sl-search-btn" aria-label="Search in My Library"><i data-ic="search"></i></button>
-          <input id="sl-search" type="search" placeholder="Search in My Library" autocomplete="off" aria-label="Search in My Library" hidden>
+          <button class="circ" id="sl-search-btn" aria-label="Search in My Playlists"><i data-ic="search"></i></button>
+          <input id="sl-search" type="search" placeholder="Search in My Playlists" autocomplete="off" aria-label="Search in My Playlists" hidden>
         </div>
         <button class="sl-sort" id="sl-sort" aria-haspopup="menu"><span id="sl-sort-label">Recents</span><span id="sl-view-ic"></span></button>
       </div>
@@ -1696,8 +1695,6 @@ function libItems(all = false) {
   const img = u => `<img src="${esc(u)}" alt="" loading="lazy">`;
   items.push({ key: 'liked', name: 'Liked Songs', type: 'Playlist', sub: `Playlist • ${plural(live(S.liked).length, 'song')}`, art: likedArt(), pinned: true, added: Infinity, creator: 'You' });
   S.playlists.forEach(p => items.push({ key: 'playlist:' + p.id, name: p.name, type: 'Playlist', sub: `Playlist • ${plural(live(p.ids).length, 'song')}`, art: plArt(p), added: p.created || 0, creator: 'You' }));
-  albumsSorted().forEach(a => items.push({ key: 'album:' + a.key, name: a.name, type: 'Album', sub: `Album • ${a.artist}`, art: img(a.cover), added: a.added, creator: a.artist }));
-  artistsSorted().forEach(a => items.push({ key: 'artist:' + a.name, name: a.name, type: 'Artist', sub: 'Artist', art: img(a.cover), round: true, added: Math.max(...a.ids.map(id => tk(id).added)), creator: a.name }));
   let out = all ? items : items.filter(it => !S.libFilter || it.type === S.libFilter);
   const q = all ? '' : S.libQ.trim().toLowerCase();
   if (q) out = out.filter(it => it.name.toLowerCase().includes(q) || it.sub.toLowerCase().includes(q));
@@ -1714,10 +1711,6 @@ function libItems(all = false) {
 function renderSide() {
   const key = S.view.name === 'playlist' ? 'playlist:' + S.view.key : S.view.name === 'liked' ? 'liked' : S.view.name === 'album' ? 'album:' + S.view.key : S.view.name === 'artist' ? 'artist:' + S.view.key : '';
   const pctx = S.context && S.context.key;
-  const types = ['Playlist', 'Album', 'Artist'];
-  $('#sl-chips').innerHTML = S.libFilter
-    ? `<button class="sl-chip x" data-sl-chip="" aria-label="Clear filter">${ic('close')}</button><button class="sl-chip on" data-sl-chip="">${S.libFilter}s</button>`
-    : types.map(t => `<button class="sl-chip" data-sl-chip="${t}">${t}s</button>`).join('');
   $('#sl-sort-label').textContent = SORTS.find(x => x[0] === S.libSort)[1];
   $('#sl-view-ic').innerHTML = ic(VIEWS_AS.find(x => x[0] === S.libView)[2]);
   $('#sl-sort').setAttribute('aria-label', `Sort by ${$('#sl-sort-label').textContent}, view as ${VIEWS_AS.find(x => x[0] === S.libView)[1]}`);
@@ -1729,7 +1722,7 @@ function renderSide() {
     + `<div class="li-art${it.round ? ' round' : ''}">${it.art}</div>`
     + `<div class="li-text"><div class="li-name">${esc(it.name)}</div><div class="li-sub">${it.pinned ? ic('pin') : ''}<span>${esc(it.sub)}</span></div></div>`
     + `<span class="spk" aria-label="Playing">${ic('speaker')}</span></button>`).join('')
-    : `<p class="sl-empty">${S.libQ.trim() ? `Nothing in your library matches “${esc(S.libQ.trim())}”.` : 'Nothing here yet.'}</p>`;
+    : `<p class="sl-empty">${S.libQ.trim() ? `None of your playlists match “${esc(S.libQ.trim())}”.` : 'Nothing here yet.'}</p>`;
 }
 function sortMenu(anchor) {
   closeMenu();

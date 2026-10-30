@@ -128,6 +128,14 @@ try {
   const sorts = await A.$$eval('#menu [data-sort-opt] span', x => x.map(e => e.textContent));
   check(sorts[0] === 'Custom Sort' && !sorts.includes('Creator'), 'sort menu starts with Custom Sort, no Creator', JSON.stringify(sorts));
   await A.keyboard.press('Escape');
+  const sideKinds = await A.$$eval('#side-list .li', x => x.map(e => e.dataset.open.split(':')[0]));
+  check(sideKinds.every(k => k === 'liked' || k === 'playlist') && (await A.textContent('.sl-head h2')) === 'My Playlists' && !(await A.$('[data-sl-chip]')), 'My Playlists shows only Liked Songs and playlists, no filters');
+  for (let n = 0; n < 2; n++) {
+    await A.evaluate(() => document.querySelector('.nav-btn[data-nav=library]').click()); await A.waitForTimeout(400);
+    await A.click('[data-chip="playlists"]'); await A.waitForTimeout(300);
+    await A.click('[data-action="new-pl"]'); await A.waitForTimeout(400);
+    await A.keyboard.press('Escape'); await A.waitForTimeout(300);
+  }
   const sideBefore = await A.$$eval('#side-list .li[data-drag]', x => x.map(e => e.dataset.open));
   const s0 = await (await A.$('#side-list .li[data-drag] >> nth=0')).boundingBox(), s2 = await (await A.$('#side-list .li[data-drag] >> nth=2')).boundingBox();
   await A.mouse.move(s0.x + 40, s0.y + s0.height / 2); await A.mouse.down();
