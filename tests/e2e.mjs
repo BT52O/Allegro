@@ -647,6 +647,8 @@ try {
   const colsLeft = await A.evaluate(() => { const b = document.querySelector('#view .col-btn').getBoundingClientRect(), n = [...document.querySelectorAll('#view .tl-head .c-n span')].pop().getBoundingClientRect(); return b.right <= n.left; });
   check(colOpts.join('|') === 'Song Cover|Title|Artist|Album|Date Released|Duration' && stillOpen && colsLeft && menuInPanel, 'column menu sits left of # and lists Song Cover, Title, Artist, Album, Date Released and Duration (no BPM or Key)', JSON.stringify(colOpts));
   check(upAlbums === 0 && !upHead.includes('Album') && durCells === 0 && !(await A.$('#view .tl-head .c-dur')), 'checked columns show and unchecked ones hide', JSON.stringify({ upHead, durCells, upAlbums }));
+  const fonts = await A.evaluate(() => { const d = document.querySelector('#view .tr .c-dur') || document.querySelector('.prog span'), a = document.querySelector('#view .tr .c-added'); return [getComputedStyle(d).fontFamily, getComputedStyle(a).fontFamily]; });
+  check(fonts[0] === fonts[1] && fonts[0].startsWith('Onest'), 'durations use the same font as the rest of the row', JSON.stringify(fonts));
   check(relHead && relCells.includes('Feb. 2, 2021') && relCells.includes('Jan. 1, 2019'), 'the date column shows when each song was released', JSON.stringify(relCells));
   await A.click('.nav-btn[data-nav="library"]'); await A.waitForTimeout(400); await A.click('[data-chip="songs"]'); await A.waitForTimeout(300);
   const libCols = [await A.$$eval('#view .tr .c-album', x => x.length), !!(await A.$('#view .tr .c-dur'))];
