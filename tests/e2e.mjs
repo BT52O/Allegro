@@ -289,9 +289,13 @@ try {
   check(await A.$eval('.logo', e => getComputedStyle(e).backgroundColor !== 'rgba(0, 0, 0, 0)'), 'Allegro logo shows hover on the Home page');
 
   // --- the search box sits in the top right on every page, next to the profile button
+  // The app draws its own slim scroll bars, which take up room like Windows ones do, so this checks the real case.
+  const gutter = await A.$eval('#main', m => m.offsetWidth - m.clientWidth);
+  check(gutter === 12, 'the main panel uses the slim scroll bar', String(gutter));
   const boxes = [], boxX = [];
   for (const n of ['home', 'search', 'library', 'uploads']) {
     await A.click(`.nav-btn[data-nav="${n}"]`); await A.waitForTimeout(350);
+    await shot(A, 'nav-' + n);
     boxX.push(await A.$eval('#search-box', b => { const r = b.getBoundingClientRect(); return [Math.round(r.left), Math.round(r.right)].join('-'); }));
     boxes.push(await A.evaluate(() => { const b = document.getElementById('search-box').getBoundingClientRect(), a = document.getElementById('acct-btn').getBoundingClientRect(); return b.width > 200 && b.height > 0 && b.right <= a.left && a.left - b.right < 20; }));
   }
