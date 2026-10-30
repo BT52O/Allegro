@@ -81,6 +81,7 @@ function cleanMeta(d) {
     duration: Number(d.duration) || 0, added: Number(d.added) || Date.now(), fileName: str(d.fileName),
     mime: str(d.mime, 60), cover: !!d.cover, coverV: Number(d.coverV) || 0,
     released: /^\d{4}(-\d{2}-\d{2})?$/.test(str(d.released, 10)) ? str(d.released, 10) : '',
+    lyricist: str(d.lyricist, 200), composer: str(d.composer, 200), about: str(d.about, 4000),
     bpm: Number(d.bpm) > 0 && Number(d.bpm) < 1000 ? Math.round(Number(d.bpm) * 10) / 10 : 0, key: str(d.key, 12), tagsRead: !!d.tagsRead
   };
 }
@@ -309,6 +310,67 @@ async function api(request, env, path) {
     return new Response(buf, { headers: { 'content-type': type, 'cache-control': 'no-store' } });
   }
 
+  // Lyrics: your saved copy if there is one, otherwise looked up on LRCLIB (a free, open lyrics library with timings).
+  if (path === 'lyrics' && method === 'GET') {
+    const q = new URL(request.url).searchParams, id = q.get('id') || '';
+    if (ID_RE.test(id)) {
+      const saved = await env.BUCKET.get('lyrics/' + id);
+      if (saved) return json({ source: 'saved', ...JSON.parse(await saved.text()) });
+    }
+    const title = (q.get('title') || '').trim().slice(0, 200), artist = (q.get('artist') || '').trim().slice(0, 200);
+    const album = (q.get('album') || '').trim().slice(0, 200), dur = Math.round(Number(q.get('duration')) || 0);
+    if (!title) return json({ none: true });
+    const base = env.LYRICS_URL || 'https://lrclib.net/api', headers = { 'user-agent': 'Allegro/1.0 (https://github.com/BT52O/Allegro)', accept: 'application/json' };
+    const get = async u => { const r = await fetch(u, { headers }); if (r.status === 404) return null; if (!r.ok) throw new Error('LRCLIB ' + r.status); return r.json(); };
+    let hit = null;
+    try {
+      if (artist && dur) hit = await get(`${base}/get?` + new URLSearchParams({ track_name: title, artist_name: artist, album_name: album, duration: String(dur) }));
+      if (!hit || (!hit.syncedLyrics && !hit.plainLyrics)) {
+        const list = (await get(`${base}/search?` + new URLSearchParams(artist ? { track_name: title, artist_name: artist } : { track_name: title }))) || [];
+        const ok = list.filter(x => x && (x.syncedLyrics || x.plainLyrics) && (!dur || !x.duration || Math.abs(x.duration - dur) <= 6));
+        ok.sort((a, b) => (!!b.syncedLyrics - !!a.syncedLyrics) || (Math.abs((a.duration || dur) - dur) - Math.abs((b.duration || dur) - dur)));
+        hit = ok[0] || null;
+      }
+    } catch (e) { return fail(502, "Couldn't reach the lyrics library. Try again in a minute."); }
+    if (!hit || hit.instrumental || (!hit.syncedLyrics && !hit.plainLyrics)) return json({ none: true, instrumental: !!(hit && hit.instrumental) });
+    const out = { synced: str(hit.syncedLyrics, 200000), plain: str(hit.plainLyrics, 200000) };
+    if (ID_RE.test(id) && !id.startsWith('demo-')) await env.BUCKET.put('lyrics/' + id, JSON.stringify(out), { httpMetadata: { contentType: 'application/json' } });
+    return json({ source: 'lrclib', ...out });
+  }
+  m0 = path.match(/^lyrics\/([^/]+)$/);
+  if (m0 && ID_RE.test(m0[1])) {
+    if (method === 'PUT') {
+      const text = await request.text();
+      if (text.length > 400000) return fail(413, 'Those lyrics are too long.');
+      let b; try { b = JSON.parse(text); } catch (e) { return fail(400, 'Bad data.'); }
+      await env.BUCKET.put('lyrics/' + m0[1], JSON.stringify({ synced: str(b.synced, 200000), plain: str(b.plain, 200000), none: !!b.none }), { httpMetadata: { contentType: 'application/json' } });
+      return json({ ok: true });
+    }
+    if (method === 'DELETE') { await env.BUCKET.delete('lyrics/' + m0[1]); return json({ ok: true }); }
+  }
+  // Comments: your own notes on a song, kept online.
+  m0 = path.match(/^comments\/([^/]+)(?:\/(\d+))?$/);
+  if (m0 && ID_RE.test(m0[1])) {
+    const [, song, cid] = m0;
+    if (!cid && method === 'GET') {
+      const { results } = await env.DB.prepare('SELECT id, at, text, liked FROM song_comments WHERE song = ? ORDER BY at DESC LIMIT 500').bind(song).all();
+      return json({ comments: results });
+    }
+    if (!cid && method === 'POST') {
+      const { text } = await request.json().catch(() => ({}));
+      const t = str(text, 4000).trim();
+      if (!t) return fail(400, 'Write something first.');
+      const r = await env.DB.prepare('INSERT INTO song_comments (song, at, text, liked) VALUES (?, ?, ?, 0)').bind(song, Date.now(), t).run();
+      return json({ id: r.meta.last_row_id, ok: true });
+    }
+    if (cid && method === 'PATCH') {
+      const { liked } = await request.json().catch(() => ({}));
+      await env.DB.prepare('UPDATE song_comments SET liked = ? WHERE id = ? AND song = ?').bind(liked ? 1 : 0, Number(cid), song).run();
+      return json({ ok: true });
+    }
+    if (cid && method === 'DELETE') { await env.DB.prepare('DELETE FROM song_comments WHERE id = ? AND song = ?').bind(Number(cid), song).run(); return json({ ok: true }); }
+  }
+
   m0 = path.match(/^playlist-history\/([^/]+)$/);
   if (m0 && method === 'GET') {
     const { results } = await env.DB.prepare('SELECT id, at, base, data, changes, note FROM playlist_versions WHERE pl = ? ORDER BY at DESC, id DESC LIMIT 300').bind(m0[1]).all();
@@ -357,8 +419,9 @@ async function api(request, env, path) {
       return json({ id, ...meta });
     }
     if (!part && method === 'DELETE') {
-      await env.BUCKET.delete(['audio/' + id, 'cover/' + id]);
+      await env.BUCKET.delete(['audio/' + id, 'cover/' + id, 'lyrics/' + id]);
       await env.DB.prepare('DELETE FROM songs WHERE id = ?').bind(id).run();
+      await env.DB.prepare('DELETE FROM song_comments WHERE song = ?').bind(id).run();
       return json({ ok: true });
     }
   }

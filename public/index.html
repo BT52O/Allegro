@@ -469,16 +469,120 @@ input[type="range"]:disabled { opacity: .4; cursor: default; }
 @keyframes rise { from { transform: translateY(40px); opacity: 0; } }
 .sheet-tint { position: absolute; inset: 0; background: linear-gradient(180deg, rgb(var(--tint, var(--tint-def)) / .75), rgb(var(--tint, var(--tint-def)) / .12) 75%); pointer-events: none; transition: background .5s; }
 .sheet > :not(.sheet-tint) { position: relative; }
-.sheet-top { display: grid; grid-template-columns: 44px minmax(0, 1fr) 44px; align-items: center; gap: 8px; max-width: 1180px; width: 100%; margin: 0 auto; }
+.sheet-top { display: grid; grid-template-columns: 96px minmax(0, 1fr) 96px; align-items: center; gap: 8px; max-width: 1180px; width: 100%; margin: 0 auto; }
 .sheet-top .circ { width: 44px; height: 44px; color: var(--ink); }
 .sheet-top .circ .ic { width: 26px; height: 26px; }
 .sheet-top .circ.on { color: var(--accent); }
+.s-topr { display: flex; justify-content: flex-end; gap: 8px; }
+#s-ptoggle { visibility: hidden; }
 .s-from { text-align: center; min-width: 0; display: flex; flex-direction: column; align-items: center; }
 .s-from .link { font-weight: 600; font-size: .9rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; text-align: center; }
 .sheet-body { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 380px); gap: 56px; max-width: 1180px; width: 100%; margin: 0 auto; padding-top: 24px; }
 .s-main { display: flex; flex-direction: column; justify-content: center; gap: 22px; min-height: 0; max-width: 520px; width: 100%; justify-self: center; }
 .s-art { width: 100%; max-width: min(100%, 52vh); aspect-ratio: 1; align-self: center; border-radius: 10px; overflow: hidden; box-shadow: 0 30px 60px -24px rgba(0,0,0,.65); }
 .s-art img { width: 100%; height: 100%; object-fit: cover; }
+/* the cover leans toward the pointer with a glint of light, like Tidal */
+.s-art { position: relative; transition: transform .6s cubic-bezier(.2, .8, .2, 1), box-shadow .6s; will-change: transform; }
+.s-art.tilting { transition: transform .08s linear, box-shadow .3s; box-shadow: 0 46px 90px -30px rgba(0, 0, 0, .75); }
+.s-shine { position: absolute; inset: 0; pointer-events: none; opacity: 0; transition: opacity .45s; border-radius: inherit; }
+.s-art.tilting .s-shine { opacity: 1; }
+/* Now Playing panel: Wiki, Lyrics, Comments */
+.s-panel { display: none; flex-direction: column; min-height: 0; border-radius: 24px; background: rgba(255, 255, 255, .1); -webkit-backdrop-filter: blur(24px); backdrop-filter: blur(24px); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .08); overflow: hidden; color: #fff; }
+.sp-tabs { display: inline-flex; align-self: flex-start; gap: 1px; margin: 12px 14px 0; padding: 3px; border-radius: 999px; background: rgba(0, 0, 0, .28); flex: none; }
+.sp-tab { height: 26px; padding: 0 12px; border-radius: 999px; color: rgba(255, 255, 255, .68); font-weight: 700; font-size: .78rem; transition: background-color .2s, color .2s; }
+.sp-tab:hover { color: #fff; }
+.sp-tab.on { background: rgba(255, 255, 255, .2); color: #fff; }
+.sp-body { flex: 1; min-height: 0; overflow-y: auto; padding: 20px 28px 28px; overscroll-behavior: contain; }
+.sp-body.lyr { -webkit-mask-image: linear-gradient(to bottom, transparent, #000 10%, #000 82%, transparent); mask-image: linear-gradient(to bottom, transparent, #000 10%, #000 82%, transparent); padding-top: 0; padding-bottom: 0; }
+.sp-msg { color: rgba(255, 255, 255, .7); line-height: 1.6; }
+.sp-btn { display: inline-flex; align-items: center; gap: 8px; height: 36px; padding: 0 16px; border-radius: 999px; background: rgba(255, 255, 255, .16); color: #fff; font-weight: 700; font-size: .88rem; }
+.sp-btn:hover { background: rgba(255, 255, 255, .26); }
+.sp-btn.solid { background: #fff; color: #111; }
+.sp-btn .ic { width: 16px; height: 16px; }
+.sp-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+.sp-field { display: flex; flex-direction: column; gap: 6px; margin-top: 12px; font-size: .85rem; font-weight: 700; color: rgba(255, 255, 255, .75); }
+.sp-field input, .sp-field textarea { border: 0; border-radius: 12px; background: rgba(0, 0, 0, .22); color: #fff; padding: 10px 14px; font: 400 .98rem/1.5 var(--f-body); }
+.sp-field textarea { resize: vertical; min-height: 120px; }
+.sp-field input:focus, .sp-field textarea:focus { outline: 2px solid rgba(255, 255, 255, .6); }
+.sp-hint { font-size: .8rem; color: rgba(255, 255, 255, .6); line-height: 1.5; margin: 8px 0 0; }
+/* wiki */
+.w-title { margin: 0; font: 800 clamp(1.7rem, 2.6vw, 2.4rem)/1.15 var(--f-display); letter-spacing: -.02em; overflow-wrap: anywhere; }
+.w-sub { margin: 8px 0 18px; color: rgba(255, 255, 255, .62); font-size: 1rem; }
+.w-row { display: flex; align-items: center; gap: 14px; padding: 8px 0; font-size: 1.05rem; min-width: 0; }
+.w-av { width: 46px; height: 46px; border-radius: 50%; overflow: hidden; flex: none; background: rgba(255, 255, 255, .14); display: grid; place-items: center; }
+.w-av.sq { border-radius: 6px; }
+.w-av img { width: 100%; height: 100%; object-fit: cover; }
+.w-av .artist-ph, .w-av .ic { width: 100%; height: 100%; }
+.w-av > .ic { width: 22px; height: 22px; color: rgba(255, 255, 255, .8); }
+.w-k { color: rgba(255, 255, 255, .62); flex: none; }
+.w-row .link { color: #fff; font-weight: 600; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.w-credits { display: flex; flex-wrap: wrap; gap: 4px 14px; min-width: 0; }
+.w-chips { display: flex; flex-wrap: wrap; gap: 10px; margin: 18px 0 8px; }
+.w-chip { display: inline-flex; align-items: center; gap: 8px; height: 42px; padding: 0 18px; border-radius: 999px; background: rgba(255, 255, 255, .12); font-weight: 600; }
+.w-chip .ic { width: 20px; height: 20px; }
+.w-about { margin-top: 22px; }
+.w-about h3 { margin: 0 0 8px; font: 800 1.3rem var(--f-display); }
+.w-about p { margin: 0; color: rgba(255, 255, 255, .82); line-height: 1.75; white-space: pre-wrap; overflow-wrap: anywhere; }
+/* lyrics */
+.ly { display: flex; flex-direction: column; gap: 22px; padding: 34vh 0 40vh; }
+.ly-line { margin: 0; font: 700 clamp(1.3rem, 2.1vw, 1.9rem)/1.3 var(--f-display); letter-spacing: -.01em; color: rgba(255, 255, 255, .34); cursor: pointer; transition: color .35s; max-width: 88%; overflow-wrap: anywhere; }
+.ly-line:hover { color: rgba(255, 255, 255, .62); }
+.ly-line.side-1 { align-self: flex-end; text-align: right; }
+.ly-line.side-c { align-self: center; text-align: center; }
+.ly-line.gap { font-size: 1.1rem; }
+.ly-t { display: block; position: relative; }
+.ly-line.on { color: rgba(255, 255, 255, .55); }
+/* the line being sung fills with white from left to right as it goes */
+.ly-line.on .ly-t::after { content: attr(data-text); position: absolute; inset: 0; color: #fff; clip-path: inset(-4px calc(100% - var(--p, 0%)) -4px 0); text-shadow: 0 0 18px rgba(255, 255, 255, .35); }
+.ly-singer { display: block; font-size: .74rem; font-weight: 700; letter-spacing: .03em; color: rgba(255, 255, 255, .5); margin-bottom: 4px; }
+.ly.plain { padding: 8px 0 24px; gap: 14px; }
+.ly.plain .ly-line { color: rgba(255, 255, 255, .86); font-size: clamp(1.1rem, 1.6vw, 1.35rem); cursor: default; }
+.ly-tools { position: sticky; bottom: 0; display: flex; justify-content: flex-end; gap: 8px; padding: 0 0 18px; }
+/* comments */
+.cm-head { margin: 0 0 14px; font: 800 1.3rem var(--f-display); }
+.cm-new { display: flex; flex-direction: column; gap: 10px; margin-bottom: 8px; }
+.cm-new textarea { border: 0; border-radius: 14px; background: rgba(0, 0, 0, .22); color: #fff; padding: 12px 14px; font: 400 1rem/1.5 var(--f-body); resize: vertical; min-height: 64px; }
+.cm-new textarea:focus { outline: 2px solid rgba(255, 255, 255, .6); }
+.cm-new .sp-btn { align-self: flex-end; }
+.cm { display: grid; grid-template-columns: 48px minmax(0, 1fr); gap: 14px; padding: 18px 0; border-bottom: 1px solid rgba(255, 255, 255, .1); }
+.cm-av { width: 48px; height: 48px; border-radius: 50%; display: grid; place-items: center; background: linear-gradient(135deg, #f093a6, #8f5bd6); color: #fff; }
+.cm-av .ic { width: 24px; height: 24px; }
+.cm-name { color: rgba(255, 255, 255, .62); font-weight: 600; }
+.cm-text { margin: 6px 0 0; font-size: 1.08rem; line-height: 1.6; white-space: pre-wrap; overflow-wrap: anywhere; }
+.cm-foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 10px; color: rgba(255, 255, 255, .55); font-size: .9rem; }
+.cm-btns { display: flex; align-items: center; gap: 6px; }
+.cm-like, .cm-del { display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 10px; border-radius: 999px; color: rgba(255, 255, 255, .7); }
+.cm-like:hover, .cm-del:hover { background: rgba(255, 255, 255, .12); color: #fff; }
+.cm-like.on { color: #ff8fa3; }
+.cm-like .ic, .cm-del .ic { width: 18px; height: 18px; }
+@media (min-width: 760px) {
+  /* desktop Now Playing: a deep color from the cover, the cover on the left, Wiki / Lyrics / Comments on the right */
+  .sheet { background: linear-gradient(160deg, rgb(var(--deep, 52 52 58)) 0%, rgb(var(--deep2, 36 36 40)) 100%); color: #fff; }
+  .sheet-tint { display: none; }
+  .sheet-top .circ { color: #fff; background: rgba(255, 255, 255, .1); }
+  .sheet-top .circ:hover { background: rgba(255, 255, 255, .2); }
+  .sheet-top .circ.on { color: #fff; background: rgba(255, 255, 255, .28); }
+  .s-from .eyebrow { color: rgba(255, 255, 255, .7); } .s-from .link { color: #fff; }
+  .sheet { padding-bottom: calc(var(--pbar, 96px) + 16px); }
+  .sheet-body { grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr); gap: clamp(24px, 3vw, 48px); max-width: 1600px; padding-top: 12px; }
+  .s-main { max-width: none; justify-content: center; align-items: center; }
+  .sheet .s-info, .sheet .s-prog, .sheet .s-ctrls { display: none; }
+  .s-art { width: min(100%, calc(100vh - var(--pbar, 96px) - 120px)); max-width: none; border-radius: 14px; }
+  /* while Now Playing is open, the player bar sits on top of it in white, over the cover's color */
+  body.sheet-open .player { z-index: 35; background: rgb(0 0 0 / .22); -webkit-backdrop-filter: blur(20px); backdrop-filter: blur(20px);
+    --ink: #fff; --muted: rgba(255, 255, 255, .66); --accent: #fff; --accent-ink: #111; --chip: rgba(255, 255, 255, .14); --hover: rgba(255, 255, 255, .1); --line: rgba(255, 255, 255, .14); color: #fff; }
+  body.sheet-open .player .pbtn { background: #fff; color: rgb(var(--deep2, 36 36 40)); }
+  .sheet .s-info h2 { color: #fff; } .sheet .s-info .link { color: rgba(255, 255, 255, .78); } .sheet .s-info .like { color: rgba(255, 255, 255, .8); } .sheet .s-info .like.on { color: #fff; }
+  .sheet .s-times { color: rgba(255, 255, 255, .7); }
+  .sheet input[type="range"]::-webkit-slider-runnable-track { background: linear-gradient(to right, #fff var(--pct), rgba(255, 255, 255, .25) var(--pct)); }
+  .sheet input[type="range"]::-webkit-slider-thumb { background: #fff; }
+  .s-ctrls .cbtn { color: rgba(255, 255, 255, .65); } .s-ctrls .cbtn:hover, .s-ctrls .cbtn.main-skip, .s-ctrls .cbtn.on { color: #fff; } .s-ctrls .cbtn.on::after { background: #fff; }
+  .s-ctrls .pbtn { background: #fff; color: rgb(var(--deep, 40 40 44)); }
+  .s-panel { display: flex; }
+  .s-queue { display: none; color: var(--ink); }
+  .sheet.show-queue .s-queue { display: block; }
+  .sheet.show-queue .s-panel { display: none; }
+}
 .s-info { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .s-info > div { min-width: 0; }
 .s-info h2 { margin: 0; font: 800 clamp(1.4rem, 3vw, 1.9rem)/1.1 var(--f-display); letter-spacing: -.02em; overflow-wrap: anywhere; }
@@ -610,7 +714,11 @@ img { -webkit-user-drag: none; user-select: none; }
   .s-ctrls .cbtn.on::after { background: #fff; }
   .s-ctrls .pbtn { background: transparent; color: #fff; width: 76px; height: 76px; }
   .s-ctrls .pbtn .ic { width: 46px; height: 46px; }
-  .sheet.show-queue .sheet-body { padding: calc(env(safe-area-inset-top, 0px) + 64px) 12px calc(env(safe-area-inset-bottom, 0px) + 16px); }
+  .sheet.show-queue .sheet-body, .sheet.show-panel .sheet-body { padding: calc(env(safe-area-inset-top, 0px) + 64px) 12px calc(env(safe-area-inset-bottom, 0px) + 16px); }
+  #s-ptoggle { visibility: visible; }
+  .sheet.show-panel .s-main { display: none; }
+  .sheet.show-panel .s-panel { display: flex; height: 100%; }
+  .sp-body { padding: 16px 18px 22px; }
 }
 @media (min-width: 760px) and (max-width: 1080px) {
   .shell { grid-template-columns: 64px minmax(0, 1fr); }
@@ -1059,11 +1167,11 @@ body.touch-input .has-pen::after { display: none; }
   <div class="sheet-top">
     <button class="circ" data-act="sheet" aria-label="Close now playing"><i data-ic="down"></i></button>
     <div class="s-from"><span class="eyebrow">Playing From</span><button class="link" id="s-ctx"></button></div>
-    <button class="circ" id="s-qtoggle" aria-label="Show queue" aria-pressed="false"><i data-ic="queue"></i></button>
+    <div class="s-topr"><button class="circ" id="s-ptoggle" aria-label="Show song details and lyrics" aria-pressed="false"><i data-ic="lyrics"></i></button><button class="circ" id="s-qtoggle" aria-label="Show queue" aria-pressed="false"><i data-ic="queue"></i></button></div>
   </div>
   <div class="sheet-body">
     <div class="s-main">
-      <div class="s-art"><img id="s-cover" alt=""></div>
+      <div class="s-art" id="s-art"><img id="s-cover" alt=""><span class="s-shine" aria-hidden="true"></span></div>
       <div class="s-info"><div><h2 id="s-title"></h2><button class="link" id="s-artist"></button></div><button class="like" id="s-like" aria-label="Save to Liked Songs"><i data-ic="heart"></i></button></div>
       <div class="s-prog"><input type="range" class="seek" id="s-seek" min="0" max="1000" value="0" aria-label="Song position"><div class="s-times"><span class="t-cur">0:00</span><span class="t-dur">0:00</span></div></div>
       <div class="s-ctrls">
@@ -1073,6 +1181,10 @@ body.touch-input .has-pen::after { display: none; }
         <button class="cbtn main-skip" data-act="next" aria-label="Next"><i data-ic="next"></i></button>
         <button class="cbtn" data-act="repeat" aria-label="Repeat off" aria-pressed="false"><i data-ic="repeat"></i><span class="one" hidden>1</span></button>
       </div>
+    </div>
+    <div class="s-panel" id="s-panel">
+      <div class="sp-tabs" role="tablist" aria-label="About this song"><button class="sp-tab" data-sp-tab="wiki" role="tab">Wiki</button><button class="sp-tab" data-sp-tab="lyrics" role="tab">Lyrics</button><button class="sp-tab" data-sp-tab="comments" role="tab">Comments</button></div>
+      <div class="sp-body" id="sp-body"></div>
     </div>
     <div class="s-queue queue-list" id="s-queue"></div>
   </div>
@@ -1265,6 +1377,13 @@ const I18N = [
   ['Open now playing', '打开正在播放', '開啟正在播放'], ['Close now playing', '关闭正在播放', '關閉正在播放'], ['Show queue', '显示播放队列', '顯示播放佇列'], ['Go back', '后退', '上一頁'], ['Go forward', '前进', '下一頁'],
   ['More options', '更多选项', '更多選項'], ['Playlist options', '歌单选项', '歌單選項'], ['Folder options', '文件夹选项', '資料夾選項'], ['Page break options', '分段选项', '分段選項'], ['Add a song or page break', '添加歌曲或分段', '加入歌曲或分段'], ['Add to this folder', '添加到此文件夹', '加入此資料夾'],
   ['Collapse Sidebar', '收起侧边栏', '收合側邊欄'], ['Expand Sidebar', '展开侧边栏', '展開側邊欄'], ['Song position', '播放进度', '播放進度'], ['Zoom', '缩放', '縮放'], ['Start an Empty One', '新建一个空歌单', '新增一個空歌單'], ['Player', '播放器', '播放器'],
+  ['Wiki', '百科', '百科'], ['Lyrics', '歌词', '歌詞'], ['Comments', '评论', '評論'], ['Singer', '歌手', '歌手'], ['Credits', '制作', '製作'], ['Lyricist', '作词', '作詞'], ['Composer', '作曲', '作曲'],
+  ['About This Song', '关于这首歌', '關於這首歌'], ['In Liked Songs', '已在喜欢的歌曲中', '已在喜歡的歌曲中'], ['Looking for lyrics…', '正在查找歌词…', '正在尋找歌詞…'], ['No lyrics found for this song.', '没有找到这首歌的歌词。', '沒有找到這首歌的歌詞。'],
+  ['Instrumental', '纯音乐', '純音樂'], ['Add Lyrics', '添加歌词', '加入歌詞'], ['Edit Lyrics', '编辑歌词', '編輯歌詞'], ['Search Online Again', '重新在线查找', '重新線上尋找'], ['Lyrics saved', '歌词已保存', '歌詞已儲存'],
+  ["Paste the lyrics. Put a time like [01:23.45] at the start of a line to make it light up with the song. For a duet, start a line with the singer's name and a colon (Name: …), and their lines go on their own side.", '粘贴歌词。在行首加上 [01:23.45] 这样的时间，歌词就会随歌曲高亮。对唱时，在行首写上歌手名字和冒号（名字：…），他们的歌词会显示在各自的一侧。', '貼上歌詞。在行首加上 [01:23.45] 這樣的時間，歌詞就會隨歌曲亮起。對唱時，在行首寫上歌手名字和冒號（名字：…），他們的歌詞會顯示在各自的一側。'],
+  ['Write a comment…', '写下你的评论…', '寫下你的評論…'], ['Write a comment', '写下你的评论', '寫下你的評論'], ['Post', '发布', '發佈'], ['You', '我', '我'], ['No comments yet. Write the first one.', '还没有评论，来写第一条吧。', '還沒有評論，來寫第一則吧。'], ['Comment deleted', '评论已删除', '評論已刪除'], ['Like', '赞', '讚'], ['Delete', '删除', '刪除'],
+  ['Nothing here yet. Add your own notes, the story behind the song, or the credits.', '这里还没有内容。添加你的笔记、歌曲背后的故事或制作信息。', '這裡還沒有內容。加入你的筆記、歌曲背後的故事或製作資訊。'], ['Upload this song to add notes and credits.', '上传这首歌后即可添加笔记和制作信息。', '上傳這首歌後即可加入筆記和製作資訊。'],
+  ['The story behind the song, what it means to you, anything you like.', '歌曲背后的故事、它对你的意义，写什么都可以。', '歌曲背後的故事、它對你的意義，寫什麼都可以。'], ['Show song details and lyrics', '显示歌曲详情和歌词', '顯示歌曲詳情和歌詞'], ['Saved', '已保存', '已儲存'], ['About this song', '关于这首歌', '關於這首歌'],
   ['Saved Online · MP3, M4A, WAV, FLAC, OGG', '在线保存 · MP3、M4A、WAV、FLAC、OGG', '線上儲存 · MP3、M4A、WAV、FLAC、OGG'], ['Saved in This Browser · MP3, M4A, WAV, FLAC, OGG', '保存在此浏览器 · MP3、M4A、WAV、FLAC、OGG', '儲存在此瀏覽器 · MP3、M4A、WAV、FLAC、OGG']
 ];
 const pickL = (h, t) => LANG === 'zh-Hant' ? t : h;
@@ -1286,6 +1405,7 @@ const PAT = [
   [/^Added (\d+) songs$/, m => pickL(`添加了 ${m[1]} 首歌曲`, `加入了 ${m[1]} 首歌曲`)], [/^Removed (\d+) songs$/, m => `移除了 ${m[1]} 首歌曲`],
   [/^Added page break “(.+)”$/, m => pickL(`添加了分段“${m[1]}”`, `加入了分段「${m[1]}」`)], [/^Removed page break “(.+)”$/, m => pickL(`移除了分段“${m[1]}”`, `移除了分段「${m[1]}」`)],
   [/^Renamed page break “(.+)” to “(.+)”$/, m => pickL(`将分段“${m[1]}”重命名为“${m[2]}”`, `將分段「${m[1]}」重新命名為「${m[2]}」`)], [/^and (\d+) more$/, m => pickL(`还有 ${m[1]} 项`, `還有 ${m[1]} 項`)],
+  [/^Released (.+)$/, m => `${tr1(m[1]) || m[1]}${pickL('发行', '發行')}`], [/^Played (\d+) times?$/, m => `${pickL('播放了', '播放了')} ${m[1]} ${pickL('次', '次')}`],
   [/^Volume (\d+)$/, m => pickL(`第 ${m[1]} 卷`, `第 ${m[1]} 卷`)], [/^Uploading (\d+) of (\d+): (.+)$/, m => pickL(`正在上传第 ${m[1]}/${m[2]} 首：${m[3]}`, `正在上傳第 ${m[1]}/${m[2]} 首：${m[3]}`)],
   [/^Uploaded (\d+) songs?\. .*$/, m => pickL(`已上传 ${m[1]} 首歌曲，可在所有设备上播放`, `已上傳 ${m[1]} 首歌曲，可在所有裝置上播放`)], [/^Adding (\d+) songs?…$/, m => pickL(`正在添加 ${m[1]} 首歌曲…`, `正在加入 ${m[1]} 首歌曲…`)]
 ];
@@ -1308,7 +1428,7 @@ function tr(s) {
   return s;
 }
 // Names you chose (songs, artists, albums, playlists, folders) are left alone.
-const NO_TR = '[data-nt], .t-name, .t-artist .link, [data-go-artist], [data-go-album], .card-t, .li-name, .vhead h1, .qt-name, #p-title, #p-artist, #s-title, #s-artist, #s-ctx, .fp-t b, .fp-head b, .sp-t b, .fd-path .link, .folder-head h1, .pl-break h3, .vh-head h2, .vh-break, .vh-t b, .se-hit b, .tr-card h3, .genre span, .q-name, .q-artist, .greet, input, textarea, select, script, style';
+const NO_TR = '[data-nt], .w-title, .w-row .link, .cm-text, .ly, .t-name, .t-artist .link, [data-go-artist], [data-go-album], .card-t, .li-name, .vhead h1, .qt-name, #p-title, #p-artist, #s-title, #s-artist, #s-ctx, .fp-t b, .fp-head b, .sp-t b, .fd-path .link, .folder-head h1, .pl-break h3, .vh-head h2, .vh-break, .vh-t b, .se-hit b, .tr-card h3, .genre span, .q-name, .q-artist, .greet, input, textarea, select, script, style';
 function translateTree(root) {
   if (!I18N_IDX || !root) return;
   if (root.nodeType === 3) { const p = root.parentElement; if (p && !p.closest(NO_TR)) { const v = tr(root.nodeValue); if (v !== root.nodeValue) root.nodeValue = v; } return; }
@@ -1363,6 +1483,8 @@ const STROKE = {
   music: '<path d="M9 18V6l10-2v12"/><circle cx="6.5" cy="18" r="2.5"/><circle cx="16.5" cy="16" r="2.5"/>',
   close: '<path d="M6 6l12 12M18 6 6 18"/>',
   upload: '<path d="M12 16V4M7 9l5-5 5 5M5 20h14"/>',
+  lyrics: '<path d="M4 6h16M4 11h11M4 16h7"/><circle cx="17" cy="17.5" r="2.5"/><path d="M19.5 17.5V10l2-1"/>',
+  chart: '<path d="M4 19h16M7 15l4-4 3 3 5-6"/>',
   cloud: '<path d="M7 18h10a4 4 0 0 0 .7-7.94A6 6 0 0 0 6.1 9.2 4.5 4.5 0 0 0 7 18z"/>',
   folder: '<path d="M3.5 6.5h6l2 2h9v10h-17z"/>',
   file: '<path d="M7 3.5h7l4 4v13H7z"/><path d="M14 3.5v4h4"/>',
@@ -2636,7 +2758,8 @@ function updateMeta() {
   if (t) {
     $('#s-cover').src = t.cover; $('#s-title').textContent = t.title; $('#s-artist').textContent = t.artist;
     $('#s-ctx').textContent = S.context ? S.context.name : t.album;
-    tintOf(t.cover).then(rgb => { if (rgb && tk(S.current) === t) { $('#sheet').style.setProperty('--tint', rgb); edgeTintOf(t.cover).then(e => { if (e && tk(S.current) === t) { $('#sheet').style.setProperty('--deep', deepTint(e)); $('#sheet').style.setProperty('--deep2', deepTint(e, .72)); } }); $('#player').style.setProperty('--ptint', rgb); } });
+    if (!$('#sheet').hidden && SP.shownId !== t.id) { SP.shownId = t.id; SP.editWiki = SP.editLyr = false; SP.userScroll = 0; renderPanel(); }
+    tintOf(t.cover).then(rgb => { if (rgb && tk(S.current) === t) { $('#sheet').style.setProperty('--tint', rgb); edgeTintOf(t.cover).then(e => { if (e && tk(S.current) === t) { for (const el of [$('#sheet'), $('#player')]) { el.style.setProperty('--deep', deepTint(e)); el.style.setProperty('--deep2', deepTint(e, .72)); } } }); $('#player').style.setProperty('--ptint', rgb); } });
   }
   syncLikes();
 }
@@ -3113,6 +3236,224 @@ fpop.addEventListener('pointerleave', fpHideSoon);
 $('#side-list').addEventListener('scroll', () => hideFolderPop(), { passive: true });
 document.addEventListener('pointerdown', e => { if (!fpop.hidden && !fpop.contains(e.target) && !e.target.closest('.li[data-open^="folder:"]')) hideFolderPop(); }, true);
 fpop.addEventListener('click', () => setTimeout(() => hideFolderPop(true), 0));
+
+/* ================= Now Playing panel: Wiki, Lyrics, Comments ================= */
+let spTab = 'wiki';
+try { spTab = localStorage.getItem('allegro.sptab') || 'wiki'; } catch (e) {}
+const SP = { lyr: { id: null }, cm: { id: null }, editWiki: false, editLyr: false, shownId: null, userScroll: 0, raf: 0 };
+const panelShown = () => { const sh = $('#sheet'); return !sh.hidden && (innerWidth >= 760 ? !sh.classList.contains('show-queue') : sh.classList.contains('show-panel')); };
+const ymd = at => { const d = new Date(at); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
+const songMeta = t => (t && t.meta) || {};
+function renderPanel() {
+  if ($('#sheet').hidden) return;
+  $$('[data-sp-tab]').forEach(b => { const on = b.dataset.spTab === spTab; b.classList.toggle('on', on); b.setAttribute('aria-selected', on); });
+  const t = tk(S.current), body = $('#sp-body');
+  body.classList.toggle('lyr', spTab === 'lyrics' && !SP.editLyr && !!(SP.lyr.lines && SP.lyr.lines.length));
+  if (!t) { body.innerHTML = '<p class="sp-msg">Nothing Playing</p>'; return; }
+  if (spTab === 'wiki') body.innerHTML = wikiHTML(t);
+  else if (spTab === 'lyrics') {
+    if (SP.lyr.id !== t.id) loadLyrics(t);
+    body.innerHTML = lyricsHTML(t);
+    body.classList.toggle('lyr', !SP.editLyr && !!(SP.lyr.lines && SP.lyr.lines.length));
+    SP.lyr.cur = -2; lyrSync(true); lyrLoop();
+  } else { if (SP.cm.id !== t.id) loadComments(t); body.innerHTML = commentsHTML(t); }
+}
+
+/* --- Wiki: the song's details, like a little encyclopedia entry --- */
+function wikiHTML(t) {
+  const m = songMeta(t), ar = IDX.artists.get(t.artist), al = IDX.albums.get(t.albumKey);
+  if (SP.editWiki) return `<h2 class="w-title" data-nt>${esc(t.title)}</h2>
+    <label class="sp-field">Lyricist<input id="w-lyricist" maxlength="200" value="${esc(m.lyricist || '')}"></label>
+    <label class="sp-field">Composer<input id="w-composer" maxlength="200" value="${esc(m.composer || '')}"></label>
+    <label class="sp-field">About This Song<textarea id="w-about" maxlength="4000" placeholder="The story behind the song, what it means to you, anything you like.">${esc(m.about || '')}</textarea></label>
+    <div class="sp-actions"><button class="sp-btn solid" data-w-save>Save</button><button class="sp-btn" data-w-cancel>Cancel</button></div>`;
+  const released = t.released ? longDate(t.released) : t.year;
+  const plays = S.history.filter(h => h.id === t.id).length;
+  const credits = [m.lyricist && `<span><span class="w-k">Lyrics </span><span data-nt>${esc(m.lyricist)}</span></span>`, m.composer && `<span><span class="w-k">Music </span><span data-nt>${esc(m.composer)}</span></span>`].filter(Boolean).join('');
+  const chips = [
+    plays ? `<span class="w-chip">${ic('chart')}<span>Played ${plays} ${plays === 1 ? 'time' : 'times'}</span></span>` : '',
+    t.duration ? `<span class="w-chip">${ic('clock')}<span>${fmt(t.duration)}</span></span>` : '',
+    t.genre ? `<span class="w-chip">${ic('music')}<span data-nt>${esc(t.genre)}</span></span>` : '',
+    isLiked(t.id) ? `<span class="w-chip">${ic('heartFill')}<span>In Liked Songs</span></span>` : ''
+  ].join('');
+  const canEdit = t.kind === 'cloud' && cloud.canWrite;
+  return `<h2 class="w-title" data-nt>${esc(t.title)}</h2>${released ? `<p class="w-sub">Released ${esc(released)}</p>` : '<div style="height:14px"></div>'}
+    <div class="w-row"><span class="w-av">${ar && ar.cover ? `<img src="${esc(ar.cover)}" alt="">` : ic('user')}</span><span class="w-k">Singer</span><button class="link" data-go-artist="${esc(t.artist)}">${esc(t.artist)}</button></div>
+    <div class="w-row"><span class="w-av sq">${al ? `<img src="${esc(al.cover)}" alt="">` : ic('album')}</span><span class="w-k">Album</span><button class="link" data-go-album="${esc(t.albumKey)}">${esc(t.album)}</button></div>
+    ${credits ? `<div class="w-row"><span class="w-av">${ic('edit')}</span><span class="w-k">Credits</span><span class="w-credits">${credits}</span></div>` : ''}
+    ${chips ? `<div class="w-chips">${chips}</div>` : ''}
+    <div class="w-about"><h3>About This Song</h3>${m.about ? `<p data-nt>${esc(m.about)}</p>` : `<p class="sp-msg">${canEdit ? 'Nothing here yet. Add your own notes, the story behind the song, or the credits.' : 'Upload this song to add notes and credits.'}</p>`}
+    ${canEdit ? `<div class="sp-actions"><button class="sp-btn" data-w-edit>${ic('edit')}<span>Edit Details</span></button></div>` : ''}</div>`;
+}
+
+/* --- Lyrics: timed lines that light up as they're sung; duets split left and right by singer --- */
+const splitArtists = a => (a || '').split(/\s*(?:,|&|、|\/|;|\band\b|\bx\b|\bX\b|\bfeat\.?|\bft\.?|\bwith\b|和|与|與)\s*/i).map(x => x.trim()).filter(Boolean);
+const TOGETHER = /^(合|合唱|all|both|together|everyone|chorus)$/i;
+function assignSingers(list, artist) {
+  const known = splitArtists(artist).map(x => x.toLowerCase());
+  const pre = /^\s*[(（]?([^:：()（）]{1,40})[)）]?\s*[:：]\s*(.*)$/;
+  const counts = {};
+  for (const l of list) { const m = l.text.match(pre); if (m) counts[m[1].trim().toLowerCase()] = (counts[m[1].trim().toLowerCase()] || 0) + 1; }
+  const isSinger = n => known.some(k => k && (n === k || n.includes(k) || k.includes(n))) || counts[n] >= 2 || /^v\d$/.test(n) || TOGETHER.test(n);
+  const order = []; let side = 0, last = null;
+  for (const l of list) {
+    const m = l.text.match(pre);
+    if (m && isSinger(m[1].trim().toLowerCase())) {
+      const name = m[1].trim(), key = name.toLowerCase();
+      l.text = m[2];
+      if (TOGETHER.test(key)) side = 'c';
+      else { if (!order.includes(key)) order.push(key); side = order.indexOf(key) % 2; }
+      if (name !== last) { l.singer = /^v\d$/i.test(name) ? '' : name; last = name; }
+    }
+    l.side = side;
+  }
+}
+function parseLyrics(d, t) {
+  if (d.none) return { none: true, instrumental: !!d.instrumental, saved: d.source === 'saved' };
+  const lines = [];
+  for (const raw of (d.synced || '').split(/\r?\n/)) {
+    const stamps = [...raw.matchAll(/\[(\d+):(\d+(?:[.:]\d+)?)\]/g)]; if (!stamps.length) continue;
+    const text = raw.replace(/\[\d+:\d+(?:[.:]\d+)?\]/g, '').trim();
+    for (const st of stamps) lines.push({ t: +st[1] * 60 + parseFloat(st[2].replace(':', '.')), text });
+  }
+  lines.sort((a, b) => a.t - b.t);
+  const plain = !lines.length && d.plain ? d.plain.split(/\r?\n/).map(text => ({ text: text.trim() })) : null;
+  assignSingers(lines.length ? lines : (plain || []), t.artist);
+  return { lines, plain, raw: d.synced || d.plain || '', saved: d.source === 'saved' };
+}
+async function loadLyrics(t) {
+  SP.lyr = { id: t.id, loading: true };
+  const q = new URLSearchParams({ id: t.id, title: searchName(t.title) || t.title, artist: t.artist === 'Unknown artist' ? '' : t.artist, album: t.album === 'Unknown album' ? '' : t.album, duration: String(Math.round(t.duration || 0)) });
+  let res;
+  try { res = { id: t.id, ...parseLyrics(await api('lyrics?' + q), t) }; } catch (e) { res = { id: t.id, err: e.message }; }
+  if (SP.lyr.id !== t.id) return;
+  SP.lyr = res;
+  if (tk(S.current) === t && spTab === 'lyrics') renderPanel();
+}
+function lyricsHTML(t) {
+  const L = SP.lyr, canEdit = t.kind === 'cloud' && cloud.canWrite;
+  if (SP.editLyr) return `<label class="sp-field">Lyrics<textarea id="ly-edit" style="min-height:42vh" placeholder="[00:12.30] First line&#10;[00:16.80] Next line">${esc(L.raw || '')}</textarea></label>
+    <p class="sp-hint">Paste the lyrics. Put a time like [01:23.45] at the start of a line to make it light up with the song. For a duet, start a line with the singer's name and a colon (Name: …), and their lines go on their own side.</p>
+    <div class="sp-actions"><button class="sp-btn solid" data-ly-save>Save</button><button class="sp-btn" data-ly-cancel>Cancel</button>${L.saved ? '<button class="sp-btn" data-ly-reset>Search Online Again</button>' : ''}</div>`;
+  if (L.loading || L.id !== t.id) return '<p class="sp-msg">Looking for lyrics…</p>';
+  if (L.err) return `<p class="sp-msg">${esc(L.err)}</p><div class="sp-actions"><button class="sp-btn" data-ly-retry>Try Again</button></div>`;
+  const tools = canEdit ? `<div class="ly-tools"><button class="sp-btn" data-ly-edit>${ic('edit')}<span>${L.none ? 'Add Lyrics' : 'Edit Lyrics'}</span></button></div>` : '';
+  if (L.none) return `<p class="sp-msg">${L.instrumental ? 'Instrumental' : 'No lyrics found for this song.'}</p>${tools.replace('ly-tools', 'sp-actions')}`;
+  const singerTag = l => l.singer ? `<span class="ly-singer" data-nt>${esc(l.singer)}</span>` : '';
+  const sideCls = l => l.side === 1 ? ' side-1' : l.side === 'c' ? ' side-c' : '';
+  if (L.lines.length) return `<div class="ly" id="ly" data-nt>${L.lines.map((l, i) => `<p class="ly-line${sideCls(l)}${l.text ? '' : ' gap'}" data-ly-i="${i}">${singerTag(l)}<span class="ly-t" data-text="${esc(l.text || '♪')}">${l.text ? esc(l.text) : '♪'}</span></p>`).join('')}</div>${tools}`;
+  return `<div class="ly plain" data-nt>${L.plain.map(l => `<p class="ly-line${sideCls(l)}">${singerTag(l)}${esc(l.text) || '&nbsp;'}</p>`).join('')}</div>${tools}`;
+}
+function lyrSync(force) {
+  const L = SP.lyr; if (!L.lines || !L.lines.length || spTab !== 'lyrics' || SP.editLyr) return;
+  const cur = audio.currentTime || 0;
+  let i = -1; for (let k = 0; k < L.lines.length; k++) { if (L.lines[k].t <= cur + .15) i = k; else break; }
+  const els = $$('#ly .ly-line'); if (!els.length) return;
+  if (i !== L.cur || force) {
+    els.forEach((el, k) => el.classList.toggle('on', k === i));
+    L.cur = i;
+    const el = els[Math.max(0, i)], body = $('#sp-body');
+    if (el && body && Date.now() - SP.userScroll > 2500) body.scrollTo({ top: el.offsetTop - body.clientHeight * .4 + el.offsetHeight / 2, behavior: force ? 'auto' : 'smooth' });
+  }
+  if (i >= 0) {
+    const a = L.lines[i].t, b = (L.lines[i + 1] || { t: a + 4 }).t;
+    els[i].querySelector('.ly-t').style.setProperty('--p', Math.max(0, Math.min(100, (cur - a) / Math.max(.4, b - a) * 100)) + '%');
+  }
+}
+function lyrLoop() {
+  if (SP.raf) return;
+  const tick = () => { if (!panelShown() || spTab !== 'lyrics') { SP.raf = 0; return; } lyrSync(false); SP.raf = requestAnimationFrame(tick); };
+  SP.raf = requestAnimationFrame(tick);
+}
+
+/* --- Comments: your own notes on a song, saved online --- */
+async function loadComments(t) {
+  SP.cm = { id: t.id, loading: true };
+  let res;
+  try { res = { id: t.id, list: (await api('comments/' + encodeURIComponent(t.id))).comments || [] }; } catch (e) { res = { id: t.id, err: e.message }; }
+  if (SP.cm.id !== t.id) return;
+  SP.cm = res;
+  if (tk(S.current) === t && spTab === 'comments') renderPanel();
+}
+function commentsHTML(t) {
+  const C = SP.cm;
+  const box = cloud.canWrite ? `<form class="cm-new" id="cm-form"><textarea id="cm-text" maxlength="4000" placeholder="Write a comment…" aria-label="Write a comment"></textarea><button class="sp-btn solid" type="submit">Post</button></form>` : '';
+  let list;
+  if (C.loading || C.id !== t.id) list = '<p class="sp-msg">Loading…</p>';
+  else if (C.err) list = `<p class="sp-msg">${esc(C.err)}</p>`;
+  else if (!C.list.length) list = '<p class="sp-msg">No comments yet. Write the first one.</p>';
+  else list = C.list.map(c => `<div class="cm"><span class="cm-av">${ic('user')}</span><div><div class="cm-name">You</div><p class="cm-text" data-nt>${esc(c.text)}</p>
+      <div class="cm-foot"><span>${ymd(c.at)}</span><span class="cm-btns"><button class="cm-like${c.liked ? ' on' : ''}" data-cm-like="${c.id}" aria-pressed="${!!c.liked}" aria-label="Like">${ic(c.liked ? 'heartFill' : 'heart')}<span>${c.liked ? 1 : 0}</span></button><button class="cm-del" data-cm-del="${c.id}" aria-label="Delete">${ic('trash')}</button></span></div></div></div>`).join('');
+  return `<h3 class="cm-head">Comments</h3>${box}${list}`;
+}
+
+document.addEventListener('click', async e => {
+  const tab = e.target.closest('[data-sp-tab]');
+  if (tab) { spTab = tab.dataset.spTab; try { localStorage.setItem('allegro.sptab', spTab); } catch (ex) {} SP.editWiki = SP.editLyr = false; renderPanel(); $('#sp-body').scrollTop = 0; return; }
+  const t = tk(S.current); if (!t || !e.target.closest('#s-panel')) return;
+  if (e.target.closest('[data-w-edit]')) { SP.editWiki = true; renderPanel(); return; }
+  if (e.target.closest('[data-w-cancel]')) { SP.editWiki = false; renderPanel(); return; }
+  if (e.target.closest('[data-w-save]')) {
+    try { await saveSongMeta(t.id, { lyricist: $('#w-lyricist').value.trim(), composer: $('#w-composer').value.trim(), about: $('#w-about').value.trim() }); SP.editWiki = false; renderPanel(); toast('Saved'); }
+    catch (ex) { toast(`Couldn't save: ${ex.message}`); }
+    return;
+  }
+  const line = e.target.closest('[data-ly-i]');
+  if (line && SP.lyr.lines) { const l = SP.lyr.lines[+line.dataset.lyI]; if (l && audio.duration) { audio.currentTime = l.t; SP.userScroll = 0; lyrSync(true); } return; }
+  if (e.target.closest('[data-ly-edit]')) { SP.editLyr = true; renderPanel(); return; }
+  if (e.target.closest('[data-ly-cancel]')) { SP.editLyr = false; renderPanel(); return; }
+  if (e.target.closest('[data-ly-retry]')) { SP.lyr = { id: null }; renderPanel(); return; }
+  if (e.target.closest('[data-ly-reset]')) { try { await api('lyrics/' + encodeURIComponent(t.id), { method: 'DELETE' }); } catch (ex) {} SP.editLyr = false; SP.lyr = { id: null }; renderPanel(); return; }
+  if (e.target.closest('[data-ly-save]')) {
+    const text = $('#ly-edit').value, timed = /\[\d+:\d+/.test(text);
+    try {
+      await api('lyrics/' + encodeURIComponent(t.id), { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify(text.trim() ? { synced: timed ? text : '', plain: timed ? '' : text } : { none: true }) });
+      SP.editLyr = false; SP.lyr = { id: t.id, ...parseLyrics(text.trim() ? { synced: timed ? text : '', plain: timed ? '' : text, source: 'saved' } : { none: true, source: 'saved' }, t) };
+      renderPanel(); toast('Lyrics saved');
+    } catch (ex) { toast(`Couldn't save: ${ex.message}`); }
+    return;
+  }
+  const lk = e.target.closest('[data-cm-like]');
+  if (lk && SP.cm.list) {
+    const c = SP.cm.list.find(x => String(x.id) === lk.dataset.cmLike); if (!c) return;
+    c.liked = c.liked ? 0 : 1; renderPanel();
+    api(`comments/${encodeURIComponent(t.id)}/${c.id}`, { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ liked: !!c.liked }) }).catch(() => {});
+    return;
+  }
+  const dl = e.target.closest('[data-cm-del]');
+  if (dl && SP.cm.list) {
+    SP.cm.list = SP.cm.list.filter(x => String(x.id) !== dl.dataset.cmDel); renderPanel();
+    api(`comments/${encodeURIComponent(t.id)}/${dl.dataset.cmDel}`, { method: 'DELETE' }).then(() => toast('Comment deleted'), () => { SP.cm = { id: null }; renderPanel(); });
+  }
+});
+document.addEventListener('submit', async e => {
+  if (e.target.id !== 'cm-form') return;
+  e.preventDefault();
+  const t = tk(S.current), text = $('#cm-text').value.trim(); if (!t || !text) return;
+  try { await api('comments/' + encodeURIComponent(t.id), { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ text }) }); SP.cm = { id: null }; loadComments(t); renderPanel(); }
+  catch (ex) { toast(`Couldn't post: ${ex.message}`); }
+});
+['wheel', 'touchmove'].forEach(ev => $('#sp-body').addEventListener(ev, () => { SP.userScroll = Date.now(); }, { passive: true }));
+$('#s-ptoggle').addEventListener('click', e => {
+  const s = $('#sheet'), on = !s.classList.contains('show-panel');
+  s.classList.toggle('show-panel', on); s.classList.remove('show-queue');
+  $('#s-qtoggle').classList.remove('on'); $('#s-qtoggle').setAttribute('aria-pressed', 'false');
+  e.currentTarget.classList.toggle('on', on); e.currentTarget.setAttribute('aria-pressed', on);
+  renderPanel();
+});
+
+/* --- the cover leans toward the pointer, with a glint of light (mouse only) --- */
+(() => {
+  const art = $('#s-art'), shine = art.querySelector('.s-shine');
+  art.addEventListener('pointermove', e => {
+    if (e.pointerType !== 'mouse' || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const r = art.getBoundingClientRect(), px = (e.clientX - r.left) / r.width, py = (e.clientY - r.top) / r.height;
+    art.classList.add('tilting');
+    art.style.transform = `perspective(1100px) rotateX(${((.5 - py) * 13).toFixed(2)}deg) rotateY(${((px - .5) * 13).toFixed(2)}deg) scale(1.025)`;
+    shine.style.background = `radial-gradient(circle at ${(px * 100).toFixed(1)}% ${(py * 100).toFixed(1)}%, rgba(255, 255, 255, .42), rgba(255, 255, 255, .1) 32%, rgba(255, 255, 255, 0) 62%), linear-gradient(${(105 + (px - .5) * 40).toFixed(0)}deg, rgba(255, 255, 255, 0) 30%, rgba(255, 255, 255, .14) 48%, rgba(255, 255, 255, 0) 66%)`;
+  });
+  art.addEventListener('pointerleave', () => { art.classList.remove('tilting'); art.style.transform = ''; });
+})();
 
 /* ================= playlist version history ================= */
 let plHist = { id: null };
@@ -4354,11 +4695,16 @@ function tryRestoreLast() {
 function openSheet() {
   if (!S.current) { toast('Play something first.'); return; }
   const s = $('#sheet'); s.hidden = false; s.classList.remove('show-queue');
+  document.body.classList.add('sheet-open'); placeSheet();
   $('#s-qtoggle').classList.remove('on'); $('#s-qtoggle').setAttribute('aria-pressed', 'false');
+  s.classList.remove('show-panel'); $('#s-ptoggle').classList.remove('on'); $('#s-ptoggle').setAttribute('aria-pressed', 'false');
   $('#s-queue').innerHTML = queueHTML(); updateMeta(); syncPlayIcons(); syncToggles();
+  SP.shownId = S.current; SP.editWiki = SP.editLyr = false; renderPanel();
   setTimeout(() => s.querySelector('.circ').focus({ preventScroll: true }), 50);
 }
-function closeSheet() { $('#sheet').hidden = true; }
+function closeSheet() { $('#sheet').hidden = true; document.body.classList.remove('sheet-open'); }
+function placeSheet() { const p = $('#player').getBoundingClientRect(); $('#sheet').style.setProperty('--pbar', Math.max(0, Math.round(innerHeight - p.top)) + 'px'); }
+window.addEventListener('resize', () => { if (!$('#sheet').hidden) placeSheet(); });
 
 /* ================= events ================= */
 document.addEventListener('click', e => {
@@ -4396,7 +4742,7 @@ document.addEventListener('click', e => {
     else if (a === 'prev') prev();
     else if (a === 'shuffle') { S.shuffle = !S.shuffle; S.shuffle ? applyShuffle() : unshuffle(); syncToggles(); renderQueue(); save(); toast(S.shuffle ? 'Shuffle on' : 'Shuffle off'); }
     else if (a === 'repeat') { S.repeat = S.repeat === 'off' ? 'all' : S.repeat === 'all' ? 'one' : 'off'; syncToggles(); renderQueue(); save(); toast(S.repeat === 'all' ? 'Repeating the queue' : S.repeat === 'one' ? 'Repeating this song' : 'Repeat off'); }
-    else if (a === 'queue') { if (innerWidth < 760) { openSheet(); $('#s-qtoggle').click(); return; } S.queueOpen = !S.queueOpen; syncToggles(); renderQueue(); save(); }
+    else if (a === 'queue') { if (innerWidth < 760) { openSheet(); $('#s-qtoggle').click(); return; } if (!$('#sheet').hidden) { $('#s-qtoggle').click(); return; } S.queueOpen = !S.queueOpen; syncToggles(); renderQueue(); save(); }
     else if (a === 'sheet') { $('#sheet').hidden ? openSheet() : closeSheet(); }
     return;
   }
@@ -4474,7 +4820,7 @@ $('#p-like').addEventListener('click', () => { if (S.current) toggleLike(S.curre
 $('#s-like').addEventListener('click', () => { if (S.current) toggleLike(S.current); });
 $('#s-artist').addEventListener('click', () => { const t = tk(S.current); if (t) go({ name: 'artist', key: t.artist }); });
 $('#s-ctx').addEventListener('click', () => { if (S.context && ctxInfo(S.context.key)) openKey(S.context.key); });
-$('#s-qtoggle').addEventListener('click', e => { const s = $('#sheet'), on = !s.classList.contains('show-queue'); s.classList.toggle('show-queue', on); e.currentTarget.classList.toggle('on', on); e.currentTarget.setAttribute('aria-pressed', on); $('#s-queue').innerHTML = queueHTML(); });
+$('#s-qtoggle').addEventListener('click', e => { const s = $('#sheet'), on = !s.classList.contains('show-queue'); s.classList.toggle('show-queue', on); s.classList.remove('show-panel'); $('#s-ptoggle').classList.remove('on'); if (!on) setTimeout(renderPanel, 0); e.currentTarget.classList.toggle('on', on); e.currentTarget.setAttribute('aria-pressed', on); $('#s-queue').innerHTML = queueHTML(); });
 $('#main').addEventListener('scroll', e => {
   const m = e.currentTarget; m.classList.toggle('scrolled', m.scrollTop > 10);
   clearTimeout(placeTimer); placeTimer = setTimeout(savePlace, 300);

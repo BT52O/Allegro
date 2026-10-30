@@ -37,6 +37,12 @@ const mock = createServer((req, res) => {
   const u = new globalThis.URL(req.url, MOCK);
   if (u.pathname === '/search' && (u.searchParams.get('term') || '').toLowerCase().includes('deezer')) {
     res.writeHead(403); res.end('Forbidden');   // Apple turning the server away
+  } else if (u.pathname.startsWith('/lrclib/')) {
+    const name = (u.searchParams.get('track_name') || '').toLowerCase();
+    const hit = name.includes('mock hit') ? { trackName: 'Mock Hit', artistName: 'Mock Artist', duration: 8, instrumental: false, plainLyrics: 'First line',
+      syncedLyrics: '[00:00.20]Mock Artist: First line\n[00:01.60]Second line\n[00:03.00]Guest Singer: Third line by the guest\n[00:04.40]Guest Singer: Fourth line\n[00:05.80]Together: Both sing' } : null;
+    res.writeHead(hit || u.pathname.endsWith('/search') ? 200 : 404, { 'content-type': 'application/json' });
+    res.end(JSON.stringify(u.pathname.endsWith('/search') ? (hit ? [hit] : []) : (hit || { message: 'not found' })));
   } else if (u.pathname === '/deezer') {
     const q = (u.searchParams.get('q') || '').toLowerCase();
     const data = q.includes('deezer song') ? [{ title: 'Deezer Song', artist: { name: 'Deezer Band' }, album: { title: 'Deezer Album', cover_xl: `${MOCK}/art/deezer.jpg` }, duration: 6 }] : [];
@@ -52,7 +58,7 @@ const mock = createServer((req, res) => {
 await new Promise(r => mock.listen(MOCK_PORT, '127.0.0.1', r));
 
 execFileSync(process.execPath, [wrangler, 'd1', 'migrations', 'apply', 'allegro', '--local', '--persist-to', state], { cwd: root, env, stdio: 'inherit' });
-const server = spawn(process.execPath, [wrangler, 'dev', '--port', String(PORT), '--ip', '127.0.0.1', '--persist-to', state, '--var', `MUSIC_SEARCH_URL:${MOCK}/search`, '--var', `DEEZER_SEARCH_URL:${MOCK}/deezer`, '--var', 'HISTORY_MERGE_MS:0'], { cwd: root, env, stdio: ['ignore', 'pipe', 'pipe'] });
+const server = spawn(process.execPath, [wrangler, 'dev', '--port', String(PORT), '--ip', '127.0.0.1', '--persist-to', state, '--var', `MUSIC_SEARCH_URL:${MOCK}/search`, '--var', `DEEZER_SEARCH_URL:${MOCK}/deezer`, '--var', 'HISTORY_MERGE_MS:0', '--var', `LYRICS_URL:${MOCK}/lrclib`], { cwd: root, env, stdio: ['ignore', 'pipe', 'pipe'] });
 let serverLog = '';
 server.stdout.on('data', d => { serverLog += d; });
 server.stderr.on('data', d => { serverLog += d; });
@@ -779,6 +785,48 @@ try {
   await A.click('[data-theme-opt="light"]'); await A.waitForTimeout(300);
   const backEn = await A.evaluate(() => [document.querySelector('.nav-btn[data-nav="home"] span').textContent, document.documentElement.dataset.theme]);
   check(zht[0] === '首頁' && zht[1] === '設定' && backEn.join() === 'Home,light', '繁體中文 works too, and switching back restores English and light mode', JSON.stringify({ zht, backEn }));
+
+  // --- Now Playing: tilting cover, and Wiki / Lyrics / Comments on the right
+  await A.click('.nav-btn[data-nav="uploads"]'); await A.waitForTimeout(500);
+  await A.click(`#view .tr[data-id="${tagged.id}"] .t-name`); await A.waitForTimeout(800);
+  await A.click('#p-cover'); await A.waitForTimeout(800);
+  const np = await A.evaluate(() => [getComputedStyle(document.getElementById('s-panel')).display, [...document.querySelectorAll('[data-sp-tab]')].map(b => b.textContent).join('|'), (document.querySelector('.w-title') || {}).textContent, [...document.querySelectorAll('.w-row .w-k')].map(e => e.textContent).join('|')]);
+  const bar = await A.evaluate(() => { const pl = document.getElementById('player').getBoundingClientRect(), sh = document.getElementById('sheet'), art = document.getElementById('s-art').getBoundingClientRect(), tab = document.querySelector('.sp-tab').getBoundingClientRect();
+    const top = document.elementFromPoint(pl.left + pl.width / 2, pl.top + pl.height / 2);
+    return [!!top && !!top.closest('#player'), getComputedStyle(document.querySelector('.s-ctrls')).display, art.bottom <= pl.top, Math.round(tab.height), getComputedStyle(document.querySelector('#player .p-title')).color]; });
+  check(bar[0] && bar[1] === 'none' && bar[2] && bar[3] <= 28 && bar[4] === 'rgb(255, 255, 255)', 'on desktop, the play controls stay in the bar along the bottom, in white; the tabs are compact', JSON.stringify(bar));
+  check(np[0] === 'flex' && np[1] === 'Wiki|Lyrics|Comments' && np[2] === 'Mock Hit' && np[3].startsWith('Singer|Album'), 'Now Playing shows Wiki, Lyrics and Comments beside the cover, Wiki first', JSON.stringify(np));
+  { const b = await (await A.$('#s-art')).boundingBox(); await A.mouse.move(b.x + b.width * .2, b.y + b.height * .3); await A.mouse.move(b.x + b.width * .25, b.y + b.height * .3, { steps: 3 }); await A.waitForTimeout(200); }
+  const tilt = await A.evaluate(() => [document.getElementById('s-art').style.transform, document.getElementById('s-art').classList.contains('tilting'), getComputedStyle(document.querySelector('.s-shine')).backgroundImage.includes('radial')]);
+  await shot(A, 'now-playing-wiki');
+  check(/rotateX/.test(tilt[0]) && tilt[1] && tilt[2], 'the cover tilts toward the mouse with a shine', JSON.stringify(tilt));
+  await A.click('[data-w-edit]'); await A.waitForTimeout(200);
+  await A.fill('#w-lyricist', 'Writer A'); await A.fill('#w-composer', 'Composer B'); await A.fill('#w-about', 'A song about tests.');
+  await A.click('[data-w-save]'); await A.waitForTimeout(1200);
+  const wiki = await A.evaluate(() => [document.querySelector('.w-credits') && document.querySelector('.w-credits').textContent, document.querySelector('.w-about p').textContent]);
+  data = await lib(A);
+  const wm = data.songs.find(x => x.id === tagged.id);
+  check(wiki[0].includes('Writer A') && wiki[0].includes('Composer B') && wiki[1] === 'A song about tests.' && wm.lyricist === 'Writer A' && wm.about === 'A song about tests.', 'Wiki credits and About can be written and are saved online', JSON.stringify(wiki));
+  await A.mouse.move(5, 5);
+  await A.click('[data-sp-tab="lyrics"]');
+  await A.waitForSelector('#ly .ly-line', { timeout: 10000 }).catch(() => {});
+  await A.waitForTimeout(1500);
+  const ly = await A.evaluate(() => [...document.querySelectorAll('#ly .ly-line')].map(e => [e.textContent, e.className]));
+  await shot(A, 'now-playing-lyrics');
+  const onVis = await A.evaluate(() => { const on = document.querySelector('#ly .ly-line.on .ly-t'); if (!on) return null; const st = getComputedStyle(on, '::after'); return [st.content, st.color]; });
+  check(!!onVis && onVis[0].length > 2 && onVis[1] === 'rgb(255, 255, 255)', 'the line being sung shows in white as it fills', JSON.stringify(onVis));
+  check(ly.length === 5 && !/side/.test(ly[0][1]) && /side-1/.test(ly[2][1]) && ly[2][0].startsWith('Guest Singer') && /side-c/.test(ly[4][1]) && ly.some(l => / on/.test(l[1])), 'lyrics load with timing; a duet partner sings on the right, together lines in the middle', JSON.stringify(ly));
+  await A.click('#ly .ly-line >> nth=3'); await A.waitForTimeout(400);
+  const jumped = await A.evaluate(() => document.querySelector('#ly .ly-line.on') && document.querySelector('#ly .ly-line.on').dataset.lyI);
+  check(jumped === '3' || jumped === '4', 'clicking a lyric line jumps there', String(jumped));
+  await A.click('[data-sp-tab="comments"]'); await A.waitForTimeout(800);
+  await A.fill('#cm-text', 'This chorus is great'); await A.click('#cm-form [type="submit"]');
+  await A.waitForSelector('.cm-text', { timeout: 8000 }).catch(() => {});
+  await A.click('[data-cm-like]'); await A.waitForTimeout(800);
+  const cmList = await A.evaluate(async id => (await (await fetch('/api/comments/' + id)).json()).comments, tagged.id);
+  await shot(A, 'now-playing-comments');
+  check(cmList.length === 1 && cmList[0].text === 'This chorus is great' && cmList[0].liked === 1 && (await A.textContent('.cm-text')) === 'This chorus is great', 'comments can be posted and liked, saved online', JSON.stringify(cmList));
+  await A.keyboard.press('Escape'); await A.waitForTimeout(300);
 
   // --- nothing is reachable without a session
   const anon = await (await browser.newContext()).newPage();
