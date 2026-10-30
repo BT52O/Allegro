@@ -87,8 +87,8 @@ img { display: block; }
 .logo .clef, .nav-btn .ic { width: var(--icn); height: var(--icn); flex: none; }
 .logo .clef { font: 400 calc(var(--icn) * .92)/1 var(--f-clef); display: grid; place-items: center; overflow: visible; }
 .nav-btn .ic { stroke-width: 1.6; }
-.nav-btn:hover { background: var(--hover); }
-.nav-btn.active span { text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: .22em; }
+.nav-btn:hover, .logo:hover { background: var(--hover); }
+.logo.active { background: none; }
 .nav-btn.active .ic { stroke-width: 2.2; }
 
 /* library panel, modeled on Spotify's */
@@ -672,7 +672,7 @@ body.dragging-row .tr:hover .like:not(.on), body.dragging-row .tr:hover .more { 
     <div class="side-edge"><button class="side-toggle" id="side-toggle" aria-label="Collapse sidebar" aria-expanded="true" title="Collapse sidebar"><i data-ic="back"></i></button></div>
     <div class="box nav-box">
       <div class="nav-inner">
-        <div class="logo"><span class="clef" aria-hidden="true">&#x1D11E;</span><span>Allegro</span></div>
+        <button class="logo" data-nav="home" aria-label="Allegro home"><span class="clef" aria-hidden="true">&#x1D11E;</span><span>Allegro</span></button>
         <nav aria-label="Main">
           <button class="nav-btn" data-nav="home"><i data-ic="home"></i><span>Home</span></button>
           <button class="nav-btn" data-nav="search"><i data-ic="compass"></i><span>Explore</span></button>
@@ -696,7 +696,7 @@ body.dragging-row .tr:hover .like:not(.on), body.dragging-row .tr:hover .more { 
 
   <main class="main box" id="main">
     <div class="topbar">
-      <div class="tb-logo"><span class="clef" aria-hidden="true">&#x1D11E;</span>Allegro</div>
+      <button class="tb-logo" data-nav="home" aria-label="Allegro home"><span class="clef" aria-hidden="true">&#x1D11E;</span>Allegro</button>
       <div class="tb-nav" id="tb-nav">
         <button class="circ" id="nav-back" aria-label="Go back"><i data-ic="back"></i></button>
         <button class="circ fwd" id="nav-fwd" aria-label="Go forward"><i data-ic="fwd"></i></button>
