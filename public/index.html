@@ -1476,7 +1476,7 @@ function addDemoTracks() {
 function addFileRecord(rec) {
   const t = {
     id: rec.id, kind: 'file', title: rec.title, artist: rec.artist, albumArtist: rec.albumArtist || '', album: rec.album,
-    year: rec.year, trackNo: rec.trackNo, genre: rec.genre, bpm: rec.bpm || 0, key: rec.key || '', duration: rec.duration, added: rec.added,
+    year: rec.year, released: rec.released || '', trackNo: rec.trackNo, genre: rec.genre, bpm: rec.bpm || 0, key: rec.key || '', duration: rec.duration, added: rec.added,
     fileName: rec.name, size: rec.blob.size, hue: hash(rec.album + rec.artist) % 360, coverStyle: hash(rec.album) % 5,
     url: URL.createObjectURL(rec.blob), ownCover: rec.coverBlob ? URL.createObjectURL(rec.coverBlob) : null, rec
   };
@@ -1714,7 +1714,7 @@ function trackRow(t, i, opt) {
   let cells = `<span class="c-n"><span class="num">${n}</span><span class="eq" aria-hidden="true"><i></i><i></i><i></i></span><span class="hov">${ic('play')}</span></span>`;
   if (c.has('title') || c.has('artist')) cells += `<span class="c-title">${cover}<span class="tt${c.has('title') ? '' : ' tt-artist-only'}">${c.has('title') ? `<span class="t-name">${esc(t.title)}</span>` : ''}${c.has('artist') ? artistLink : ''}</span></span>`;
   if (c.has('album')) cells += `<span class="c-album"><button class="link" data-go-album="${esc(t.albumKey)}">${esc(t.album)}</button></span>`;
-  if (c.has('date')) cells += `<span class="c-added">${opt.played ? playedWhen(opt.played[i]) : relDate(t.added)}</span>`;
+  if (c.has('date')) cells += `<span class="c-added">${opt.played ? playedWhen(opt.played[i]) : t.released ? longDate(t.released) : (t.year || '–')}</span>`;
   if (c.has('bpm')) cells += `<span class="c-bpm">${t.bpm ? Math.round(t.bpm) : '–'}</span>`;
   if (c.has('key')) cells += `<span class="c-key" title="${esc(t.key || '')}">${t.key ? esc(t.key) : '–'}</span>`;
   cells += `<span class="c-like"><button class="like${liked ? ' on' : ''}" data-like="${esc(t.id)}" aria-pressed="${liked}" aria-label="${liked ? 'Remove from' : 'Save to'} Liked Songs">${ic(liked ? 'heartFill' : 'heart')}</button></span>`;
@@ -1723,7 +1723,7 @@ function trackRow(t, i, opt) {
   return `<div class="tr" data-id="${esc(t.id)}" data-i="${i}" tabindex="0">${cells}</div>`;
 }
 /* Columns: each list remembers which ones you picked (saved online, so every device matches). */
-const COLS = [['title', 'Title'], ['artist', 'Artist'], ['album', 'Album'], ['date', 'Date'], ['duration', 'Duration'], ['bpm', 'BPM'], ['key', 'Key']];
+const COLS = [['title', 'Title'], ['artist', 'Artist'], ['album', 'Album'], ['date', 'Date Released'], ['duration', 'Duration'], ['bpm', 'BPM'], ['key', 'Key']];
 const DEFAULT_COLS = ['title', 'artist', 'album', 'date', 'duration'];
 function colsFor(key) {
   const e = key && S.listCols.find(x => x.key === key);
@@ -1761,7 +1761,7 @@ function trackList(ids, ctx, opt = {}) {
     head = `<div class="tl-head"><span class="c-n"><button class="col-btn" data-cols="${lid}" aria-haspopup="menu" aria-expanded="false" aria-label="Choose Columns" title="Choose Columns">${ic('columns')}</button><span aria-hidden="true">#</span></span>`;
     if (cols.has('title') || cols.has('artist')) head += `<span aria-hidden="true">${cols.has('title') ? 'Title' : 'Artist'}</span>`;
     if (cols.has('album')) head += `<span class="c-album" aria-hidden="true">Album</span>`;
-    if (cols.has('date')) head += `<span class="c-added" aria-hidden="true">${opt.played ? 'Played' : 'Date Added'}</span>`;
+    if (cols.has('date')) head += `<span class="c-added" aria-hidden="true">${opt.played ? 'Played' : 'Date Released'}</span>`;
     if (cols.has('bpm')) head += `<span class="c-bpm" aria-hidden="true">BPM</span>`;
     if (cols.has('key')) head += `<span class="c-key" aria-hidden="true">Key</span>`;
     head += `<span></span>${cols.has('duration') ? `<span class="c-dur" aria-hidden="true">${ic('clock')}</span>` : ''}<span></span></div>`;

@@ -432,12 +432,15 @@ try {
   const menuInPanel = await A.evaluate(() => document.getElementById('menu').getBoundingClientRect().left >= document.getElementById('main').getBoundingClientRect().left);
   await A.keyboard.press('Escape'); await A.waitForTimeout(200);
   const upHead = await A.$$eval('#view .tl-head > span', x => x.map(e => e.textContent.trim()).filter(Boolean));
+  const relCells = await A.$$eval('#view .tr .c-added', x => x.map(e => e.textContent));
+  const relHead = upHead.includes('Date Released') && !upHead.includes('Date Added');
   const bpmCell = await A.$eval(`#view .tr[data-id="${tagged.id}"] .c-bpm`, e => e.textContent).catch(() => '');
   const keyCell = await A.$eval(`#view .tr[data-id="${tagged.id}"] .c-key`, e => e.textContent).catch(() => '');
   const upAlbums = await A.$$eval('#view .tr .c-album', x => x.length);
   const colsLeft = await A.evaluate(() => { const b = document.querySelector('#view .col-btn').getBoundingClientRect(), n = [...document.querySelectorAll('#view .tl-head .c-n span')].pop().getBoundingClientRect(); return b.right <= n.left; });
-  check(colOpts.join('|') === 'Title|Artist|Album|Date|Duration|BPM|Key' && stillOpen && colsLeft && menuInPanel, 'column menu sits left of # and lists Title, Artist, Album, Date, Duration, BPM and Key', JSON.stringify(colOpts));
+  check(colOpts.join('|') === 'Title|Artist|Album|Date Released|Duration|BPM|Key' && stillOpen && colsLeft && menuInPanel, 'column menu sits left of # and lists Title, Artist, Album, Date Released, Duration, BPM and Key', JSON.stringify(colOpts));
   check(upAlbums === 0 && !upHead.includes('Album') && upHead.includes('BPM') && upHead.includes('Key') && bpmCell === '128' && keyCell === 'A minor', 'checked columns show and unchecked ones hide', JSON.stringify({ upHead, bpmCell, keyCell, upAlbums }));
+  check(relHead && relCells.includes('Feb. 2, 2021') && relCells.includes('Jan. 1, 2019'), 'the date column shows when each song was released', JSON.stringify(relCells));
   await A.click('.nav-btn[data-nav="library"]'); await A.waitForTimeout(400); await A.click('[data-chip="songs"]'); await A.waitForTimeout(300);
   const libCols = [await A.$$eval('#view .tr .c-album', x => x.length), !!(await A.$('#view .tr .c-bpm'))];
   data = await lib(A);
