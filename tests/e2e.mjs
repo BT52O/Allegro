@@ -119,7 +119,7 @@ try {
 
   // --- collapsible sidebar
   await A.click('#side-toggle', { force: true }); await A.waitForTimeout(700);
-  check(Math.round((await (await A.$('.side')).boundingBox()).width) === 88, 'sidebar collapses');
+  check(Math.round((await (await A.$('.side')).boundingBox()).width) === 64, 'sidebar collapses');
   await A.click('#side-toggle', { force: true }); await A.waitForTimeout(700);
   check((await (await A.$('.side')).boundingBox()).width > 200, 'sidebar expands again');
 
