@@ -416,7 +416,7 @@ body.touch-input .tr .more { opacity: 1; }
 .qp-head h2 { margin: 0; flex: 1; min-width: 0; font: 700 1.18rem/28px var(--f-display); letter-spacing: -.01em; }
 .qp-head .circ { width: 32px; height: 32px; }
 .qp-head .circ .ic { width: 19px; height: 19px; }
-.queue-panel .queue-list { overflow-y: auto; min-height: 0; padding: 0 0 8px 10px; }
+.queue-panel .queue-list { flex: 1; overflow-y: auto; min-height: 0; padding: 0 0 8px 10px; }
 .queue-panel .queue-list::-webkit-scrollbar-track { margin: 4px 0 12px; }
 .queue-list { display: flex; flex-direction: column; gap: 0; }
 .q-sec { display: flex; align-items: center; gap: 6px; min-height: 28px; padding: 46px 0 6px 6px; font-weight: 700; font-size: .875rem; min-width: 0; }
@@ -2846,7 +2846,7 @@ function queueHTML() {
     + (nextIds.length ? nextIds.map((id, k) => queueRow(id, S.qi + 1 + k, 'next')).join('') : `<p class="q-empty">${S.repeat === 'all' ? 'Starts over from the top.' : 'This is the last song.'}</p>`);
 }
 /* Line the floating queue up under the search bar: left edge with the search box, right edge with the account button,
-   and stop short of the player bar. */
+   and run it down to the bottom of the main panel. */
 function placeQueue() {
   if (innerWidth < 760) return;
   const qp = $('#queue-panel'), s = $('#search-box').getBoundingClientRect(), a = $('#acct-btn').getBoundingClientRect(), p = $('#player').getBoundingClientRect();
@@ -2854,7 +2854,9 @@ function placeQueue() {
   let l = Math.round(s.left) - 3, w = Math.round(a.right - s.left) + 7;
   if (w < 320) { l -= 320 - w; w = 320; }
   const top = Math.round(s.bottom + 12);
-  Object.assign(qp.style, { left: l + 'px', right: 'auto', width: w + 'px', top: top + 'px', maxHeight: Math.max(220, Math.round(p.top - 14 - top)) + 'px' });
+  // it runs the full height of the right side, down to just above the bottom of the main panel
+  const h = Math.max(220, Math.round($('#main').getBoundingClientRect().bottom - 12 - top));
+  Object.assign(qp.style, { left: l + 'px', right: 'auto', width: w + 'px', top: top + 'px', height: h + 'px', maxHeight: h + 'px' });
 }
 function renderQueue() {
   if (S.queueOpen) { const l = $('#queue-list'), y = l.scrollTop; l.innerHTML = queueHTML(); l.scrollTop = y; }
