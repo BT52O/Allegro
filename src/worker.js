@@ -200,32 +200,50 @@ async function api(request, env, path) {
     return json({ ok: true });
   }
 
-  // Song info lookup (Apple's public iTunes Search API): finds the artist, album, year and artwork for a song.
+  // Song info lookup: asks Apple's iTunes Search API and Deezer's public API at the same time, so one of them
+  // being down or blocking Cloudflare doesn't stop it. Apple's results come first (they include year and genre).
   if (path === 'lookup' && method === 'GET') {
     const term = (new URL(request.url).searchParams.get('term') || '').trim().slice(0, 200);
     if (!term) return json({ results: [] });
-    const base = env.MUSIC_SEARCH_URL || 'https://itunes.apple.com/search';
-    let d;
-    try {
-      const r = await fetch(base + '?' + new URLSearchParams({ term, media: 'music', entity: 'song', limit: '15' }), { headers: { accept: 'application/json' } });
-      if (!r.ok) throw new Error(String(r.status));
-      d = JSON.parse(await r.text());
-    } catch (e) { return fail(502, "Couldn't reach the music search. Try again in a minute."); }
-    const results = (d.results || []).filter(x => x && x.trackName && x.artistName).map(x => ({
-      title: str(x.trackName), artist: str(x.artistName), album: str(x.collectionName),
-      albumArtist: x.collectionArtistName && x.collectionArtistName !== x.artistName ? str(x.collectionArtistName) : '',
-      year: str(x.releaseDate, 4), genre: str(x.primaryGenreName, 80), trackNo: Number(x.trackNumber) || 0,
-      duration: (Number(x.trackTimeMillis) || 0) / 1000,
-      art: typeof x.artworkUrl100 === 'string' ? x.artworkUrl100.replace(/\/\d+x\d+(bb)?\.(jpg|png|webp)$/i, '/600x600bb.jpg') : ''
-    }));
-    return json({ results }, 200, { 'cache-control': 'private, max-age=3600' });
+    const getJSON = async (url, who) => {
+      const r = await fetch(url, { headers: { accept: 'application/json', 'user-agent': 'Allegro/1.0 (personal music library)' } });
+      if (!r.ok) throw new Error(`${who} ${r.status}`);
+      try { return JSON.parse(await r.text()); } catch (e) { throw new Error(`${who} sent bad data`); }
+    };
+    const apple = getJSON((env.MUSIC_SEARCH_URL || 'https://itunes.apple.com/search') + '?' + new URLSearchParams({ term, media: 'music', entity: 'song', limit: '15', country: 'US' }), 'Apple')
+      .then(d => (d.results || []).filter(x => x && x.trackName && x.artistName).map(x => ({
+        title: str(x.trackName), artist: str(x.artistName), album: str(x.collectionName),
+        albumArtist: x.collectionArtistName && x.collectionArtistName !== x.artistName ? str(x.collectionArtistName) : '',
+        year: str(x.releaseDate, 4), genre: str(x.primaryGenreName, 80), trackNo: Number(x.trackNumber) || 0,
+        duration: (Number(x.trackTimeMillis) || 0) / 1000,
+        art: typeof x.artworkUrl100 === 'string' ? x.artworkUrl100.replace(/\/\d+x\d+(bb)?\.(jpg|png|webp)$/i, '/600x600bb.jpg') : ''
+      })));
+    const deezer = getJSON((env.DEEZER_SEARCH_URL || 'https://api.deezer.com/search') + '?' + new URLSearchParams({ q: term, limit: '15' }), 'Deezer')
+      .then(d => { if (d.error) throw new Error('Deezer ' + (d.error.message || 'error')); return d; })
+      .then(d => (d.data || []).filter(x => x && x.title && x.artist && x.artist.name).map(x => ({
+        title: str(x.title), artist: str(x.artist.name), album: str(x.album && x.album.title), albumArtist: '',
+        year: '', genre: '', trackNo: 0, duration: Number(x.duration) || 0,
+        art: str(x.album && (x.album.cover_xl || x.album.cover_big), 500)
+      })));
+    const [a, b] = await Promise.allSettled([apple, deezer]);
+    if (a.status === 'rejected' && b.status === 'rejected') {
+      console.error('lookup failed', a.reason && a.reason.message, b.reason && b.reason.message);
+      return fail(502, `The music search isn't answering (${a.reason.message}, ${b.reason.message}). Try again in a minute.`);
+    }
+    const seen = new Set(), results = [];
+    for (const r of [...(a.value || []), ...(b.value || [])]) {
+      const key = [r.title, r.artist, r.album].join('|').toLowerCase();
+      if (!seen.has(key)) { seen.add(key); results.push(r); }
+    }
+    return json({ results, sources: { apple: a.status === 'fulfilled' ? 'ok' : a.reason.message, deezer: b.status === 'fulfilled' ? 'ok' : b.reason.message } }, 200, { 'cache-control': 'private, max-age=3600' });
   }
   // Fetches album artwork from the search results so the page can save it as a song's cover.
   if (path === 'art' && method === 'GET') {
     let u; try { u = new URL(new URL(request.url).searchParams.get('url') || ''); } catch (e) { return fail(400, 'Bad image address.'); }
-    const testHost = env.MUSIC_SEARCH_URL ? new URL(env.MUSIC_SEARCH_URL).origin : null;
-    if (!((u.protocol === 'https:' && /(^|\.)mzstatic\.com$/.test(u.hostname)) || u.origin === testHost)) return fail(400, 'That image address is not allowed.');
-    const r = await fetch(u.toString()).catch(() => null);
+    const testHosts = [env.MUSIC_SEARCH_URL, env.DEEZER_SEARCH_URL].filter(Boolean).map(x => new URL(x).origin);
+    const okHost = u.protocol === 'https:' && /(^|\.)(mzstatic\.com|dzcdn\.net|deezer\.com)$/.test(u.hostname);
+    if (!(okHost || testHosts.includes(u.origin))) return fail(400, 'That image address is not allowed.');
+    const r = await fetch(u.toString(), { headers: { 'user-agent': 'Allegro/1.0 (personal music library)' } }).catch(() => null);
     const type = r && (r.headers.get('content-type') || '').split(';')[0].trim().toLowerCase();
     if (!r || !r.ok || !/^image\/(jpeg|png|gif|webp)$/.test(type)) return fail(502, "Couldn't download that artwork.");
     const buf = await r.arrayBuffer();

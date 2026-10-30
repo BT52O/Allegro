@@ -146,7 +146,7 @@ body.is-playing .li.grid.playing .spk { display: grid; }
 .tb-nav .circ { background: color-mix(in srgb, var(--ink) 8%, transparent); color: var(--ink); }
 .tb-logo { display: none; }
 .search-box {
-  flex: 1; max-width: 420px; display: flex; align-items: center; gap: 10px; height: 44px; padding: 0 14px;
+  flex: 0 1 420px; min-width: 0; display: flex; align-items: center; gap: 10px; height: 44px; padding: 0 14px;
   border-radius: 999px; background: var(--raise); border: 1px solid var(--line); color: var(--muted);
 }
 .search-box:focus-within { border-color: var(--ink); color: var(--ink); }
@@ -496,7 +496,8 @@ input[type="range"]:disabled { opacity: .4; cursor: default; }
   .tb-nav.no-back { display: none; }
   .tb-logo { display: flex; align-items: center; gap: 8px; font: 700 1.3rem var(--f-display); letter-spacing: -.01em; }
   .tb-logo .clef { font: 400 30px/1 var(--f-clef); }
-  .search-shown .tb-logo, .topbar:has(.tb-nav:not(.no-back)) .tb-logo { display: none; }
+  .topbar:has(.tb-nav:not(.no-back)) .tb-logo { display: none; }
+  .search-box { flex: 1 1 auto; height: 40px; padding: 0 12px; gap: 8px; }
   #view { padding: 0 16px 28px; gap: 26px; }
   .vhead { flex-direction: column; align-items: flex-start; gap: 16px; }
   .vhead .art { width: min(62vw, 240px); align-self: center; }
@@ -801,8 +802,8 @@ body.touch-input .has-pen::after { display: none; }
         <button class="circ" id="nav-back" aria-label="Go back"><i data-ic="back"></i></button>
         <button class="circ fwd" id="nav-fwd" aria-label="Go forward"><i data-ic="fwd"></i></button>
       </div>
-      <label class="search-box" id="search-box" hidden><i data-ic="search"></i><input id="search-input" type="search" placeholder="What do you want to hear?" autocomplete="off" aria-label="Search your music"></label>
       <div class="tb-spacer"></div>
+      <label class="search-box" id="search-box"><i data-ic="search"></i><input id="search-input" type="search" placeholder="Search" autocomplete="off" aria-label="Search your music"></label>
       <button class="circ acct" id="acct-btn" aria-label="Account"><i data-ic="user"></i></button>
     </div>
     <div id="view"></div>
@@ -1895,8 +1896,8 @@ function render(scrollTop) {
   const bg = $('#view .view-bg[data-tint-src]');
   if (bg) tintOf(bg.dataset.tintSrc).then(rgb => { if (rgb && bg.isConnected) bg.style.setProperty('--tint', rgb); });
   const isSearch = v.name === 'search';
-  $('#search-box').hidden = !isSearch;
-  $('.topbar').classList.toggle('search-shown', isSearch);
+  // The search box stays in the top bar on every page; leaving the results clears it.
+  if (!isSearch && document.activeElement !== $('#search-input') && S.q) { S.q = ''; $('#search-input').value = ''; }
   const navKey = v.name === 'home' ? 'home' : isSearch ? 'search' : (v.name === 'library' || v.name === 'playlist' || v.name === 'liked') ? 'library' : v.name === 'uploads' ? 'uploads' : '';
   $$('[data-nav]').forEach(b => b.classList.toggle('active', b.dataset.nav === navKey));
   $('#nav-back').disabled = !S.back.length; $('#nav-fwd').disabled = !S.fwd.length;
@@ -2437,16 +2438,51 @@ function guessFromFileName(name) {
   }
   return [{ artist: '', title: base }];
 }
+// Words that mark a fan-made version, not part of the song's real name: "Nightcore - Espresso" is "Espresso".
+const VERSION_WORDS = /\b(nightcore|sped[\s-]*up|speed[\s-]*up|slowed(\s*(\+|and|&)\s*reverb)?|reverb|8d(\s*audio)?|bass\s*boosted)\b/gi;
+const searchName = s => cleanTitle(s).replace(VERSION_WORDS, ' ').replace(/[\(\[]\s*[\)\]]/g, ' ').replace(/\s+/g, ' ').replace(/^[\s\-–—|:]+|[\s\-–—|:]+$/g, '').replace(/(\s[-–—]\s*){2,}/g, ' - ').trim();
 const lookupCache = new Map();
+// Backup when the server can't search: asks Apple straight from this browser (JSONP, since Apple's search has no CORS).
+function appleFromBrowser(term) {
+  return new Promise((resolve, reject) => {
+    const cb = '__allegroApple' + Date.now() + Math.floor(Math.random() * 1e6), sc = document.createElement('script');
+    const done = (err, d) => { clearTimeout(timer); delete window[cb]; sc.remove(); err ? reject(err) : resolve(d); };
+    const timer = setTimeout(() => done(new Error('Apple took too long')), 7000);
+    window[cb] = d => done(null, d);
+    sc.onerror = () => done(new Error("Apple didn't answer"));
+    sc.src = 'https://itunes.apple.com/search?' + new URLSearchParams({ term, media: 'music', entity: 'song', limit: '15', country: 'US', callback: cb });
+    document.head.appendChild(sc);
+  }).then(d => (d.results || []).filter(x => x && x.trackName && x.artistName).map(x => ({
+    title: x.trackName, artist: x.artistName, album: x.collectionName || '',
+    albumArtist: x.collectionArtistName && x.collectionArtistName !== x.artistName ? x.collectionArtistName : '',
+    year: (x.releaseDate || '').slice(0, 4), genre: x.primaryGenreName || '', trackNo: x.trackNumber || 0,
+    art: (x.artworkUrl100 || '').replace(/\/\d+x\d+(bb)?\.(jpg|png|webp)$/i, '/600x600bb.jpg')
+  })));
+}
 async function lookupSongs(term) {
   term = term.trim().slice(0, 200); if (!term) return [];
   if (lookupCache.has(term)) return lookupCache.get(term);
-  const ctrl = new AbortController(), timer = setTimeout(() => ctrl.abort(), 9000);
+  const ctrl = new AbortController(), timer = setTimeout(() => ctrl.abort(), 12000);
+  let results = [], appleOk = false, err = null;
   try {
     const d = await api('lookup?term=' + encodeURIComponent(term), { signal: ctrl.signal });
-    lookupCache.set(term, d.results || []);
-    return d.results || [];
-  } finally { clearTimeout(timer); }
+    results = d.results || []; appleOk = !d.sources || d.sources.apple === 'ok';
+  } catch (e) { err = e; } finally { clearTimeout(timer); }
+  if (!appleOk) {
+    try { const extra = await appleFromBrowser(term); results = [...extra, ...results]; err = null; } catch (e) {}
+  }
+  if (err && !results.length) throw err;
+  lookupCache.set(term, results);
+  return results;
+}
+// Searches a few spellings at once (with and without "Nightcore", each half of "A - B") and merges what comes back.
+async function lookupMany(terms) {
+  terms = [...new Set(terms.map(t => t.replace(/\s+/g, ' ').trim()).filter(Boolean))].slice(0, 4);
+  const got = await Promise.allSettled(terms.map(lookupSongs));
+  if (got.every(g => g.status === 'rejected')) throw got[0].reason;
+  const seen = new Set(), out = [];
+  for (const g of got) for (const r of g.value || []) { const k = [r.title, r.artist, r.album].join('|').toLowerCase(); if (!seen.has(k)) { seen.add(k); out.push(r); } }
+  return out;
 }
 // Picks the search result that really is this song: the name must match, and the artist too when we know it.
 async function findSongInfo(cands) {
@@ -2592,11 +2628,14 @@ $('#se-search').addEventListener('click', async () => {
   const seq = ++se.seq;
   $('#se-status').textContent = 'Searching…'; $('#se-search').disabled = true;
   let list = [], why = '';
-  try { list = await lookupSongs(`${artist} ${cleanTitle(title)}`); } catch (e) { why = `The search didn't work (${e.message}). Try again.`; }
+  const name = searchName(title) || cleanTitle(title), halves = name.split(/\s+[-–—]\s+/).filter(Boolean);
+  const terms = [`${artist} ${name}`, ...(halves.length > 1 ? halves.map(h => `${artist} ${h}`) : []), artist ? name : ''];
+  try { list = await lookupMany(terms); } catch (e) { why = `The search didn't work: ${e.message.replace(/\.$/, '')}.`; }
   if (!se || seq !== se.seq) return;
   $('#se-search').disabled = false;
   // Best guesses first: same name, then same artist.
-  list = list.slice().sort((a, b) => (sameName(b.title, title) - sameName(a.title, title)) || (nameHas(b.artist, artist) - nameHas(a.artist, artist)));
+  const fits = r => (sameName(r.title, name) || halves.some(h => sameName(r.title, h))) * 2 + nameHas(r.artist, artist);
+  list = list.map((r, i) => [r, fits(r), i]).sort((a, b) => b[1] - a[1] || a[2] - b[2]).map(x => x[0]);
   SE_HITS = list.slice(0, 8);
   $('#se-status').textContent = why || (SE_HITS.length ? 'Pick the right one to fill in the details and art.' : 'No matches. Check the spelling, or fill it in yourself.');
   $('#se-results').innerHTML = SE_HITS.map((r, i) => `<button type="button" class="se-hit" data-hit="${i}">${r.art ? `<img src="${esc(r.art.replace('600x600', '100x100'))}" alt="" loading="lazy">` : '<span class="ph"></span>'}<span class="se-hit-t"><b>${esc(r.title)}</b><span>${esc(r.artist)}${r.album ? ' · ' + esc(r.album) : ''}${r.year ? ' · ' + esc(r.year) : ''}</span></span></button>`).join('');
@@ -3152,7 +3191,12 @@ $('#sl-search').addEventListener('input', e => { S.libQ = e.target.value; render
 $('#sl-search').addEventListener('blur', e => { if (!e.target.value) { e.target.hidden = true; $('#sl-search-wrap').classList.remove('open'); } });
 $('#sl-search').addEventListener('keydown', e => { if (e.key === 'Escape') { e.target.value = ''; S.libQ = ''; renderSide(); e.target.blur(); } });
 $('#acct-btn').addEventListener('click', e => openMenu(e.currentTarget, [{ label: 'Sign Out', icon: 'user', fn: signOut }], 'Allegro Account'));
-$('#search-input').addEventListener('input', e => { S.q = e.target.value; render(); });
+$('#search-input').addEventListener('input', e => {
+  S.q = e.target.value;
+  if (S.view.name !== 'search') { if (S.q.trim()) go({ name: 'search' }); return; }
+  render();
+});
+$('#search-input').addEventListener('keydown', e => { if (e.key === 'Enter' && S.view.name !== 'search') go({ name: 'search' }); if (e.key === 'Escape') { e.target.value = ''; S.q = ''; if (S.view.name === 'search') render(); e.target.blur(); } });
 $('#p-cover').addEventListener('click', () => { if (innerWidth < 760 || S.current) openSheet(); });
 $('#p-title').addEventListener('click', () => { if (innerWidth < 760) { openSheet(); return; } const t = tk(S.current); if (t) go({ name: 'album', key: t.albumKey }); });
 $('#p-artist').addEventListener('click', () => { if (innerWidth < 760) { openSheet(); return; } const t = tk(S.current); if (t) go({ name: 'artist', key: t.artist }); });

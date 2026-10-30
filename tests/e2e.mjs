@@ -35,7 +35,13 @@ const SONGS = [
 const lookups = [];
 const mock = createServer((req, res) => {
   const u = new globalThis.URL(req.url, MOCK);
-  if (u.pathname === '/search') {
+  if (u.pathname === '/search' && (u.searchParams.get('term') || '').toLowerCase().includes('deezer')) {
+    res.writeHead(403); res.end('Forbidden');   // Apple turning the server away
+  } else if (u.pathname === '/deezer') {
+    const q = (u.searchParams.get('q') || '').toLowerCase();
+    const data = q.includes('deezer song') ? [{ title: 'Deezer Song', artist: { name: 'Deezer Band' }, album: { title: 'Deezer Album', cover_xl: `${MOCK}/art/deezer.jpg` }, duration: 6 }] : [];
+    res.writeHead(200, { 'content-type': 'application/json' }); res.end(JSON.stringify({ data, total: data.length }));
+  } else if (u.pathname === '/search') {
     const term = (u.searchParams.get('term') || '').toLowerCase(); lookups.push(term);
     const results = SONGS.filter(x => term.includes(x.trackName.toLowerCase())).map(x => ({ wrapperType: 'track', kind: 'song', ...x, artworkUrl100: `${MOCK}/art/${encodeURIComponent(x.trackName)}/100x100bb.jpg` }));
     res.writeHead(200, { 'content-type': 'application/json' }); res.end(JSON.stringify({ resultCount: results.length, results }));
@@ -46,7 +52,7 @@ const mock = createServer((req, res) => {
 await new Promise(r => mock.listen(MOCK_PORT, '127.0.0.1', r));
 
 execFileSync(process.execPath, [wrangler, 'd1', 'migrations', 'apply', 'allegro', '--local', '--persist-to', state], { cwd: root, env, stdio: 'inherit' });
-const server = spawn(process.execPath, [wrangler, 'dev', '--port', String(PORT), '--ip', '127.0.0.1', '--persist-to', state, '--var', `MUSIC_SEARCH_URL:${MOCK}/search`], { cwd: root, env, stdio: ['ignore', 'pipe', 'pipe'] });
+const server = spawn(process.execPath, [wrangler, 'dev', '--port', String(PORT), '--ip', '127.0.0.1', '--persist-to', state, '--var', `MUSIC_SEARCH_URL:${MOCK}/search`, '--var', `DEEZER_SEARCH_URL:${MOCK}/deezer`], { cwd: root, env, stdio: ['ignore', 'pipe', 'pipe'] });
 let serverLog = '';
 server.stdout.on('data', d => { serverLog += d; });
 server.stderr.on('data', d => { serverLog += d; });
@@ -64,12 +70,13 @@ const pageErrors = [];
 async function device(viewport) {
   const page = await (await browser.newContext({ viewport })).newPage();
   page.on('pageerror', e => pageErrors.push(e.message));
-  await page.route(/fonts\.(googleapis|gstatic)\.com/, r => r.abort());
+  await page.route(/fonts\.(googleapis|gstatic)\.com|itunes\.apple\.com/, r => r.abort());
   await page.goto(URL);
   await page.waitForTimeout(800);
   return page;
 }
 const lib = page => page.evaluate(async () => (await fetch('/api/library')).json());
+const shot = async (pg, name) => { if (process.env.SHOTS) await pg.screenshot({ path: join(process.env.SHOTS, name + '.png') }); };
 
 try {
   await waitForServer();
@@ -281,6 +288,20 @@ try {
   await A.hover('.logo'); await A.waitForTimeout(300);
   check(await A.$eval('.logo', e => getComputedStyle(e).backgroundColor !== 'rgba(0, 0, 0, 0)'), 'Allegro logo shows hover on the Home page');
 
+  // --- the search box sits in the top right on every page, next to the profile button
+  const boxes = [];
+  for (const n of ['home', 'library', 'uploads']) {
+    await A.click(`.nav-btn[data-nav="${n}"]`); await A.waitForTimeout(350);
+    boxes.push(await A.evaluate(() => { const b = document.getElementById('search-box').getBoundingClientRect(), a = document.getElementById('acct-btn').getBoundingClientRect(); return b.width > 200 && b.height > 0 && b.right <= a.left && a.left - b.right < 20; }));
+  }
+  await A.fill('#search-input', 'Some');
+  await A.waitForTimeout(500);
+  const searched = await A.evaluate(() => [...document.querySelectorAll('#view .t-name')].map(e => e.textContent));
+  check(boxes.every(Boolean) && searched.includes('Untagged Song'), 'search box is in the top right on every page, and typing shows results', JSON.stringify({ boxes, searched }));
+  await shot(A, 'search-top');
+  await A.click('.nav-btn[data-nav="home"]'); await A.waitForTimeout(400);
+  check(await A.inputValue('#search-input') === '', 'leaving the results clears the search box');
+
   // --- Uploads: storage notice, editing only here, and lookups
   await A.click('.nav-btn[data-nav="library"]'); await A.waitForTimeout(400);
   await A.click('[data-chip="songs"]'); await A.waitForTimeout(300);
@@ -290,7 +311,6 @@ try {
   check(noChip && (await A.textContent('#view h1')) === 'Uploads' && await A.$eval('.nav-btn[data-nav="uploads"]', b => b.classList.contains('active')), 'Uploads is its own page in the menu, under My Library');
   const note = await A.$eval('.storage-note', e => [e.textContent, getComputedStyle(e).backgroundColor, getComputedStyle(e).color]).catch(() => null);
   check(!!note && note[0].includes('10 GB') && note[0].includes('left') && note[1] === 'rgb(253, 228, 228)' && note[2] === 'rgb(138, 20, 20)', 'Uploads shows the storage notice in dark red on light red', JSON.stringify(note));
-  const shot = async (pg, name) => { if (process.env.SHOTS) await pg.screenshot({ path: join(process.env.SHOTS, name + '.png') }); };
   await shot(A, 'uploads');
   const upRows = await A.$$eval('#view .tr', x => x.map(e => e.dataset.id));
   check(upRows.length === 2 && editInSongs === 0 && (await A.$$eval('#view [data-edit-song]', x => x.length)) === 2, 'Uploads lists your songs, and only there can you edit them', JSON.stringify([upRows.length, editInSongs]));
@@ -322,7 +342,7 @@ try {
   check(seOpen && ed.title === 'Sunny Day' && ed.artist === 'Edited Artist' && ed.album === 'Edited Album' && ed.coverV > 0 && edImg.includes('?v=') && !!edDims && edDims[0] === edDims[1], 'editing a song saves its name, artist, album and new square art', JSON.stringify({ ed, edImg, edDims }));
   // Find Info Online in the editor fills everything in from the pick
   await A.click(`#view [data-edit-song="${tagged.id}"]`); await A.waitForTimeout(400);
-  await A.fill('#se-name', 'mock hit'); await A.fill('#se-artist', '');
+  await A.fill('#se-name', 'Nightcore - Mock Hit (Official Audio)'); await A.fill('#se-artist', '');
   await A.click('#se-search');
   await A.waitForSelector('#se-results .se-hit', { timeout: 10000 }).catch(() => {});
   await shot(A, 'editor-search');
@@ -334,6 +354,11 @@ try {
   data = await lib(A);
   const hit = data.songs.find(s => s.id === tagged.id);
   check(filled.join('|') === 'Mock Hit|Mock Artist|Mock Hit Album' && hit.album === 'Mock Hit Album' && hit.year === '2021' && hit.coverV > ed.coverV, 'Find Info Online fills in the song from the search', JSON.stringify({ filled, hit }));
+  // when Apple turns the server away, Deezer still answers
+  const dz = await A.evaluate(async () => (await fetch('/api/lookup?term=deezer%20song')).json());
+  const dzHit = dz.results && dz.results.find(r => r.title === 'Deezer Song');
+  const dzArt = dzHit ? await A.evaluate(async u => (await fetch('/api/art?url=' + encodeURIComponent(u))).status, dzHit.art) : 0;
+  check(!!dzHit && dzHit.artist === 'Deezer Band' && dzHit.album === 'Deezer Album' && /403/.test(dz.sources.apple) && dzArt === 200, 'song search falls back to Deezer when Apple refuses', JSON.stringify({ dz, dzArt }));
   // the menu offers Edit Song in Uploads but not elsewhere
   await A.click(`#view .tr[data-id="${tagged.id}"] .more`, { force: true }); await A.waitForTimeout(250);
   const upMenu = await A.$$eval('#menu .mi', x => x.map(e => e.textContent.trim()));
