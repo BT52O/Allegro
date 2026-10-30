@@ -560,7 +560,15 @@ input[type="range"]:disabled { opacity: .4; cursor: default; }
 .modal-head { display: flex; align-items: center; justify-content: space-between; }
 .modal-head h2 { margin: 0; font: 700 1.4rem var(--f-display); letter-spacing: -.02em; }
 .modal-body { display: grid; grid-template-columns: 180px minmax(0, 1fr); gap: 18px; align-items: start; }
-.pe-left { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.pe-left { display: flex; flex-direction: column; align-items: stretch; gap: 10px; }
+.pe-actions { display: flex; flex-direction: column; gap: 6px; }
+.pe-actions[hidden] { display: none; }
+.pill-btn { height: 36px; padding: 0 14px; border-radius: 10px; background: var(--chip); color: var(--ink); font-weight: 600; font-size: .85rem; transition: background-color .18s; }
+.pill-btn:hover { background: color-mix(in srgb, var(--ink) 12%, var(--chip)); }
+.lightbox { position: fixed; inset: 0; z-index: 80; display: grid; place-items: center; padding: 32px; background: rgba(0, 0, 0, .82); animation: fade-in .18s ease-out; }
+.lightbox img { max-width: 100%; max-height: calc(100vh - 64px); border-radius: 8px; box-shadow: 0 20px 60px rgba(0, 0, 0, .6); animation: pop-in .22s cubic-bezier(.2, .8, .2, 1); }
+.lightbox-close { position: absolute; top: calc(16px + env(safe-area-inset-top, 0px)); right: calc(16px + env(safe-area-inset-right, 0px)); width: 44px; height: 44px; background: rgba(255, 255, 255, .14); color: #fff; }
+.lightbox-close:hover { background: rgba(255, 255, 255, .24); color: #fff; }
 .pe-cover { position: relative; width: 180px; aspect-ratio: 1; max-width: 100%; border-radius: 8px; overflow: hidden; box-shadow: 0 10px 24px -14px rgba(0,0,0,.6); }
 .pe-art, .pe-art img, .pe-art .mosaic { display: block; width: 100%; height: 100%; object-fit: cover; }
 .pe-hover { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; background: rgba(0,0,0,.55); color: #fff; font-weight: 600; opacity: 0; transition: opacity .2s; }
@@ -833,7 +841,7 @@ body.dragging-row .tr:hover .like:not(.on), body.dragging-row .tr:hover .more { 
     <div class="modal-body">
       <div class="pe-left">
         <button type="button" class="pe-cover" id="pe-cover" aria-label="Choose a cover photo"><span class="pe-art" id="pe-art"></span><span class="pe-hover"><i data-ic="edit"></i>Choose photo</span></button>
-        <button type="button" class="link sm" id="pe-remove">Remove photo</button>
+        <div class="pe-actions" id="pe-actions"><button type="button" class="pill-btn" id="pe-remove">Remove photo</button><button type="button" class="pill-btn" id="pe-view">View full image</button></div>
       </div>
       <div class="pe-fields">
         <label class="field">Name<input id="pe-name" maxlength="100" autocomplete="off"></label>
@@ -847,6 +855,10 @@ body.dragging-row .tr:hover .like:not(.on), body.dragging-row .tr:hover .more { 
 </div>
 <input type="file" id="pe-file" class="sr-only" accept="image/jpeg,image/png,image/webp,image/gif" tabindex="-1" aria-hidden="true">
 <input type="file" id="pen-file" class="sr-only" accept="image/jpeg,image/png,image/webp,image/gif" tabindex="-1" aria-hidden="true">
+<div class="lightbox" id="lightbox" hidden role="dialog" aria-modal="true" aria-label="Full image">
+  <img id="lightbox-img" alt="">
+  <button type="button" class="circ lightbox-close" id="lightbox-close" aria-label="Close"><i data-ic="close"></i></button>
+</div>
 <div class="menu-scrim" id="menu-scrim" hidden></div>
 <div class="menu" id="menu" hidden role="menu"></div>
 <div class="drop" id="drop" hidden><div class="drop-box"><i data-ic="upload"></i><h2>Drop to add</h2><p>MP3, M4A, WAV, FLAC and OGG files go straight into your library.</p></div></div>
@@ -1549,7 +1561,7 @@ function go(v) {
   closeMenu();
   if (!$('#sheet').hidden) closeSheet();
   if (sameView(v, S.view)) { refreshPage(); return; }
-  S.back.push(S.view); if (S.back.length > 50) S.back.shift(); S.fwd = []; S.view = v; S.renaming = null;
+  S.back = [S.view]; S.fwd = []; S.view = v; S.renaming = null;
   render(true);
 }
 function openKey(key) {
@@ -2050,7 +2062,8 @@ function editPlaylist(id) {
 function drawPeArt() {
   const p = S.playlists.find(x => x.id === pe.id);
   $('#pe-art').innerHTML = pe.preview ? `<img src="${pe.preview}" alt="">` : plArt(pe.remove ? { ...p, cover: null } : p);
-  $('#pe-remove').hidden = !(pe.preview || (p.cover && !pe.remove));
+  const hasPhoto = !!(pe.preview || (p.cover && !pe.remove));
+  $('#pe-actions').hidden = !hasPhoto;
 }
 function closePe() {
   if (!pe) return;
@@ -2069,6 +2082,20 @@ $('#pe-file').addEventListener('change', e => {
   pe.file = f; pe.remove = false; pe.preview = URL.createObjectURL(f); $('#pe-err').textContent = '';
   drawPeArt();
 });
+$('#pe-view').addEventListener('click', () => {
+  if (!pe) return;
+  const p = S.playlists.find(x => x.id === pe.id);
+  const src = pe.preview || (p && p.cover ? plCoverUrl(p) : null);
+  if (src) openLightbox(src, p ? p.name : '');
+});
+function openLightbox(src, label) {
+  const lb = $('#lightbox');
+  $('#lightbox-img').src = src; $('#lightbox-img').alt = label ? `${label} cover` : 'Cover';
+  lb.hidden = false;
+  setTimeout(() => $('#lightbox-close').focus(), 30);
+}
+function closeLightbox() { $('#lightbox').hidden = true; $('#lightbox-img').removeAttribute('src'); }
+$('#lightbox').addEventListener('click', e => { if (e.target.id !== 'lightbox-img') closeLightbox(); });
 $('#pe-remove').addEventListener('click', () => { if (!pe) return; if (pe.preview) URL.revokeObjectURL(pe.preview); pe.file = null; pe.preview = null; pe.remove = true; drawPeArt(); });
 $('#pe-close').addEventListener('click', closePe);
 $('#pl-edit').addEventListener('mousedown', e => { if (e.target.id === 'pl-edit') closePe(); });
@@ -2618,7 +2645,7 @@ document.addEventListener('click', e => {
   const op = T.closest('[data-open]'); if (op) { openKey(op.dataset.open); return; }
 });
 document.addEventListener('keydown', e => {
-  if (e.key === 'Escape') { if (pe) { closePe(); return; } if (!$('#menu').hidden) { closeMenu(); return; } if (!$('#sheet').hidden) { closeSheet(); return; } if (S.renaming) { S.renaming = null; render(); } return; }
+  if (e.key === 'Escape') { if (!$('#lightbox').hidden) { closeLightbox(); return; } if (pe) { closePe(); return; } if (!$('#menu').hidden) { closeMenu(); return; } if (!$('#sheet').hidden) { closeSheet(); return; } if (S.renaming) { S.renaming = null; render(); } return; }
   if (e.target.id === 'rename-input' && e.key === 'Enter') { e.preventDefault(); commitRename(); return; }
   const el = e.target;
   if ((e.key === 'Enter' || e.key === ' ') && el.matches && el.matches('.tr, .card, .qt, [data-open][tabindex], [data-qi]')) { e.preventDefault(); el.click(); return; }
@@ -2632,8 +2659,8 @@ document.addEventListener('focusout', e => { if (e.target.id === 'rename-input')
 document.addEventListener('change', e => {
   if (e.target.id === 'sort-sel') { S.sort = e.target.value; save(); render(); }
 });
-$('#nav-back').addEventListener('click', () => { if (!S.back.length) return; S.fwd.push(S.view); S.view = S.back.pop(); render('back'); });
-$('#nav-fwd').addEventListener('click', () => { if (!S.fwd.length) return; S.back.push(S.view); S.view = S.fwd.pop(); render(true); });
+$('#nav-back').addEventListener('click', () => { if (!S.back.length) return; S.fwd = [S.view]; S.view = S.back.pop(); S.back = []; render('back'); });
+$('#nav-fwd').addEventListener('click', () => { if (!S.fwd.length) return; S.back = [S.view]; S.view = S.fwd.pop(); S.fwd = []; render(true); });
 $('#sl-sort').addEventListener('click', e => { if (!$('#menu').hidden && menuAnchor === e.currentTarget) { closeMenu(); return; } sortMenu(e.currentTarget); });
 $('#sl-search-btn').addEventListener('click', () => { const w = $('#sl-search-wrap'), inp = $('#sl-search'); w.classList.add('open'); inp.hidden = false; inp.focus(); });
 $('#sl-search').addEventListener('input', e => { S.libQ = e.target.value; renderSide(); });

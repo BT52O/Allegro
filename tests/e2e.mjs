@@ -17,7 +17,8 @@ const wrangler = join(root, 'node_modules', 'wrangler', 'bin', 'wrangler.js');
 const env = { ...process.env, CI: '1', WRANGLER_SEND_METRICS: 'false' };
 
 let failures = 0;
-const check = (ok, label, extra = '') => { console.log(`${ok ? 'PASS' : 'FAIL'}  ${label}${extra ? '  ' + extra : ''}`); if (!ok) failures++; };
+const gh = (msg) => { if (process.env.GITHUB_ACTIONS) console.log(`::error title=e2e::${String(msg).replace(/\r?\n/g, ' ').slice(0, 900)}`); };
+const check = (ok, label, extra = '') => { console.log(`${ok ? 'PASS' : 'FAIL'}  ${label}${extra ? '  ' + extra : ''}`); if (!ok) { failures++; gh(`FAIL ${label} ${extra}`); } };
 
 const devVars = join(root, '.dev.vars');
 const madeDevVars = !existsSync(devVars);
@@ -130,6 +131,14 @@ try {
   const cv = data.state.playlists.find(p => p.id === 'pl-example').cover;
   check(!!cv && (await A.evaluate(async c => (await fetch('/api/playlist-cover/pl-example?v=' + c)).status, cv)) === 200, 'pen uploads a new playlist cover');
   await A.click('#side-list [data-open="playlist:pl-example"]'); await A.waitForTimeout(600);
+  await A.click('.vhead h1'); await A.waitForTimeout(400);
+  const bubbles = await A.$$eval('#pe-actions .pill-btn', x => x.filter(e => e.offsetParent).map(e => e.textContent));
+  await A.click('#pe-view'); await A.waitForTimeout(400);
+  const lbOk = await A.isVisible('#lightbox') && await A.$eval('#lightbox-img', i => i.complete && i.naturalWidth > 0);
+  await A.keyboard.press('Escape'); await A.waitForTimeout(200);
+  const lbClosed = !(await A.isVisible('#lightbox')) && await A.isVisible('#pl-edit');
+  await A.keyboard.press('Escape'); await A.waitForTimeout(300);
+  check(bubbles.join('|') === 'Remove photo|View full image' && lbOk && lbClosed, 'Edit details has Remove photo and View full image buttons', JSON.stringify(bubbles));
   const before = await A.$$eval('#view .tl .tr', x => x.map(e => e.dataset.id));
   const r0 = await (await A.$('#view .tl .tr >> nth=0')).boundingBox(), r2 = await (await A.$('#view .tl .tr >> nth=2')).boundingBox();
   await A.mouse.move(r0.x + 300, r0.y + r0.height / 2); await A.mouse.down();
@@ -138,6 +147,16 @@ try {
   data = await lib(A);
   const order = data.state.playlists.find(p => p.id === 'pl-example').ids;
   check(order[2] === before[0] && order[0] === before[1], 'dragging a song reorders the playlist and saves', JSON.stringify(order.slice(0, 3)));
+
+  // --- back and forward go one page only
+  await A.click('.nav-btn[data-nav="home"]'); await A.waitForTimeout(400);
+  await A.click('.nav-btn[data-nav="search"]'); await A.waitForTimeout(400);
+  await A.click('.nav-btn[data-nav="library"]'); await A.waitForTimeout(400);
+  await A.click('#nav-back'); await A.waitForTimeout(400);
+  const atExplore = (await A.textContent('#view h1')) === 'Explore', backOff = await A.$eval('#nav-back', b => b.disabled);
+  await A.click('#nav-fwd'); await A.waitForTimeout(400);
+  const atLib = (await A.textContent('#view h1')) === 'My Library', fwdOff = await A.$eval('#nav-fwd', b => b.disabled);
+  check(atExplore && backOff && atLib && fwdOff, 'back and forward go one page only');
 
   // --- collapsible sidebar
   await A.click('#side-toggle', { force: true }); await A.waitForTimeout(700);
@@ -195,6 +214,7 @@ try {
 } catch (e) {
   failures++;
   console.error('FAIL  test crashed:', e);
+  gh(`test crashed: ${e && e.message}`);
 } finally {
   await browser.close();
   server.kill();
