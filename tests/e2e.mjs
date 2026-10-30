@@ -297,6 +297,8 @@ try {
   await A.fill('#search-input', 'Some');
   await A.waitForTimeout(500);
   const searched = await A.evaluate(() => [...document.querySelectorAll('#view .t-name')].map(e => e.textContent));
+  const boxStyle = await A.$eval('#search-box', b => [getComputedStyle(b).backgroundColor, getComputedStyle(b).borderTopWidth]);
+  check(boxStyle[0] === 'rgb(236, 236, 236)' && boxStyle[1] === '0px', 'search box is light gray with no outline while typing', JSON.stringify(boxStyle));
   check(boxes.every(Boolean) && searched.includes('Untagged Song'), 'search box is in the top right on every page, and typing shows results', JSON.stringify({ boxes, searched }));
   await shot(A, 'search-top');
   await A.click('.nav-btn[data-nav="home"]'); await A.waitForTimeout(400);

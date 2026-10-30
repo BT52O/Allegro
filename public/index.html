@@ -147,9 +147,10 @@ body.is-playing .li.grid.playing .spk { display: grid; }
 .tb-logo { display: none; }
 .search-box {
   flex: 0 1 420px; min-width: 0; display: flex; align-items: center; gap: 10px; height: 44px; padding: 0 14px;
-  border-radius: 999px; background: var(--raise); border: 1px solid var(--line); color: var(--muted);
+  border-radius: 999px; background: var(--chip); border: 0; color: var(--muted); transition: background-color .18s;
 }
-.search-box:focus-within { border-color: var(--ink); color: var(--ink); }
+.search-box:hover { background: color-mix(in srgb, var(--ink) 10%, var(--chip)); }
+.search-box:focus-within { color: var(--ink); }
 .search-box input { flex: 1; min-width: 0; border: 0; background: transparent; outline: none; font-size: 1rem; color: var(--ink); }
 .search-box input::-webkit-search-cancel-button { -webkit-appearance: none; }
 .search-box .ic { width: 20px; height: 20px; }
