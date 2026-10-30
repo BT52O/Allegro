@@ -285,7 +285,9 @@ try {
   await A.click('.nav-btn[data-nav="library"]'); await A.waitForTimeout(400);
   await A.click('[data-chip="songs"]'); await A.waitForTimeout(300);
   const editInSongs = await A.$$eval('#view [data-edit-song]', x => x.length);
-  await A.click('[data-chip="uploads"]'); await A.waitForTimeout(400);
+  const noChip = !(await A.$('[data-chip="uploads"]'));
+  await A.click('.nav-btn[data-nav="uploads"]'); await A.waitForTimeout(400);
+  check(noChip && (await A.textContent('#view h1')) === 'Uploads' && await A.$eval('.nav-btn[data-nav="uploads"]', b => b.classList.contains('active')), 'Uploads is its own page in the menu, under My Library');
   const note = await A.$eval('.storage-note', e => [e.textContent, getComputedStyle(e).backgroundColor, getComputedStyle(e).color]).catch(() => null);
   check(!!note && note[0].includes('10 GB') && note[0].includes('left') && note[1] === 'rgb(253, 228, 228)' && note[2] === 'rgb(138, 20, 20)', 'Uploads shows the storage notice in dark red on light red', JSON.stringify(note));
   const shot = async (pg, name) => { if (process.env.SHOTS) await pg.screenshot({ path: join(process.env.SHOTS, name + '.png') }); };
@@ -336,6 +338,7 @@ try {
   await A.click(`#view .tr[data-id="${tagged.id}"] .more`, { force: true }); await A.waitForTimeout(250);
   const upMenu = await A.$$eval('#menu .mi', x => x.map(e => e.textContent.trim()));
   await A.keyboard.press('Escape');
+  await A.click('.nav-btn[data-nav="library"]'); await A.waitForTimeout(400);
   await A.click('[data-chip="songs"]'); await A.waitForTimeout(300);
   await A.click(`#view .tr[data-id="${tagged.id}"] .more`, { force: true }); await A.waitForTimeout(250);
   const songsMenu = await A.$$eval('#menu .mi', x => x.map(e => e.textContent.trim()));
@@ -347,7 +350,7 @@ try {
     await fetch('/api/songs/' + id, { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ ...s, album: 'Unknown album', cover: false }) });
   }, untagged.id);
   await A.reload(); await A.waitForTimeout(1500);
-  await A.click('.nav-btn[data-nav="library"]'); await A.waitForTimeout(300); await A.click('[data-chip="uploads"]'); await A.waitForTimeout(400);
+  await A.click('.nav-btn[data-nav="uploads"]'); await A.waitForTimeout(400);
   await shot(A, 'uploads-missing');
   const fillBtn = await A.isVisible('#view [data-action="fill-info"]');
   await A.click('#view [data-action="fill-info"]').catch(() => {});
@@ -358,6 +361,9 @@ try {
 
   // --- remove a song (the server delete runs after the 8-second undo window)
   await B.reload(); await B.waitForTimeout(1500);
+  await B.click('.tab[data-nav=uploads]'); await B.waitForTimeout(500);
+  await shot(B, 'phone-uploads');
+  check((await B.textContent('#view h1')) === 'Uploads' && await B.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'phone has an Uploads tab that fits the screen');
   await B.click('.tab[data-nav=library]'); await B.click('[data-chip="songs"]'); await B.waitForTimeout(400);
   const victim = (await lib(B)).songs.find(s => s.title === 'Untagged Song').id;
   await B.click(`.tr[data-id="${victim}"] .more`, { force: true }); await B.waitForTimeout(300);

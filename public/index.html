@@ -523,7 +523,7 @@ input[type="range"]:disabled { opacity: .4; cursor: default; }
   .p-mini-prog { display: block; position: absolute; left: 8px; right: 8px; bottom: 0; height: 2px; background: color-mix(in srgb, var(--ink) 18%, transparent); border-radius: 2px; overflow: hidden; }
   .p-mini-prog i { display: block; height: 100%; width: 0; background: var(--ink); }
   .tabbar { grid-area: tabs; display: flex; justify-content: space-around; padding: 6px 8px 2px; background: var(--panel); border-top: 1px solid var(--line); }
-  .tab { display: flex; flex-direction: column; align-items: center; gap: 3px; font-size: .7rem; font-weight: 500; color: var(--muted); padding: 4px 18px; }
+  .tab { display: flex; flex-direction: column; align-items: center; gap: 3px; font-size: .7rem; font-weight: 500; color: var(--muted); padding: 4px 10px; }
   .tab.active { color: var(--ink); }
   .tab .ic { width: 24px; height: 24px; }
   .toast { bottom: calc(132px + env(safe-area-inset-bottom, 0px)); }
@@ -777,6 +777,7 @@ body.touch-input .has-pen::after { display: none; }
           <button class="nav-btn" data-nav="home"><i data-ic="home"></i><span>Home</span></button>
           <button class="nav-btn" data-nav="search"><i data-ic="compass"></i><span>Explore</span></button>
           <button class="nav-btn" data-nav="library"><i data-ic="library"></i><span>My Library</span></button>
+          <button class="nav-btn" data-nav="uploads"><i data-ic="upload"></i><span>Uploads</span></button>
         </nav>
       </div>
     </div>
@@ -845,6 +846,7 @@ body.touch-input .has-pen::after { display: none; }
     <button class="tab" data-nav="home"><i data-ic="home"></i>Home</button>
     <button class="tab" data-nav="search"><i data-ic="compass"></i>Explore</button>
     <button class="tab" data-nav="library"><i data-ic="library"></i>My Library</button>
+    <button class="tab" data-nav="uploads"><i data-ic="upload"></i>Uploads</button>
   </nav>
 </div>
 
@@ -1788,6 +1790,9 @@ const VIEWS = {
       <section class="sec"><div class="sec-head"><h2>Artists</h2><button class="link sm" data-open="library:artists">Show All</button></div><div class="cards one-row">${artistsSorted().map(artistCard).join('')}</div></section>
       <section class="sec"><div class="sec-head"><h2>Recently Added</h2><button class="link sm" data-open="library:songs">Show All</button></div>${trackList(recentIds, { key: 'library', name: 'Recently Added' }, { noHead: true })}</section>`;
   },
+  uploads() {
+    return `<h1 class="page-title">Uploads</h1>` + uploadsTab();
+  },
   history() {
     const hist = S.history.filter(h => S.tracks.has(h.id)).slice(0, HISTORY_MAX);
     const ids = hist.map(h => h.id);
@@ -1825,13 +1830,13 @@ const VIEWS = {
       ${pls.length ? `<section class="sec"><div class="sec-head"><h2>Playlists</h2></div><div class="cards">${pls.map(plCard).join('')}</div></section>` : ''}`;
   },
   library(v) {
-    const tab = v.tab || S.libTab;
-    const chips = ['playlists', 'albums', 'artists', 'songs', 'uploads'].map(t => `<button class="chip${t === tab ? ' on' : ''}" data-chip="${t}">${t[0].toUpperCase() + t.slice(1)}</button>`).join('');
+    let tab = v.tab || S.libTab;
+    if (tab === 'uploads') tab = 'songs';   // Uploads used to be a tab here; it has its own page now
+    const chips = ['playlists', 'albums', 'artists', 'songs'].map(t => `<button class="chip${t === tab ? ' on' : ''}" data-chip="${t}">${t[0].toUpperCase() + t.slice(1)}</button>`).join('');
     let body = '';
     if (tab === 'playlists') body = `<div class="cards">${likedCard()}${S.playlists.map(plCard).join('')}<div class="card" data-action="new-pl" tabindex="0" role="button"><div class="card-art"><div class="liked-art" style="background:color-mix(in srgb,var(--ink) 10%,transparent);color:var(--ink)">${ic('plus')}</div></div><div class="card-t">New Playlist</div><div class="card-s">Start an Empty One</div></div></div>`;
     else if (tab === 'albums') body = `<div class="cards">${albumsSorted().map(albumCard).join('')}</div>`;
     else if (tab === 'artists') body = `<div class="cards">${artistsSorted().map(artistCard).join('')}</div>`;
-    else if (tab === 'uploads') body = uploadsTab();
     else {
       const opts = [['added', 'Recently Added'], ['title', 'Title'], ['artist', 'Artist'], ['album', 'Album'], ['duration', 'Longest']].map(([k, l]) => `<option value="${k}"${S.sort === k ? ' selected' : ''}>${l}</option>`).join('');
       const ids = librarySorted();
@@ -1892,7 +1897,7 @@ function render(scrollTop) {
   const isSearch = v.name === 'search';
   $('#search-box').hidden = !isSearch;
   $('.topbar').classList.toggle('search-shown', isSearch);
-  const navKey = v.name === 'home' ? 'home' : isSearch ? 'search' : (v.name === 'library' || v.name === 'playlist' || v.name === 'liked') ? 'library' : '';
+  const navKey = v.name === 'home' ? 'home' : isSearch ? 'search' : (v.name === 'library' || v.name === 'playlist' || v.name === 'liked') ? 'library' : v.name === 'uploads' ? 'uploads' : '';
   $$('[data-nav]').forEach(b => b.classList.toggle('active', b.dataset.nav === navKey));
   $('#nav-back').disabled = !S.back.length; $('#nav-fwd').disabled = !S.fwd.length;
   $('#tb-nav').classList.toggle('no-back', !S.back.length);
