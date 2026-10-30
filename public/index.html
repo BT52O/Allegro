@@ -2943,7 +2943,7 @@ function playlistSub(ids) {
     ...S.playlists.map(p => ({ label: p.name, icon: 'list', fn: () => {
       const fresh = ids.filter(id => !p.ids.includes(id));
       if (!fresh.length) { toast(`Already in ${p.name}`); return; }
-      p.ids.push(...fresh); save(); renderSide();
+      p.ids.unshift(...fresh); save(); renderSide();   // new songs go to the top of the playlist
       if (S.view.name === 'playlist' && S.view.key === p.id) render();
       toast(`Added to ${p.name}`);
     } }))
@@ -3091,9 +3091,9 @@ $('#fd-edit-form').addEventListener('submit', e => {
   const f = { id: uid('fd'), name, created: Date.now(), ids: [] };
   // a new folder made from an item's Move to Folder menu lands where that item was, then takes the item in
   const host = parent ? S.folders.find(x => x.id === parent) : withPlaylist ? parentOf(withPlaylist) : null;
-  if (withPlaylist) { S.folders.forEach(x => { x.ids = x.ids.filter(i => i !== withPlaylist); }); f.ids.push(withPlaylist); }
+  if (withPlaylist) { S.folders.forEach(x => { x.ids = x.ids.filter(i => i !== withPlaylist); }); f.ids.unshift(withPlaylist); }
   S.folders.push(f);
-  if (host && host.id !== withPlaylist) host.ids.push(f.id); else toTopOfLibrary('folder:' + f.id);
+  if (host && host.id !== withPlaylist) host.ids.unshift(f.id); else toTopOfLibrary('folder:' + f.id);   // new folders go first
   userActed = true; save();
   go({ name: 'folder', key: f.id }); renderSide();
   toast(`Created ${f.name}`);
@@ -3102,7 +3102,7 @@ function moveToFolder(itemId, folderId, quiet) {
   const f = folderId && S.folders.find(x => x.id === folderId);
   if (f && !canMoveInto(itemId, f.id)) { toast("A folder can't go inside itself."); return false; }
   S.folders.forEach(x => { x.ids = x.ids.filter(i => i !== itemId); });
-  if (f) f.ids.push(itemId);
+  if (f) f.ids.unshift(itemId);   // things moved into a folder go to the front
   userActed = true; save(); render(); renderSide();
   if (!quiet) toast(f ? `Moved ${itemName(itemId)} to ${f.name}` : `Moved ${itemName(itemId)} out of its folder`, f ? { label: 'Open', fn: () => openKey('folder:' + f.id) } : null);
   return true;
@@ -3160,7 +3160,7 @@ $('#fk-list').addEventListener('click', e => {
   const b = e.target.closest('[data-fk-add]'); if (!b || !fk) return;
   if (!canMoveInto(b.dataset.fkAdd, fk.fid)) return;
   S.folders.forEach(x => { x.ids = x.ids.filter(i => i !== b.dataset.fkAdd); });
-  S.folders.find(x => x.id === fk.fid).ids.push(b.dataset.fkAdd);
+  S.folders.find(x => x.id === fk.fid).ids.unshift(b.dataset.fkAdd);
   fk.added++; userActed = true; save();
   drawFolderPicker();
 });
@@ -3273,7 +3273,7 @@ $('#sp-q').addEventListener('input', () => { if (sp) drawSongPicker(); });
 $('#sp-list').addEventListener('click', e => {
   const b = e.target.closest('[data-sp-add]'); if (!b || !sp) return;
   const p = S.playlists.find(x => x.id === sp.plId); if (!p || p.ids.includes(b.dataset.spAdd)) return;
-  p.ids.push(b.dataset.spAdd); sp.added++;
+  p.ids.unshift(b.dataset.spAdd); sp.added++;
   userActed = true; save();
   b.textContent = 'Added'; b.disabled = true;
 });
