@@ -9,7 +9,7 @@ A private, single-user music library for your own audio files, in the style of S
 | Part | What it is |
 |---|---|
 | `public/index.html` | The whole web app: vanilla JS, no build step. Playback, library views, playlists, queue, ID3 tag reading, uploads. |
-| `src/worker.js` | Cloudflare Worker serving `/api/*`: password login, uploads, streaming with byte ranges, library sync. |
+| `src/worker.js` | Cloudflare Worker serving `/api/*`: password login, uploads, streaming with byte ranges, library sync, and song info lookups (artist, album, artwork) through Apple's public iTunes Search API. |
 | R2 bucket `allegro-music` | Song files (`audio/<id>`), embedded album art (`cover/<id>`), playlist photos (`plcover/<id>`). |
 | D1 database `allegro` | `songs` (metadata per song) and `kv` (password hash, playlists and likes). Schema lives in `migrations/`. |
 
@@ -43,4 +43,4 @@ npx playwright install chromium
 npm test
 ```
 
-`tests/e2e.mjs` starts the Worker locally with throwaway storage and drives Chromium through setup, sign-in, MP3 upload with tag reading, streaming, two-device sync, playlist editing and reordering, removal, and the sign-in requirement on every API route.
+`tests/e2e.mjs` starts the Worker locally with throwaway storage and drives Chromium through setup, sign-in, MP3 upload with tag reading, song info lookup (against a local stand-in for the iTunes Search API), editing songs in Uploads, streaming, two-device sync, playlist editing and reordering, removal, and the sign-in requirement on every API route.

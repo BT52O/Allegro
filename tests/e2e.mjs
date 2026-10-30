@@ -2,7 +2,8 @@
 // Covers first-time setup, sign-in, MP3 upload with tag reading, streaming, sync between two "devices",
 // playlist editing and drag-to-reorder, removal, and that nothing is reachable without signing in.
 import { spawn, execFileSync } from 'node:child_process';
-import { mkdtempSync, rmSync, writeFileSync, existsSync } from 'node:fs';
+import { mkdtempSync, rmSync, writeFileSync, existsSync, readFileSync, copyFileSync } from 'node:fs';
+import { createServer } from 'node:http';
 import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -24,8 +25,28 @@ const devVars = join(root, '.dev.vars');
 const madeDevVars = !existsSync(devVars);
 if (madeDevVars) writeFileSync(devVars, `SETUP_CODE=${SETUP_CODE}\nSESSION_SECRET=e2e-only-secret-${Date.now()}\n`);
 
+// A stand-in for Apple's song search, so tests don't depend on the internet.
+const MOCK_PORT = 8798, MOCK = `http://127.0.0.1:${MOCK_PORT}`;
+const SONGS = [
+  { trackName: 'Untagged Song', artistName: 'Some Band', collectionName: 'Mock Album', releaseDate: '2020-05-01T07:00:00Z', primaryGenreName: 'Pop', trackNumber: 3 },
+  { trackName: 'Swapped Song', artistName: 'Mock Band', collectionName: 'Swap Album', releaseDate: '2019-01-01T07:00:00Z', primaryGenreName: 'Rock', trackNumber: 1 },
+  { trackName: 'Mock Hit', artistName: 'Mock Artist', collectionName: 'Mock Hit Album', releaseDate: '2021-02-02T07:00:00Z', primaryGenreName: 'Pop', trackNumber: 7 }
+];
+const lookups = [];
+const mock = createServer((req, res) => {
+  const u = new globalThis.URL(req.url, MOCK);
+  if (u.pathname === '/search') {
+    const term = (u.searchParams.get('term') || '').toLowerCase(); lookups.push(term);
+    const results = SONGS.filter(x => term.includes(x.trackName.toLowerCase())).map(x => ({ wrapperType: 'track', kind: 'song', ...x, artworkUrl100: `${MOCK}/art/${encodeURIComponent(x.trackName)}/100x100bb.jpg` }));
+    res.writeHead(200, { 'content-type': 'application/json' }); res.end(JSON.stringify({ resultCount: results.length, results }));
+  } else if (u.pathname.startsWith('/art/')) {
+    res.writeHead(200, { 'content-type': 'image/png' }); res.end(readFileSync(join(fixtures, 'cover.png')));
+  } else { res.writeHead(404); res.end(); }
+});
+await new Promise(r => mock.listen(MOCK_PORT, '127.0.0.1', r));
+
 execFileSync(process.execPath, [wrangler, 'd1', 'migrations', 'apply', 'allegro', '--local', '--persist-to', state], { cwd: root, env, stdio: 'inherit' });
-const server = spawn(process.execPath, [wrangler, 'dev', '--port', String(PORT), '--ip', '127.0.0.1', '--persist-to', state], { cwd: root, env, stdio: ['ignore', 'pipe', 'pipe'] });
+const server = spawn(process.execPath, [wrangler, 'dev', '--port', String(PORT), '--ip', '127.0.0.1', '--persist-to', state, '--var', `MUSIC_SEARCH_URL:${MOCK}/search`], { cwd: root, env, stdio: ['ignore', 'pipe', 'pipe'] });
 let serverLog = '';
 server.stdout.on('data', d => { serverLog += d; });
 server.stderr.on('data', d => { serverLog += d; });
@@ -74,7 +95,11 @@ try {
   const tagged = data.songs.find(s => s.title === '晴天');
   check(data.songs.length === 2, 'two songs uploaded', `(${data.songs.length})`);
   check(!!tagged && tagged.artist === 'Test Artist' && tagged.album === 'Test Album' && tagged.cover, 'ID3 tags and cover art were read');
-  check(data.songs.some(s => s.title === 'Untagged Song' && s.artist === 'Some Band'), 'untagged file named from "Artist - Title" filename');
+  const untagged = data.songs.find(s => s.title === 'Untagged Song' && s.artist === 'Some Band');
+  check(!!untagged, 'untagged file named from "Artist - Title" filename');
+  check(!!untagged && untagged.album === 'Mock Album' && untagged.year === '2020' && untagged.cover, 'missing album, year and art are looked up online', JSON.stringify(untagged));
+  check(!lookups.some(t => t.includes('晴天')), 'fully tagged songs are not looked up');
+  check(!(await A.$('#add-btn')) && !(await A.$('.topbar [data-action="add"]')), 'no Add Music button in the top bar');
 
   // --- streaming with Range
   const range = await A.evaluate(async id => { const r = await fetch('/api/audio/' + id, { headers: { range: 'bytes=0-99' } }); return [r.status, r.headers.get('content-range'), (await r.arrayBuffer()).byteLength]; }, tagged.id);
@@ -256,6 +281,81 @@ try {
   await A.hover('.logo'); await A.waitForTimeout(300);
   check(await A.$eval('.logo', e => getComputedStyle(e).backgroundColor !== 'rgba(0, 0, 0, 0)'), 'Allegro logo shows hover on the Home page');
 
+  // --- Uploads: storage notice, editing only here, and lookups
+  await A.click('.nav-btn[data-nav="library"]'); await A.waitForTimeout(400);
+  await A.click('[data-chip="songs"]'); await A.waitForTimeout(300);
+  const editInSongs = await A.$$eval('#view [data-edit-song]', x => x.length);
+  await A.click('[data-chip="uploads"]'); await A.waitForTimeout(400);
+  const note = await A.$eval('.storage-note', e => [e.textContent, getComputedStyle(e).backgroundColor, getComputedStyle(e).color]).catch(() => null);
+  check(!!note && note[0].includes('10 GB') && note[0].includes('left') && note[1] === 'rgb(253, 228, 228)' && note[2] === 'rgb(138, 20, 20)', 'Uploads shows the storage notice in dark red on light red', JSON.stringify(note));
+  const shot = async (pg, name) => { if (process.env.SHOTS) await pg.screenshot({ path: join(process.env.SHOTS, name + '.png') }); };
+  await shot(A, 'uploads');
+  const upRows = await A.$$eval('#view .tr', x => x.map(e => e.dataset.id));
+  check(upRows.length === 2 && editInSongs === 0 && (await A.$$eval('#view [data-edit-song]', x => x.length)) === 2, 'Uploads lists your songs, and only there can you edit them', JSON.stringify([upRows.length, editInSongs]));
+  // upload a "Title - Artist" file from the Uploads button: the order gets worked out
+  const swapped = join(state, 'Swapped Song - Mock Band (Official Audio).mp3');
+  copyFileSync(join(fixtures, 'Some Band - Untagged Song.mp3'), swapped);
+  await A.click('#view [data-action="add"]'); await A.waitForTimeout(250);
+  const upChooser = A.waitForEvent('filechooser');
+  await A.click('#menu .mi:has-text("Choose Audio Files")');
+  await (await upChooser).setFiles(swapped);
+  await A.waitForFunction(() => document.querySelectorAll('#view .tr').length === 3, null, { timeout: 15000 }).catch(() => {});
+  data = await lib(A);
+  const sw = data.songs.find(s => s.fileName && s.fileName.startsWith('Swapped Song'));
+  check(!!sw && sw.title === 'Swapped Song' && sw.artist === 'Mock Band' && sw.album === 'Swap Album' && sw.cover, '"Title - Artist" file names are recognized and filled in', JSON.stringify(sw));
+  // edit a song by hand: name, artist, album and a cropped photo
+  await A.click(`#view [data-edit-song="${tagged.id}"]`); await A.waitForTimeout(400);
+  const seOpen = await A.isVisible('#song-edit');
+  await A.fill('#se-name', 'Sunny Day'); await A.fill('#se-artist', 'Edited Artist'); await A.fill('#se-album', 'Edited Album');
+  const artChooser = A.waitForEvent('filechooser');
+  await A.click('#se-cover');
+  await (await artChooser).setFiles(join(fixtures, 'wide.png')); await A.waitForTimeout(600);
+  await A.click('#crop-apply'); await A.waitForTimeout(600);
+  await A.click('#se-save');
+  await A.waitForFunction(() => document.getElementById('song-edit').hidden, null, { timeout: 10000 }).catch(() => {});
+  data = await lib(A);
+  const ed = data.songs.find(s => s.id === tagged.id);
+  const edImg = await A.$eval(`#view [data-edit-song="${tagged.id}"] img`, i => i.getAttribute('src')).catch(() => '');
+  const edDims = await A.evaluate(src => new Promise(r => { const i = new Image(); i.onload = () => r([i.naturalWidth, i.naturalHeight]); i.onerror = () => r(null); i.src = src; }), edImg);
+  check(seOpen && ed.title === 'Sunny Day' && ed.artist === 'Edited Artist' && ed.album === 'Edited Album' && ed.coverV > 0 && edImg.includes('?v=') && !!edDims && edDims[0] === edDims[1], 'editing a song saves its name, artist, album and new square art', JSON.stringify({ ed, edImg, edDims }));
+  // Find Info Online in the editor fills everything in from the pick
+  await A.click(`#view [data-edit-song="${tagged.id}"]`); await A.waitForTimeout(400);
+  await A.fill('#se-name', 'mock hit'); await A.fill('#se-artist', '');
+  await A.click('#se-search');
+  await A.waitForSelector('#se-results .se-hit', { timeout: 10000 }).catch(() => {});
+  await shot(A, 'editor-search');
+  await A.click('#se-results .se-hit >> nth=0').catch(() => {});
+  await shot(A, 'editor-filled');
+  const filled = [await A.inputValue('#se-name'), await A.inputValue('#se-artist'), await A.inputValue('#se-album')];
+  await A.click('#se-save');
+  await A.waitForFunction(() => document.getElementById('song-edit').hidden, null, { timeout: 10000 }).catch(() => {});
+  data = await lib(A);
+  const hit = data.songs.find(s => s.id === tagged.id);
+  check(filled.join('|') === 'Mock Hit|Mock Artist|Mock Hit Album' && hit.album === 'Mock Hit Album' && hit.year === '2021' && hit.coverV > ed.coverV, 'Find Info Online fills in the song from the search', JSON.stringify({ filled, hit }));
+  // the menu offers Edit Song in Uploads but not elsewhere
+  await A.click(`#view .tr[data-id="${tagged.id}"] .more`, { force: true }); await A.waitForTimeout(250);
+  const upMenu = await A.$$eval('#menu .mi', x => x.map(e => e.textContent.trim()));
+  await A.keyboard.press('Escape');
+  await A.click('[data-chip="songs"]'); await A.waitForTimeout(300);
+  await A.click(`#view .tr[data-id="${tagged.id}"] .more`, { force: true }); await A.waitForTimeout(250);
+  const songsMenu = await A.$$eval('#menu .mi', x => x.map(e => e.textContent.trim()));
+  await A.keyboard.press('Escape');
+  check(upMenu.includes('Edit Song') && !songsMenu.includes('Edit Song'), 'Edit Song is in the menu only in Uploads');
+  // Find Missing Info repairs older uploads
+  await A.evaluate(async id => {
+    const s = (await (await fetch('/api/library')).json()).songs.find(x => x.id === id);
+    await fetch('/api/songs/' + id, { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ ...s, album: 'Unknown album', cover: false }) });
+  }, untagged.id);
+  await A.reload(); await A.waitForTimeout(1500);
+  await A.click('.nav-btn[data-nav="library"]'); await A.waitForTimeout(300); await A.click('[data-chip="uploads"]'); await A.waitForTimeout(400);
+  await shot(A, 'uploads-missing');
+  const fillBtn = await A.isVisible('#view [data-action="fill-info"]');
+  await A.click('#view [data-action="fill-info"]').catch(() => {});
+  await A.waitForFunction(() => !document.querySelector('#view [data-action="fill-info"]'), null, { timeout: 15000 }).catch(() => {});
+  data = await lib(A);
+  const fixedSong = data.songs.find(s => s.id === untagged.id);
+  check(fillBtn && fixedSong.album === 'Mock Album' && fixedSong.cover, 'Find Missing Info fills in older uploads', JSON.stringify(fixedSong));
+
   // --- remove a song (the server delete runs after the 8-second undo window)
   await B.reload(); await B.waitForTimeout(1500);
   await B.click('.tab[data-nav=library]'); await B.click('[data-chip="songs"]'); await B.waitForTimeout(400);
@@ -277,7 +377,7 @@ try {
   gh(`test crashed: ${e && e.message}`);
 } finally {
   await browser.close();
-  server.kill();
+  server.kill(); mock.close();
   if (madeDevVars) rmSync(devVars, { force: true });
   rmSync(state, { recursive: true, force: true });
 }

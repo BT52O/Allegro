@@ -154,12 +154,6 @@ body.is-playing .li.grid.playing .spk { display: grid; }
 .search-box input::-webkit-search-cancel-button { -webkit-appearance: none; }
 .search-box .ic { width: 20px; height: 20px; }
 .tb-spacer { flex: 1; }
-.add-btn {
-  display: inline-flex; align-items: center; gap: 8px; height: 40px; padding: 0 16px; border-radius: 999px;
-  background: var(--ink); color: var(--panel); font-weight: 600; font-size: .9rem; flex: none;
-}
-.add-btn:hover { transform: scale(1.03); }
-.add-btn .ic { width: 18px; height: 18px; }
 
 /* ---------- views ---------- */
 #view { position: relative; padding: 0 24px 48px; display: flex; flex-direction: column; gap: 32px; }
@@ -269,6 +263,26 @@ body.is-playing .tr.playing .c-n .num, body.is-playing .tr.playing:hover .c-n .h
 body.is-playing .tr.playing .c-n .eq { display: inline-flex; }
 .c-title { display: flex; align-items: center; gap: 12px; min-width: 0; }
 .c-title img { width: 40px; height: 40px; border-radius: 4px; object-fit: cover; flex: none; }
+/* Uploads: the cover is a button that opens the song editor */
+.tr-art-edit { position: relative; width: 40px; height: 40px; flex: none; border-radius: 4px; overflow: hidden; }
+.tr-art-edit .pen { position: absolute; inset: 0; display: grid; place-items: center; background: rgba(0, 0, 0, .5); color: #fff; opacity: 0; transition: opacity .18s; }
+.tr-art-edit .pen .ic { width: 18px; height: 18px; }
+.tr-art-edit:hover .pen, .tr-art-edit:focus-visible .pen, body.touch-input .tr-art-edit .pen { opacity: 1; }
+body.touch-input .tr-art-edit .pen { background: rgba(0, 0, 0, .35); }
+.tr:hover .tr-art-edit img { transform: none; }
+/* storage notice at the top of Uploads */
+.storage-note { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 4px 12px; align-items: center; padding: 12px 16px; border-radius: 12px; background: #fde4e4; color: #8a1414; border: 1px solid #f5c2c2; }
+.storage-note .ic { width: 20px; height: 20px; grid-row: span 2; }
+.storage-note b { font-weight: 700; }
+.storage-note p { margin: 0; font-size: .9rem; }
+.storage-bar { height: 6px; border-radius: 999px; background: #f6c9c9; overflow: hidden; }
+.storage-bar i { display: block; height: 100%; min-width: 4px; border-radius: inherit; background: #a51c1c; }
+.up-tools { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.up-tools .sm { flex: 1; min-width: 160px; }
+.up-tools .btn { height: 38px; padding: 0 16px; font-size: .9rem; }
+.up-tools .btn .ic { width: 18px; height: 18px; }
+.btn.ghost-sm { background: var(--chip); color: var(--ink); }
+.btn:disabled { opacity: .55; cursor: default; }
 .tt { display: flex; flex-direction: column; min-width: 0; }
 .t-name { font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .tr.playing .t-name { color: var(--accent); font-weight: 700; }
@@ -483,8 +497,6 @@ input[type="range"]:disabled { opacity: .4; cursor: default; }
   .tb-logo { display: flex; align-items: center; gap: 8px; font: 700 1.3rem var(--f-display); letter-spacing: -.01em; }
   .tb-logo .clef { font: 400 30px/1 var(--f-clef); }
   .search-shown .tb-logo, .topbar:has(.tb-nav:not(.no-back)) .tb-logo { display: none; }
-  .add-btn { width: 40px; padding: 0; justify-content: center; }
-  .add-btn span { display: none; }
   #view { padding: 0 16px 28px; gap: 26px; }
   .vhead { flex-direction: column; align-items: flex-start; gap: 16px; }
   .vhead .art { width: min(62vw, 240px); align-self: center; }
@@ -606,6 +618,18 @@ input[type="range"]:disabled { opacity: .4; cursor: default; }
 @keyframes fade-in { from { opacity: 0; } }
 @keyframes pop-in { from { opacity: 0; transform: translateY(10px) scale(.98); } }
 @media (max-width: 520px) { .modal-body { grid-template-columns: minmax(0, 1fr); } .pe-cover { width: 160px; } }
+/* song editor */
+.se-find { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.se-find .pill-btn { display: inline-flex; align-items: center; gap: 6px; }
+.se-find .pill-btn .ic { width: 16px; height: 16px; }
+.se-status { font-size: .82rem; color: var(--muted); }
+.se-results { display: flex; flex-direction: column; gap: 2px; max-height: 236px; overflow-y: auto; margin: -4px 0 0; }
+.se-results[hidden] { display: none; }
+.se-hit { display: grid; grid-template-columns: 44px minmax(0, 1fr); gap: 10px; align-items: center; padding: 6px; border-radius: 8px; text-align: left; }
+.se-hit:hover, .se-hit:focus-visible { background: var(--hover); }
+.se-hit img, .se-hit .ph { width: 44px; height: 44px; border-radius: 4px; object-fit: cover; background: var(--chip); }
+.se-hit b { display: block; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.se-hit span { display: block; font-size: .82rem; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 /* ---------- collapsible left column ----------
    Two states only: full width and a 64px icon rail. Icons and covers sit at the same x position in both,
@@ -717,7 +741,7 @@ body.touch-input .has-pen::after { display: none; }
 @keyframes page-tint { from { opacity: 0; } }
 
 /* ---------- hover motion ---------- */
-.li, .tr, .qrow, .mi, .nav-btn, .card, .qt, .tr-card, .chip, .sl-chip, .circ, .cbtn, .act-btn, .like, .more, .qrm, .sl-sort, .mv, .link, .add-btn, .btn {
+.li, .tr, .qrow, .mi, .nav-btn, .card, .qt, .tr-card, .chip, .sl-chip, .circ, .cbtn, .act-btn, .like, .more, .qrm, .sl-sort, .mv, .link, .btn {
   transition: background-color .22s ease-out, color .22s ease-out, box-shadow .22s ease-out, transform .22s cubic-bezier(.2, .8, .2, 1);
 }
 .card-art img, .card-art .liked-art, .card-art .mosaic, .li.grid .li-art, .qt .art, .genre img {
@@ -778,7 +802,6 @@ body.touch-input .has-pen::after { display: none; }
       </div>
       <label class="search-box" id="search-box" hidden><i data-ic="search"></i><input id="search-input" type="search" placeholder="What do you want to hear?" autocomplete="off" aria-label="Search your music"></label>
       <div class="tb-spacer"></div>
-      <button class="add-btn" id="add-btn" aria-label="Add Music"><i data-ic="upload"></i><span>Add Music</span></button>
       <button class="circ acct" id="acct-btn" aria-label="Account"><i data-ic="user"></i></button>
     </div>
     <div id="view"></div>
@@ -878,6 +901,27 @@ body.touch-input .has-pen::after { display: none; }
     <div class="modal-foot"><button class="btn" type="submit" id="pe-save">Save</button></div>
   </form>
 </div>
+<div class="modal-scrim" id="song-edit" hidden>
+  <form class="modal" id="song-edit-form" role="dialog" aria-modal="true" aria-labelledby="se-title" novalidate>
+    <div class="modal-head"><h2 id="se-title">Edit Song</h2><button type="button" class="circ" id="se-close" aria-label="Close"><i data-ic="close"></i></button></div>
+    <div class="modal-body">
+      <div class="pe-left">
+        <button type="button" class="pe-cover" id="se-cover" aria-label="Choose song art"><span class="pe-art" id="se-art"></span><span class="pe-hover"><i data-ic="edit"></i>Choose Photo</span></button>
+        <div class="pe-actions" id="se-actions"><button type="button" class="pill-btn" id="se-remove">Remove Photo</button><button type="button" class="pill-btn" id="se-view">View Full Image</button></div>
+      </div>
+      <div class="pe-fields">
+        <label class="field">Song Name<input id="se-name" maxlength="200" autocomplete="off"></label>
+        <label class="field">Artist<input id="se-artist" maxlength="200" autocomplete="off"></label>
+        <label class="field">Album<input id="se-album" maxlength="200" autocomplete="off"></label>
+      </div>
+    </div>
+    <div class="se-find"><button type="button" class="pill-btn" id="se-search"><i data-ic="search"></i>Find Info Online</button><span class="se-status" id="se-status" role="status"></span></div>
+    <div class="se-results" id="se-results" hidden></div>
+    <p class="gate-err" id="se-err" role="alert"></p>
+    <div class="modal-foot"><button class="btn" type="submit" id="se-save">Save</button></div>
+  </form>
+</div>
+<input type="file" id="se-file" class="sr-only" accept="image/jpeg,image/png,image/webp,image/gif" tabindex="-1" aria-hidden="true">
 <input type="file" id="pe-file" class="sr-only" accept="image/jpeg,image/png,image/webp,image/gif" tabindex="-1" aria-hidden="true">
 <input type="file" id="pen-file" class="sr-only" accept="image/jpeg,image/png,image/webp,image/gif" tabindex="-1" aria-hidden="true">
 <div class="modal-scrim crop-scrim" id="cropper" hidden>
@@ -933,6 +977,7 @@ const STROKE = {
   music: '<path d="M9 18V6l10-2v12"/><circle cx="6.5" cy="18" r="2.5"/><circle cx="16.5" cy="16" r="2.5"/>',
   close: '<path d="M6 6l12 12M18 6 6 18"/>',
   upload: '<path d="M12 16V4M7 9l5-5 5 5M5 20h14"/>',
+  cloud: '<path d="M7 18h10a4 4 0 0 0 .7-7.94A6 6 0 0 0 6.1 9.2 4.5 4.5 0 0 0 7 18z"/>',
   folder: '<path d="M3.5 6.5h6l2 2h9v10h-17z"/>',
   file: '<path d="M7 3.5h7l4 4v13H7z"/><path d="M14 3.5v4h4"/>',
   trash: '<path d="M5 7h14M10 7V4.8h4V7M7 7l1 13h8l1-13"/>',
@@ -1622,7 +1667,7 @@ function trackRow(t, i, opt) {
   const liked = isLiked(t.id), n = opt.trackNo ? (t.trackNo || i + 1) : i + 1;
   return `<div class="tr" data-id="${esc(t.id)}" data-i="${i}" tabindex="0">
     <span class="c-n"><span class="num">${n}</span><span class="eq" aria-hidden="true"><i></i><i></i><i></i></span><span class="hov">${ic('play')}</span></span>
-    <span class="c-title">${opt.cover === false ? '' : `<img src="${esc(t.cover)}" alt="" loading="lazy">`}<span class="tt"><span class="t-name">${esc(t.title)}</span><span class="t-artist">${t.kind === 'demo' ? '<b class="demo-tag">Demo</b>' : ''}<button class="link" data-go-artist="${esc(t.artist)}">${esc(t.artist)}</button></span></span></span>
+    <span class="c-title">${opt.cover === false ? '' : opt.edit && t.kind === 'cloud' ? `<button class="tr-art-edit" data-edit-song="${esc(t.id)}" aria-label="Edit ${esc(t.title)}" title="Edit Song"><img src="${esc(t.cover)}" alt="" loading="lazy"><span class="pen">${ic('edit')}</span></button>` : `<img src="${esc(t.cover)}" alt="" loading="lazy">`}<span class="tt"><span class="t-name">${esc(t.title)}</span><span class="t-artist">${t.kind === 'demo' ? '<b class="demo-tag">Demo</b>' : ''}<button class="link" data-go-artist="${esc(t.artist)}">${esc(t.artist)}</button></span></span></span>
     <span class="c-album"><button class="link" data-go-album="${esc(t.albumKey)}">${esc(t.album)}</button></span>
     <span class="c-added">${opt.played ? playedWhen(opt.played[i]) : relDate(t.added)}</span>
     <span class="c-like"><button class="like${liked ? ' on' : ''}" data-like="${esc(t.id)}" aria-pressed="${liked}" aria-label="${liked ? 'Remove from' : 'Save to'} Liked Songs">${ic(liked ? 'heartFill' : 'heart')}</button></span>
@@ -1735,7 +1780,7 @@ const VIEWS = {
     S.recent.forEach(add); S.playlists.forEach(p => add('playlist:' + p.id)); albumsSorted().forEach(a => add('album:' + a.key));
     const recentIds = [...S.tracks.keys()].sort((a, b) => tk(b).added - tk(a).added).slice(0, 5);
     const where = cloud.canWrite ? 'Songs you add are saved to your Allegro library online, so they play on any device where you sign in.' : 'Songs you add are saved in this browser.';
-    const callout = (fileCount() ? '' : `<div class="callout"><div class="callout-ic">${ic('music')}</div><div><h3>Bring Your Own Music</h3><p>Everything here now is a generated demo. Drop MP3s anywhere on this page, or use Add music. ${where}</p></div><button class="btn" data-action="add">${ic('upload')}Add Music</button></div>`) + localBanner();
+    const callout = (fileCount() ? '' : `<div class="callout"><div class="callout-ic">${ic('music')}</div><div><h3>Bring Your Own Music</h3><p>Everything here now is a generated demo. Drop MP3s anywhere on this page, or upload them from My Library under Uploads. ${where}</p></div><button class="btn" data-action="add">${ic('upload')}Add Music</button></div>`) + localBanner();
     return `<h1 class="greet">${greet}</h1>
       <div id="home-rows" class="home-rows">${homeRows()}</div>
       ${callout}
@@ -1781,11 +1826,12 @@ const VIEWS = {
   },
   library(v) {
     const tab = v.tab || S.libTab;
-    const chips = ['playlists', 'albums', 'artists', 'songs'].map(t => `<button class="chip${t === tab ? ' on' : ''}" data-chip="${t}">${t[0].toUpperCase() + t.slice(1)}</button>`).join('');
+    const chips = ['playlists', 'albums', 'artists', 'songs', 'uploads'].map(t => `<button class="chip${t === tab ? ' on' : ''}" data-chip="${t}">${t[0].toUpperCase() + t.slice(1)}</button>`).join('');
     let body = '';
     if (tab === 'playlists') body = `<div class="cards">${likedCard()}${S.playlists.map(plCard).join('')}<div class="card" data-action="new-pl" tabindex="0" role="button"><div class="card-art"><div class="liked-art" style="background:color-mix(in srgb,var(--ink) 10%,transparent);color:var(--ink)">${ic('plus')}</div></div><div class="card-t">New Playlist</div><div class="card-s">Start an Empty One</div></div></div>`;
     else if (tab === 'albums') body = `<div class="cards">${albumsSorted().map(albumCard).join('')}</div>`;
     else if (tab === 'artists') body = `<div class="cards">${artistsSorted().map(artistCard).join('')}</div>`;
+    else if (tab === 'uploads') body = uploadsTab();
     else {
       const opts = [['added', 'Recently Added'], ['title', 'Title'], ['artist', 'Artist'], ['album', 'Album'], ['duration', 'Longest']].map(([k, l]) => `<option value="${k}"${S.sort === k ? ' selected' : ''}>${l}</option>`).join('');
       const ids = librarySorted();
@@ -2042,6 +2088,7 @@ function trackMenu(anchor, id, listInfo) {
     { label: 'Go to Artist', icon: 'user', fn: () => go({ name: 'artist', key: t.artist }) },
     { label: 'Go to Album', icon: 'album', fn: () => go({ name: 'album', key: t.albumKey }) }
   ];
+  if (listInfo && listInfo.ctx && listInfo.ctx.key === 'uploads' && t.kind === 'cloud' && cloud.canWrite) items.unshift({ label: 'Edit Song', icon: 'edit', fn: () => editSong(id) }, { sep: true });
   if (listInfo && listInfo.playlist) items.push({ sep: true }, { label: 'Remove from This Playlist', icon: 'trash', fn: () => {
     const p = S.playlists.find(x => x.id === listInfo.playlist); if (!p) return;
     const idx = p.ids.indexOf(id); if (idx < 0) return;
@@ -2350,6 +2397,242 @@ $('#pen-file').addEventListener('change', async e => {
   toast(`New cover for ${p.name}`);
 });
 
+/* ================= Uploads: your own files, with storage use and song editing ================= */
+const uploadedIds = () => [...S.tracks.values()].filter(t => t.kind === 'cloud' || t.kind === 'file').sort((a, b) => b.added - a.added).map(t => t.id);
+const needsInfo = t => t.kind === 'cloud' && (t.album === 'Unknown album' || t.artist === 'Unknown artist' || !t.ownCover);
+function storageNote() {
+  const used = cloud.usage ? cloud.usage.bytes : 0, max = FREE_BYTES;
+  const pct = Math.min(100, used / max * 100), left = Math.max(0, max - used);
+  const usedTxt = cloud.usage ? (used ? mb(used) : '0 MB') : 'Checking…';
+  return `<div class="storage-note" role="note">${ic('cloud')}<p><b>Allegro has ${mb(max)} of free storage.</b> ${cloud.usage ? `You've used ${usedTxt} (${pct < 1 && used ? 'under 1' : Math.round(pct)}%), so ${mb(left)} is left.` : 'Checking how much you have used…'}</p><div class="storage-bar" aria-hidden="true"><i style="width:${pct.toFixed(2)}%"></i></div></div>`;
+}
+function uploadsTab() {
+  const ids = uploadedIds(), missing = ids.filter(id => needsInfo(tk(id))).length;
+  const tools = `<div class="up-tools"><span class="sm">${plural(ids.length, 'song')}${ids.length ? ' · ' + fmtLong(totalDur(ids)) : ''}${ids.length && cloud.canWrite ? ' · Click a cover to edit a song' : ''}</span>`
+    + (missing && cloud.canWrite ? `<button class="btn ghost-sm" data-action="fill-info" title="Look up missing artists, albums and art">${ic('search')}Find Missing Info</button>` : '')
+    + `<button class="btn" data-action="add">${ic('upload')}Upload Songs</button></div>`;
+  const empty = `<div class="empty"><h3>No Uploads Yet</h3><p>Choose Upload Songs, or drop MP3s anywhere on this page.</p></div>`;
+  return storageNote() + localBanner() + tools + trackList(ids, { key: 'uploads', name: 'Uploads' }, { edit: true, empty });
+}
+
+/* ---- finding a song's artist, album and art ---- */
+// Junk often found in downloaded file names: "(Official Audio)", "[Lyrics]", "320kbps" and so on.
+const JUNK = /\s*[\(\[][^\)\]]*\b(official|lyrics?|audio|video|visuali[sz]er|hd|hq|4k|mv|m\/v|kbps|explicit)\b[^\)\]]*[\)\]]/gi;
+const cleanTitle = s => (s || '').replace(JUNK, '').replace(/\s+\d{3}\s*kbps$/i, '').replace(/\s+/g, ' ').trim();
+const normName = s => (s || '').normalize('NFKC').toLowerCase().replace(/[\(\[][^\)\]]*[\)\]]/g, ' ').replace(/\s(feat|ft|featuring|with)\.?\s.*$/, '').replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
+const sameName = (a, b) => { const x = normName(a), y = normName(b); return !!x && x === y; };
+const nameHas = (a, b) => { const x = normName(a), y = normName(b); return !!x && !!y && (x === y || x.includes(y) || y.includes(x)); };
+// "01 - Artist - Title", "Artist - Title (Official Video)", "Title" → the title and artist it could be, in order of likelihood.
+function guessFromFileName(name) {
+  const base = cleanTitle((name || '').replace(/\.[^.]+$/, '').replace(/_/g, ' ')).replace(/^\d{1,3}(?:\s*[-.)]\s*|\s+)(?=\D)/, '').trim();
+  const parts = base.split(/\s+[-–—]\s+/).map(x => x.trim()).filter(Boolean);
+  if (parts.length >= 2) {
+    const a = parts[0], b = parts.slice(1).join(' - ');
+    return [{ artist: a, title: b }, { artist: b, title: a }];
+  }
+  return [{ artist: '', title: base }];
+}
+const lookupCache = new Map();
+async function lookupSongs(term) {
+  term = term.trim().slice(0, 200); if (!term) return [];
+  if (lookupCache.has(term)) return lookupCache.get(term);
+  const ctrl = new AbortController(), timer = setTimeout(() => ctrl.abort(), 9000);
+  try {
+    const d = await api('lookup?term=' + encodeURIComponent(term), { signal: ctrl.signal });
+    lookupCache.set(term, d.results || []);
+    return d.results || [];
+  } finally { clearTimeout(timer); }
+}
+// Picks the search result that really is this song: the name must match, and the artist too when we know it.
+async function findSongInfo(cands) {
+  cands = cands.filter(c => c.title);
+  if (!cands.length) return null;
+  const terms = [...new Set(cands.map(c => (c.artist ? c.artist + ' ' : '') + c.title))].slice(0, 2);
+  const lists = [];
+  for (const term of terms) { try { lists.push(await lookupSongs(term)); } catch (e) {} }
+  const all = lists.flat();
+  for (const c of cands.filter(c => c.artist)) {
+    const r = all.find(r => sameName(r.title, c.title) && nameHas(r.artist, c.artist));
+    if (r) return { r, c };
+  }
+  for (const c of cands.filter(c => !c.artist)) {
+    const r = all.find(r => sameName(r.title, c.title));
+    if (r) return { r, c };
+  }
+  return null;
+}
+async function fetchArt(url) {
+  if (!url) return null;
+  try {
+    const r = await fetch('/api/art?url=' + encodeURIComponent(url), { credentials: 'same-origin' });
+    if (!r.ok) return null;
+    const b = await r.blob();
+    return /^image\/(jpeg|png|gif|webp)$/.test(b.type) && b.size ? b : null;
+  } catch (e) { return null; }
+}
+// Called while importing: fills in whatever the file's own tags left out.
+async function enrichRecord(rec, tags) {
+  if (!cloud.canWrite || (tags.TPE1 && tags.TALB && rec.coverBlob)) return;
+  const fromName = guessFromFileName(rec.name);
+  const cands = tags.TIT2 ? [{ title: cleanTitle(tags.TIT2), artist: tags.TPE1 || '' }, ...(tags.TPE1 ? [] : fromName.filter(c => c.artist).map(c => ({ ...c, title: cleanTitle(tags.TIT2) })))] : fromName;
+  let hit = null;
+  try { hit = await findSongInfo(cands); } catch (e) {}
+  if (!hit) return;
+  const { r } = hit;
+  if (!tags.TIT2) rec.title = r.title;
+  if (!tags.TPE1) rec.artist = r.artist;
+  if (!tags.TALB) { rec.album = r.album || rec.album; if (!tags.TPE2) rec.albumArtist = r.albumArtist || ''; }
+  if (!rec.year) rec.year = r.year;
+  if (!rec.genre) rec.genre = r.genre;
+  if (!rec.trackNo && !tags.TALB) rec.trackNo = r.trackNo;
+  if (!rec.coverBlob) rec.coverBlob = await fetchArt(r.art);
+}
+async function saveSongMeta(id, changes, coverBlob) {
+  const t = tk(id); if (!t || t.kind !== 'cloud') throw new Error('Only songs saved online can be edited.');
+  const meta = { ...t.meta, ...changes };
+  if (coverBlob) {
+    await api('songs/' + encodeURIComponent(id) + '/cover', { method: 'PUT', headers: { 'content-type': coverBlob.type }, body: coverBlob });
+    meta.cover = true; meta.coverV = Date.now();
+  }
+  delete meta.id; delete meta.size;
+  const saved = await api('songs/' + encodeURIComponent(id), { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify(meta) });
+  cloudTrack(id, saved);
+  return saved;
+}
+let filling = false;
+async function fillMissingInfo(btn) {
+  if (filling || !cloud.canWrite) return;
+  const todo = uploadedIds().map(tk).filter(needsInfo);
+  if (!todo.length) { toast('Every upload already has its artist, album and art.'); return; }
+  filling = true; if (btn) btn.disabled = true;
+  let fixed = 0, n = 0;
+  for (const t of todo) {
+    toast(`Looking up ${++n} of ${todo.length}: ${t.title}`);
+    const knownArtist = t.artist !== 'Unknown artist' ? t.artist : '';
+    const cands = [{ title: cleanTitle(t.title), artist: knownArtist }];
+    if (knownArtist) cands.push({ title: knownArtist, artist: cleanTitle(t.title) });   // file was named "Title - Artist"
+    for (const c of guessFromFileName(t.fileName)) if (!cands.some(x => x.title === c.title && x.artist === c.artist)) cands.push(c);
+    let hit = null;
+    try { hit = await findSongInfo(cands); } catch (e) {}
+    if (!hit) continue;
+    const { r, c } = hit, ch = {};
+    // A song with no album came from a bare file name, so the name and artist are guesses: use the real ones.
+    if (!knownArtist || t.album === 'Unknown album' || !nameHas(c.artist, knownArtist)) { ch.title = r.title; ch.artist = r.artist; }
+    if (t.album === 'Unknown album') { ch.album = r.album; ch.albumArtist = r.albumArtist || ''; if (!t.trackNo) ch.trackNo = r.trackNo; }
+    if (!t.year) ch.year = r.year;
+    if (!t.genre) ch.genre = r.genre;
+    const art = t.ownCover ? null : await fetchArt(r.art);
+    try { await saveSongMeta(t.id, ch, art); fixed++; } catch (e) {}
+    rebuild(); render(); renderSide();
+  }
+  filling = false;
+  rebuild(); render(); renderSide(); updateMeta(); refreshUsage();
+  const miss = todo.length - fixed;
+  toast(fixed ? `Filled in ${plural(fixed, 'song')}.${miss ? ` Couldn't find ${miss}; click a cover to edit ${miss === 1 ? 'it' : 'them'} by hand.` : ''}` : "Couldn't find these songs online. Click a cover to edit them by hand.");
+}
+
+/* ---- the song editor (Uploads only) ---- */
+let se = null;
+function editSong(id) {
+  const t = tk(id); if (!t || t.kind !== 'cloud') return;
+  if (!cloud.canWrite) { toast('Sign in to edit songs.'); return; }
+  closeMenu();
+  se = { id, file: null, artUrl: null, remove: false, preview: null, extra: {}, back: document.activeElement, seq: 0 };
+  $('#se-name').value = t.title; $('#se-artist').value = t.artist === 'Unknown artist' ? '' : t.artist; $('#se-album').value = t.album === 'Unknown album' ? '' : t.album;
+  $('#se-err').textContent = ''; $('#se-status').textContent = ''; $('#se-results').hidden = true; $('#se-results').innerHTML = '';
+  $('#se-save').disabled = false; $('#se-save').textContent = 'Save';
+  drawSeArt();
+  $('#song-edit').hidden = false;
+  setTimeout(() => $('#se-name').focus(), 30);
+}
+function seSrc() {
+  const t = tk(se.id);
+  if (se.preview) return se.preview;
+  if (se.artUrl) return se.artUrl;
+  return se.remove || !t ? null : t.ownCover;
+}
+function drawSeArt() {
+  const t = tk(se.id), src = seSrc();
+  const fallback = t ? genCover(t.albumKey + '·' + se.id, t.coverStyle, t.hue) : '';
+  $('#se-art').innerHTML = `<img src="${esc(src || fallback)}" alt="">`;
+  $('#se-actions').hidden = !src;
+}
+function closeSe() {
+  if (!se) return;
+  if (se.preview) URL.revokeObjectURL(se.preview);
+  $('#song-edit').hidden = true;
+  try { se.back && se.back.focus && se.back.focus(); } catch (e) {}
+  se = null;
+}
+$('#se-cover').addEventListener('click', () => $('#se-file').click());
+$('#se-file').addEventListener('change', e => {
+  const f = e.target.files[0]; e.target.value = '';
+  if (!f || !se) return;
+  const bad = coverFileProblem(f); if (bad) { $('#se-err').textContent = bad; return; }
+  cropImage(f).then(blob => {
+    if (!blob || !se) return;
+    if (se.preview) URL.revokeObjectURL(se.preview);
+    se.file = blob; se.artUrl = null; se.remove = false; se.preview = URL.createObjectURL(blob); $('#se-err').textContent = '';
+    drawSeArt();
+  }, err => { $('#se-err').textContent = err.message; });
+});
+$('#se-remove').addEventListener('click', () => { if (!se) return; if (se.preview) URL.revokeObjectURL(se.preview); se.file = null; se.preview = null; se.artUrl = null; se.remove = true; drawSeArt(); });
+$('#se-view').addEventListener('click', () => { if (!se) return; const src = seSrc(); if (src) openLightbox(src, $('#se-name').value); });
+$('#se-close').addEventListener('click', closeSe);
+$('#song-edit').addEventListener('mousedown', e => { if (e.target.id === 'song-edit') closeSe(); });
+$('#se-search').addEventListener('click', async () => {
+  if (!se) return;
+  const title = $('#se-name').value.trim(), artist = $('#se-artist').value.trim();
+  if (!title && !artist) { $('#se-status').textContent = 'Type a song name first.'; return; }
+  const seq = ++se.seq;
+  $('#se-status').textContent = 'Searching…'; $('#se-search').disabled = true;
+  let list = [], why = '';
+  try { list = await lookupSongs(`${artist} ${cleanTitle(title)}`); } catch (e) { why = `The search didn't work (${e.message}). Try again.`; }
+  if (!se || seq !== se.seq) return;
+  $('#se-search').disabled = false;
+  // Best guesses first: same name, then same artist.
+  list = list.slice().sort((a, b) => (sameName(b.title, title) - sameName(a.title, title)) || (nameHas(b.artist, artist) - nameHas(a.artist, artist)));
+  SE_HITS = list.slice(0, 8);
+  $('#se-status').textContent = why || (SE_HITS.length ? 'Pick the right one to fill in the details and art.' : 'No matches. Check the spelling, or fill it in yourself.');
+  $('#se-results').innerHTML = SE_HITS.map((r, i) => `<button type="button" class="se-hit" data-hit="${i}">${r.art ? `<img src="${esc(r.art.replace('600x600', '100x100'))}" alt="" loading="lazy">` : '<span class="ph"></span>'}<span class="se-hit-t"><b>${esc(r.title)}</b><span>${esc(r.artist)}${r.album ? ' · ' + esc(r.album) : ''}${r.year ? ' · ' + esc(r.year) : ''}</span></span></button>`).join('');
+  $('#se-results').hidden = !SE_HITS.length;
+});
+let SE_HITS = [];
+$('#se-results').addEventListener('click', e => {
+  const b = e.target.closest('[data-hit]'); if (!b || !se) return;
+  const r = SE_HITS[+b.dataset.hit]; if (!r) return;
+  $('#se-name').value = r.title; $('#se-artist').value = r.artist; $('#se-album').value = r.album || '';
+  se.extra = { albumArtist: r.albumArtist || '', year: r.year || '', genre: r.genre || '', trackNo: r.trackNo || 0 };
+  if (r.art) { if (se.preview) URL.revokeObjectURL(se.preview); se.preview = null; se.file = null; se.remove = false; se.artUrl = r.art; }
+  drawSeArt();
+  $('#se-results').hidden = true;
+  $('#se-status').textContent = `Filled in from ${r.album || 'the search'}. Press Save to keep it.`;
+});
+$('#song-edit-form').addEventListener('submit', async e => {
+  e.preventDefault();
+  if (!se) return;
+  const t = tk(se.id); if (!t) { closeSe(); return; }
+  const title = $('#se-name').value.trim(), artist = $('#se-artist').value.trim(), album = $('#se-album').value.trim();
+  if (!title) { $('#se-err').textContent = 'Give the song a name.'; $('#se-name').focus(); return; }
+  $('#se-save').disabled = true; $('#se-err').textContent = ''; $('#se-save').textContent = 'Saving…';
+  const ch = { title, artist: artist || 'Unknown artist', album: album || 'Unknown album', ...se.extra };
+  // Keep the album together: if the album artist was just the old artist, it follows the new one.
+  if (!('albumArtist' in se.extra) && t.albumArtist && t.albumArtist === t.artist) ch.albumArtist = '';
+  try {
+    let blob = se.file;
+    if (!blob && se.artUrl) { blob = await fetchArt(se.artUrl); if (!blob) throw new Error("couldn't download that artwork"); }
+    if (se.remove && !blob) ch.cover = false;
+    await saveSongMeta(se.id, ch, blob);
+  } catch (ex) {
+    if (!se) return;
+    $('#se-save').disabled = false; $('#se-save').textContent = 'Save';
+    $('#se-err').textContent = `Couldn't save: ${ex.message}`; return;
+  }
+  closeSe();
+  rebuild(); render(); renderSide(); updateMeta(); renderQueue(); refreshUsage();
+  toast(`Saved ${title}`);
+});
+
 /* ================= drag to rearrange My Library ================= */
 let sd = null;
 $('#side-list').addEventListener('dragstart', e => e.preventDefault());
@@ -2522,9 +2805,7 @@ async function importFiles(list) {
     const tags = await readTags(f);
     const duration = await probeDuration(f);
     if (!isFinite(duration) || duration <= 0) { failed++; continue; }
-    const base = f.name.replace(/\.[^.]+$/, '').replace(/_/g, ' ').trim();
-    let fnArtist = '', fnTitle = base; const dash = base.split(/\s+[-–—]\s+/);
-    if (dash.length >= 2) { fnArtist = dash[0].replace(/^\d+[.\s-]*/, '').trim(); fnTitle = dash.slice(1).join(' - ').trim(); }
+    const [g0] = guessFromFileName(f.name), fnArtist = g0.artist, fnTitle = g0.title;
     const genre = (tags.TCON || '').replace(/^\(\d+\)/, '').trim();
     const rec = {
       id: uid('f'), name: f.name, blob: f, added: Date.now() + added,
@@ -2533,6 +2814,7 @@ async function importFiles(list) {
       genre: /^\d*$/.test(genre) ? '' : genre, coverBlob: tags.APIC || null, duration
     };
     if (cloud.canWrite) {
+      if (!(tags.TPE1 && tags.TALB && rec.coverBlob)) { toast(`Finding info for ${rec.title} (${n} of ${files.length})`); await enrichRecord(rec, tags); }
       toast(`Uploading ${n} of ${files.length}: ${rec.title}`);
       try {
         const meta = await uploadSong(rec);
@@ -2623,7 +2905,7 @@ function cloudTrack(id, d) {
   Object.assign(t, {
     title: d.title || 'Untitled', artist: d.artist || 'Unknown artist', albumArtist: d.albumArtist || '', album: d.album || 'Unknown album',
     year: d.year || '', trackNo: d.trackNo || 0, genre: d.genre || '', duration: d.duration, added: d.added || Date.now(),
-    fileName: d.fileName, size: d.size, mime: d.mime, ownCover: d.cover ? coverUrl(id) : null,
+    fileName: d.fileName, size: d.size, mime: d.mime, ownCover: d.cover ? coverUrl(id) + (d.coverV ? '?v=' + d.coverV : '') : null,
     hue: hash((d.album || '') + (d.artist || '')) % 360, coverStyle: hash(d.album || '') % 5, meta: JSON.parse(JSON.stringify(d))
   });
   if (!t.url || !t.url.startsWith('blob:')) t.url = audioUrl(id);
@@ -2829,6 +3111,7 @@ document.addEventListener('click', e => {
   const qrm = T.closest('[data-qrm]');
   if (qrm) { const i = +qrm.dataset.qrm; if (i > S.qi) { const [id] = S.queue.splice(i, 1); if (S.origQueue) { const j = S.origQueue.lastIndexOf(id); if (j >= 0) S.origQueue.splice(j, 1); } renderQueue(); } return; }
   const qr = T.closest('[data-qi]'); if (qr) { const i = +qr.dataset.qi; if (i !== S.qi) jumpTo(i); return; }
+  const es = T.closest('[data-edit-song]'); if (es) { editSong(es.dataset.editSong); return; }
   const row = T.closest('.tr');
   if (row) {
     const tl = row.closest('[data-list]'), L = tl && LISTS[tl.dataset.list]; if (!L) return;
@@ -2837,12 +3120,12 @@ document.addEventListener('click', e => {
   }
   const chip = T.closest('[data-chip]'); if (chip) { S.libTab = chip.dataset.chip; save(); S.view = { name: 'library', tab: S.libTab }; render(); return; }
   const ac = T.closest('[data-action]');
-  if (ac) { if (ac.dataset.action === 'add') addMenu(ac); else if (ac.dataset.action === 'new-pl') newPlaylist(); else if (ac.dataset.action === 'upload-local') uploadLocal(ac); return; }
+  if (ac) { if (ac.dataset.action === 'add') addMenu(ac); else if (ac.dataset.action === 'new-pl') newPlaylist(); else if (ac.dataset.action === 'upload-local') uploadLocal(ac); else if (ac.dataset.action === 'fill-info') fillMissingInfo(ac); return; }
   if (S.view.name === 'playlist' && T.closest('.vhead .art')) { editPlaylist(S.view.key); return; }
   const op = T.closest('[data-open]'); if (op) { openKey(op.dataset.open); return; }
 });
 document.addEventListener('keydown', e => {
-  if (e.key === 'Escape') { if (crop) { cropClose(null); return; } if (!$('#lightbox').hidden) { closeLightbox(); return; } if (pe) { closePe(); return; } if (!$('#menu').hidden) { closeMenu(); return; } if (!$('#sheet').hidden) { closeSheet(); return; } if (S.renaming) { S.renaming = null; render(); } return; }
+  if (e.key === 'Escape') { if (crop) { cropClose(null); return; } if (!$('#lightbox').hidden) { closeLightbox(); return; } if (se) { closeSe(); return; } if (pe) { closePe(); return; } if (!$('#menu').hidden) { closeMenu(); return; } if (!$('#sheet').hidden) { closeSheet(); return; } if (S.renaming) { S.renaming = null; render(); } return; }
   if (e.target.id === 'rename-input' && e.key === 'Enter') { e.preventDefault(); commitRename(); return; }
   const el = e.target;
   if ((e.key === 'Enter' || e.key === ' ') && el.matches && el.matches('.tr, .card, .qt, [data-open][tabindex], [data-qi]')) { e.preventDefault(); el.click(); return; }
@@ -2863,7 +3146,6 @@ $('#sl-search-btn').addEventListener('click', () => { const w = $('#sl-search-wr
 $('#sl-search').addEventListener('input', e => { S.libQ = e.target.value; renderSide(); });
 $('#sl-search').addEventListener('blur', e => { if (!e.target.value) { e.target.hidden = true; $('#sl-search-wrap').classList.remove('open'); } });
 $('#sl-search').addEventListener('keydown', e => { if (e.key === 'Escape') { e.target.value = ''; S.libQ = ''; renderSide(); e.target.blur(); } });
-$('#add-btn').addEventListener('click', e => addMenu(e.currentTarget));
 $('#acct-btn').addEventListener('click', e => openMenu(e.currentTarget, [{ label: 'Sign Out', icon: 'user', fn: signOut }], 'Allegro Account'));
 $('#search-input').addEventListener('input', e => { S.q = e.target.value; render(); });
 $('#p-cover').addEventListener('click', () => { if (innerWidth < 760 || S.current) openSheet(); });
