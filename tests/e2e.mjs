@@ -210,10 +210,17 @@ try {
   check(order[2] === before[0] && order[0] === before[1], 'dragging a song reorders the playlist and saves', JSON.stringify(order.slice(0, 3)));
 
   // --- folders: Create > Folder, name it, move a playlist in, and the folder page shows its playlists
+  const foldersBefore = ((await lib(A)).state.folders || []).length;
   await A.click('#side-list .li-create'); await A.waitForTimeout(300);
-  await A.click('#menu .mi:has-text("Folder")'); await A.waitForTimeout(600);
-  const renaming = await A.evaluate(() => document.activeElement && document.activeElement.id === 'rename-input');
-  await A.keyboard.type('华语'); await A.keyboard.press('Enter'); await A.waitForTimeout(500);
+  await A.click('#menu .mi:has-text("Folder")'); await A.waitForTimeout(500);
+  const fdDlg = await A.isVisible('#fd-edit') && (await A.textContent('#fd-title')) === 'Create Folder' && (await A.textContent('#fd-save')) === 'Create';
+  await A.keyboard.press('Escape'); await A.waitForTimeout(800);
+  const fdNotYet = ((await lib(A)).state.folders || []).length === foldersBefore && !(await A.$('#side-list .li[data-open^="folder:"]'));
+  check(fdDlg && fdNotYet, 'Create Folder asks first, and closing it creates nothing');
+  await A.click('#side-list .li-create'); await A.waitForTimeout(300);
+  await A.click('#menu .mi:has-text("Folder")'); await A.waitForTimeout(500);
+  const renaming = await A.evaluate(() => document.activeElement && document.activeElement.id === 'fd-name');
+  await A.fill('#fd-name', '华语'); await A.keyboard.press('Enter'); await A.waitForTimeout(800);
   data = await lib(A);
   const fd = (data.state.folders || []).find(f => f.name === '华语');
   const fdSide = fd && await A.$eval(`#side-list .li[data-open="folder:${fd.id}"]`, e => [!!e.querySelector('.folder-art .ic'), e.textContent.includes('华语')]).catch(() => null);
@@ -221,10 +228,17 @@ try {
   check(sideNow[0] === 'liked' && sideNow[1] === 'folder:' + (fd && fd.id), 'a new folder goes right under Liked Songs', JSON.stringify(sideNow.slice(0, 3)));
   check(renaming && !!fd && fdSide && fdSide[0] && fdSide[1], 'Create > Folder makes a named folder with a plain folder icon', JSON.stringify({ renaming, fd, fdSide }));
   const madeId = data.state.playlists.find(p => p.name === 'Made In Test').id;
-  await A.click(`#side-list [data-open="playlist:${madeId}"]`); await A.waitForTimeout(500);
-  await A.click('.actions [data-ctx-more]'); await A.waitForTimeout(250);
-  await A.click('#menu .mi:has-text("Move to Folder")'); await A.waitForTimeout(250);
-  await A.click('#menu .mi:has-text("华语")'); await A.waitForTimeout(600);
+  // drag the playlist onto the folder in the sidebar
+  {
+    const src = await (await A.$(`#side-list [data-open="playlist:${madeId}"]`)).boundingBox(), dst = await (await A.$(`#side-list [data-open="folder:${fd.id}"]`)).boundingBox();
+    await A.mouse.move(src.x + 40, src.y + src.height / 2); await A.mouse.down();
+    await A.mouse.move(src.x + 45, src.y + src.height / 2 + 12, { steps: 4 });
+    await A.mouse.move(dst.x + 60, dst.y + dst.height / 2, { steps: 10 }); await A.waitForTimeout(150);
+    const lit = await A.$eval(`#side-list [data-open="folder:${fd.id}"]`, e => e.classList.contains('drop-into'));
+    await A.mouse.up(); await A.waitForTimeout(800);
+    data = await lib(A);
+    check(lit && ((data.state.folders.find(f => f.id === fd.id) || {}).ids || []).includes(madeId), 'dragging a playlist onto a folder puts it inside', JSON.stringify({ lit }));
+  }
   data = await lib(A);
   const inFolder = (data.state.folders.find(f => f.id === fd.id) || {}).ids || [];
   const goneFromSide = !(await A.$(`#side-list [data-open="playlist:${madeId}"]`));

@@ -708,6 +708,9 @@ body.dragging-row .tr:hover .like:not(.on), body.dragging-row .tr:hover .more { 
 .drag-ghost span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 /* ---------- create playlist item ---------- */
+.fd-modal { width: min(100%, 420px); }
+.li.drop-into { background: color-mix(in srgb, var(--ink) 10%, transparent); box-shadow: inset 0 0 0 2px var(--ink); }
+.li.drop-into .folder-art { background: var(--ink); color: var(--panel); }
 .folder-art { width: 100%; height: 100%; display: grid; place-items: center; background: var(--chip); color: var(--muted); }
 .folder-art .ic { width: 46%; height: 46%; stroke-width: 1.5; }
 .folder-head { display: flex; align-items: center; gap: 10px; margin-top: 6px; }
@@ -930,6 +933,14 @@ body.touch-input .has-pen::after { display: none; }
     <p class="pe-note">Cover photos: JPG, PNG, WebP or GIF. You can crop and zoom after choosing one.</p>
     <p class="gate-err" id="pe-err" role="alert"></p>
     <div class="modal-foot"><button class="btn" type="submit" id="pe-save">Save</button></div>
+  </form>
+</div>
+<div class="modal-scrim" id="fd-edit" hidden>
+  <form class="modal fd-modal" id="fd-edit-form" role="dialog" aria-modal="true" aria-labelledby="fd-title" novalidate>
+    <div class="modal-head"><h2 id="fd-title">Create Folder</h2><button type="button" class="circ" id="fd-close" aria-label="Close"><i data-ic="close"></i></button></div>
+    <label class="field">Name<input id="fd-name" maxlength="100" autocomplete="off"></label>
+    <p class="gate-err" id="fd-err" role="alert"></p>
+    <div class="modal-foot"><button class="btn" type="submit" id="fd-save">Create</button></div>
   </form>
 </div>
 <div class="modal-scrim" id="song-edit" hidden>
@@ -2329,17 +2340,49 @@ function createMenu(anchor) {
     { label: 'Folder', icon: 'folder', fn: () => newFolder() }
   ], 'Create');
 }
-function newFolder(withPlaylist = null) {
+// Creating or renaming a folder goes through a small window first, like Create Playlist: closing it changes nothing.
+let fdlg = null;
+function newFolder(withPlaylist = null) { openFolderDialog({ withPlaylist }); }
+function openFolderDialog({ id = null, withPlaylist = null } = {}) {
+  closeMenu();
+  const f = id && S.folders.find(x => x.id === id);
   let n = 1; const nm = i => i === 1 ? 'New Folder' : `New Folder #${i}`;
-  while (S.folders.some(f => f.name === nm(n))) n++;
-  const f = { id: uid('fd'), name: nm(n), created: Date.now(), ids: [] };
+  while (S.folders.some(x => x.name === nm(n))) n++;
+  fdlg = { id: f ? f.id : null, withPlaylist, back: document.activeElement };
+  $('#fd-title').textContent = f ? 'Rename Folder' : 'Create Folder';
+  $('#fd-save').textContent = f ? 'Save' : 'Create';
+  $('#fd-name').value = f ? f.name : nm(n);
+  $('#fd-err').textContent = '';
+  $('#fd-edit').hidden = false;
+  setTimeout(() => { $('#fd-name').focus(); $('#fd-name').select(); }, 30);
+}
+function closeFd() {
+  if (!fdlg) return;
+  $('#fd-edit').hidden = true;
+  try { fdlg.back && fdlg.back.focus && fdlg.back.focus(); } catch (e) {}
+  fdlg = null;
+}
+$('#fd-close').addEventListener('click', closeFd);
+$('#fd-edit').addEventListener('mousedown', e => { if (e.target.id === 'fd-edit') closeFd(); });
+$('#fd-edit-form').addEventListener('submit', e => {
+  e.preventDefault();
+  if (!fdlg) return;
+  const name = $('#fd-name').value.trim();
+  if (!name) { $('#fd-err').textContent = 'Give the folder a name.'; $('#fd-name').focus(); return; }
+  const { id, withPlaylist } = fdlg;
+  closeFd();
+  if (id) {
+    const f = S.folders.find(x => x.id === id); if (!f) return;
+    f.name = name; userActed = true; save(); render(); renderSide(); toast('Folder renamed');
+    return;
+  }
+  const f = { id: uid('fd'), name, created: Date.now(), ids: [] };
   if (withPlaylist) { S.folders.forEach(x => { x.ids = x.ids.filter(i => i !== withPlaylist); }); f.ids.push(withPlaylist); }
   S.folders.push(f); toTopOfLibrary('folder:' + f.id);
   userActed = true; save();
-  go({ name: 'folder', key: f.id });
-  S.renaming = f.id; render(); renderSide();
-  const inp = $('#rename-input'); if (inp) { inp.focus(); inp.select(); }
-}
+  go({ name: 'folder', key: f.id }); renderSide();
+  toast(`Created ${f.name}`);
+});
 function moveToFolder(plId, folderId) {
   S.folders.forEach(f => { f.ids = f.ids.filter(i => i !== plId); });
   const f = folderId && S.folders.find(x => x.id === folderId);
@@ -2362,7 +2405,7 @@ function folderSub(plId) {
 function folderMenu(anchor, id) {
   const f = S.folders.find(x => x.id === id); if (!f) return;
   openMenu(anchor, [
-    { label: 'Rename', icon: 'edit', fn: () => { S.renaming = f.id; render(); const inp = $('#rename-input'); if (inp) { inp.focus(); inp.select(); } } },
+    { label: 'Rename', icon: 'edit', fn: () => openFolderDialog({ id: f.id }) },
     { sep: true },
     { label: 'Delete Folder', icon: 'trash', danger: true, fn: () => deleteFolder(f.id) }
   ], f.name);
@@ -3006,6 +3049,15 @@ function sdStart() {
 function sdMove(x, y) {
   sd.ghost.style.transform = `translate(${x + 14}px, ${y - 20}px)`;
   const rects = sd.items.map(el => el.getBoundingClientRect());
+  // A playlist held over the middle of a folder goes into that folder instead of moving in the list.
+  const into = sd.item.dataset.open.startsWith('playlist:') && sd.items.find((el, i) => {
+    if (!el.dataset.open.startsWith('folder:')) return false;
+    const r = rects[i], mx = sd.grid ? r.width * .2 : 0, my = sd.grid ? r.height * .2 : r.height * .22;
+    return x >= r.left + mx && x <= r.right - mx && y >= r.top + my && y <= r.bottom - my;
+  });
+  if (sd.into !== into) { if (sd.into) sd.into.classList.remove('drop-into'); sd.into = into || null; if (into) into.classList.add('drop-into'); }
+  sd.line.style.display = into ? 'none' : '';
+  if (into) { const L = sd.list.getBoundingClientRect(); if (y < L.top + 40) sd.list.scrollBy(0, -10); else if (y > L.bottom - 40) sd.list.scrollBy(0, 10); return; }
   let to = rects.length;
   for (let i = 0; i < rects.length; i++) {
     const r = rects[i];
@@ -3028,8 +3080,10 @@ function sdEnd(commit) {
   if (!d.active) return;
   suppressClick = true; setTimeout(() => { suppressClick = false; }, 80);
   d.ghost.remove(); d.line.remove(); d.item.classList.remove('drag-src');
+  if (d.into) d.into.classList.remove('drop-into');
   document.body.classList.remove('dragging-row');
   if (!commit) return;
+  if (d.into) { moveToFolder(d.item.dataset.open.slice(9), d.into.dataset.open.slice(7)); return; }
   let to = d.to; if (to > d.from) to--;
   if (to === d.from) return;
   const shown = d.items.map(el => el.dataset.open);
@@ -3464,7 +3518,7 @@ document.addEventListener('click', e => {
   const op = T.closest('[data-open]'); if (op) { openKey(op.dataset.open); return; }
 });
 document.addEventListener('keydown', e => {
-  if (e.key === 'Escape') { if (crop) { cropClose(null); return; } if (!$('#lightbox').hidden) { closeLightbox(); return; } if (se) { closeSe(); return; } if (pe) { closePe(); return; } if (!$('#menu').hidden) { closeMenu(); return; } if (!$('#sheet').hidden) { closeSheet(); return; } if (S.renaming) { S.renaming = null; render(); } return; }
+  if (e.key === 'Escape') { if (crop) { cropClose(null); return; } if (!$('#lightbox').hidden) { closeLightbox(); return; } if (fdlg) { closeFd(); return; } if (se) { closeSe(); return; } if (pe) { closePe(); return; } if (!$('#menu').hidden) { closeMenu(); return; } if (!$('#sheet').hidden) { closeSheet(); return; } if (S.renaming) { S.renaming = null; render(); } return; }
   if (e.target.id === 'rename-input' && e.key === 'Enter') { e.preventDefault(); commitRename(); return; }
   const el = e.target;
   if ((e.key === 'Enter' || e.key === ' ') && el.matches && el.matches('.tr, .card, .qt, [data-open][tabindex], [data-qi]')) { e.preventDefault(); el.click(); return; }
