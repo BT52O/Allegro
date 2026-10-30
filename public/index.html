@@ -1035,6 +1035,12 @@ body.dragging-row .tr:hover .like:not(.on), body.dragging-row .tr:hover .more { 
 .fp-row { display: grid; grid-template-columns: 40px minmax(0, 1fr); gap: 10px; align-items: center; width: 100%; padding: 6px 8px; border-radius: 8px; text-align: left; }
 .fp-row:hover, .fp-row:focus-visible { background: var(--hover); }
 .fp-row.drag-src { opacity: .35; }
+.fp-row.fp-folder { grid-template-columns: 40px minmax(0, 1fr) 16px; }
+.fp-row > .ic { width: 16px; height: 16px; color: var(--muted); }
+.fp-row.open { background: var(--hover); }
+.fp-row.drop-into { background: color-mix(in srgb, var(--ink) 10%, transparent); box-shadow: inset 0 0 0 2px var(--ink); }
+.folder-pop.sub { animation: pop-in .14s cubic-bezier(.2, .8, .2, 1); }
+.folder-cards .card.drop-into { background: color-mix(in srgb, var(--ink) 8%, transparent); box-shadow: inset 0 0 0 2px var(--ink); }
 .folder-pop { position: fixed; }
 .folder-pop .drop-line { left: 10px; right: 10px; }
 .fp-art { width: 40px; height: 40px; border-radius: 6px; overflow: hidden; }
@@ -3271,7 +3277,7 @@ $('#sp-list').addEventListener('click', e => {
 const fpop = Object.assign(document.createElement('div'), { id: 'folder-pop', className: 'folder-pop', hidden: true });
 fpop.setAttribute('role', 'menu');
 document.body.appendChild(fpop);
-const fp = { timer: 0, hide: 0, anim: 0, key: null };
+const fp = { timer: 0, hide: 0, anim: 0, sub: 0, key: null };
 function showFolderPop(li) {
   const f = S.folders.find(x => 'folder:' + x.id === li.dataset.open); if (!f || sd || cd || drag) return;
   const items = folderItems(f);
@@ -3280,12 +3286,9 @@ function showFolderPop(li) {
   const wasOpen = !fpop.hidden && !fpop.classList.contains('closing');
   const oldTop = parseFloat(fpop.style.top) || 0, oldH = wasOpen ? fpop.offsetHeight : 0;
   clearTimeout(fp.anim); fpop.classList.remove('closing');
-  fpop.innerHTML = `<div class="fp-body${wasOpen ? ' swap' : ''}"><div class="fp-head"><b>${esc(f.name)}</b><span>${esc(folderDesc(f))}</span></div>`
-    + (items.length ? items.map(x => x.kind === 'playlist'
-        ? `<button class="fp-row" data-open="playlist:${esc(x.p.id)}" role="menuitem"><span class="fp-art">${plArt(x.p)}</span><span class="fp-t"><b>${esc(x.p.name)}</b><span>${plural(live(x.p.ids).length, 'song')}</span></span></button>`
-        : `<button class="fp-row" data-open="folder:${esc(x.f.id)}" role="menuitem"><span class="fp-art">${folderArt()}</span><span class="fp-t"><b>${esc(x.f.name)}</b><span>Folder · ${esc(folderDesc(x.f))}</span></span></button>`).join('')
-      : `<p class="fp-empty">Nothing here yet. Drag a playlist onto this folder to add it.</p>`) + `</div>`;
-  fp.key = li.dataset.open;
+  closeSubPops(1);
+  fpop.innerHTML = fpBody(f, wasOpen);
+  fp.key = li.dataset.open; fpop.dataset.key = li.dataset.open; fpop.dataset.level = '0';
   fpop.hidden = false;
   fpop.style.height = '';
   const r = li.getBoundingClientRect(), side = $('.side').getBoundingClientRect(), h = fpop.offsetHeight;
@@ -3299,8 +3302,60 @@ function showFolderPop(li) {
     fp.anim = setTimeout(() => { fpop.classList.remove('moving'); fpop.style.height = ''; }, 280);
   } else { fpop.classList.remove('moving'); fpop.style.top = top + 'px'; }
 }
+function fpBody(f, swap) {
+  const items = folderItems(f);
+  return `<div class="fp-body${swap ? ' swap' : ''}"><div class="fp-head"><b>${esc(f.name)}</b><span>${esc(folderDesc(f))}</span></div>`
+    + (items.length ? items.map(x => x.kind === 'playlist'
+        ? `<button class="fp-row" data-open="playlist:${esc(x.p.id)}" role="menuitem"><span class="fp-art">${plArt(x.p)}</span><span class="fp-t"><b>${esc(x.p.name)}</b><span>${plural(live(x.p.ids).length, 'song')}</span></span></button>`
+        : `<button class="fp-row fp-folder" data-open="folder:${esc(x.f.id)}" role="menuitem" aria-haspopup="menu"><span class="fp-art">${folderArt()}</span><span class="fp-t"><b>${esc(x.f.name)}</b><span>Folder · ${esc(folderDesc(x.f))}</span></span>${ic('fwd')}</button>`).join('')
+      : `<p class="fp-empty">Nothing here yet. Drag a playlist onto this folder to add it.</p>`) + `</div>`;
+}
+/* Folders inside folders open their own preview beside the one you're in, as deep as they go, like nested menus. */
+const fsubs = [];
+const allPops = () => [fpop, ...fsubs.filter(x => !x.hidden)];
+function popAt(level) {
+  if (!level) return fpop;
+  let el = fsubs[level - 1];
+  if (!el) {
+    el = Object.assign(document.createElement('div'), { className: 'folder-pop sub', hidden: true }); el.setAttribute('role', 'menu'); el.dataset.level = String(level);
+    document.body.appendChild(el); wirePop(el); fsubs[level - 1] = el;
+  }
+  return el;
+}
+function closeSubPops(from) {
+  for (let i = Math.max(1, from); i <= fsubs.length; i++) { const el = fsubs[i - 1]; if (el && !el.hidden) { el.hidden = true; el.dataset.key = ''; } }
+  [fpop, ...fsubs].forEach(el => { if (el && +el.dataset.level < from) el.querySelectorAll('.fp-row.open').forEach(r => { const lv = +el.dataset.level + 1; if (lv >= from) r.classList.remove('open'); }); });
+}
+function showSubPop(row) {
+  const parent = row.closest('.folder-pop'), level = +parent.dataset.level + 1, key = row.dataset.open;
+  const f = S.folders.find(x => 'folder:' + x.id === key); if (!f || fpd) return;
+  const el = popAt(level);
+  if (!el.hidden && el.dataset.key === key) { closeSubPops(level + 1); return; }
+  closeSubPops(level);
+  parent.querySelectorAll('.fp-row.open').forEach(r => r.classList.remove('open')); row.classList.add('open');
+  el.innerHTML = fpBody(f, false); el.dataset.key = key; el.hidden = false;
+  const P = parent.getBoundingClientRect(), r = row.getBoundingClientRect(), w = el.offsetWidth, h = el.offsetHeight;
+  let left = P.right + 6; if (left + w > innerWidth - 8) left = Math.max(8, P.left - w - 6);
+  el.style.left = left + 'px'; el.style.top = Math.max(8, Math.min(r.top - 8, innerHeight - h - 8)) + 'px';
+}
+function wirePop(el) {
+  el.addEventListener('pointerenter', () => clearTimeout(fp.hide));
+  el.addEventListener('pointerleave', fpHideSoon);
+  el.addEventListener('click', () => setTimeout(() => hideFolderPop(true), 0));
+  el.addEventListener('pointerdown', e => { const row = e.target.closest('.fp-row'); if (!row || e.button !== 0 || e.pointerType !== 'mouse') return; fpd = { row, pop: el, x: e.clientX, y: e.clientY, pid: e.pointerId, active: false }; });
+  el.addEventListener('pointerover', e => {
+    if (e.pointerType !== 'mouse' || (fpd && fpd.active)) return;
+    const row = e.target.closest('.fp-row'); if (!row) return;
+    clearTimeout(fp.sub);
+    const level = +el.dataset.level;
+    if (row.dataset.open.startsWith('folder:')) fp.sub = setTimeout(() => showSubPop(row), 160);
+    else if (fsubs[level] && !fsubs[level].hidden) fp.sub = setTimeout(() => closeSubPops(level + 1), 260);
+  });
+  el.addEventListener('scroll', () => closeSubPops(+el.dataset.level + 1), { passive: true });
+}
 function hideFolderPop(now) {
-  clearTimeout(fp.timer); clearTimeout(fp.hide); clearTimeout(fp.anim); fp.key = null;
+  clearTimeout(fp.timer); clearTimeout(fp.hide); clearTimeout(fp.anim); clearTimeout(fp.sub); fp.key = null;
+  closeSubPops(1);
   if (fpop.hidden) return;
   if (now === true) { fpop.hidden = true; fpop.classList.remove('closing', 'moving'); return; }
   fpop.classList.add('closing');
@@ -3309,7 +3364,6 @@ function hideFolderPop(now) {
 const fpHideSoon = () => { if (fpd && fpd.active) return; clearTimeout(fp.hide); fp.hide = setTimeout(hideFolderPop, 200); };
 // Drag playlists up and down inside the preview to rearrange the folder.
 let fpd = null;
-fpop.addEventListener('pointerdown', e => { const row = e.target.closest('.fp-row'); if (!row || e.button !== 0 || e.pointerType !== 'mouse') return; fpd = { row, x: e.clientX, y: e.clientY, pid: e.pointerId, active: false }; });
 document.addEventListener('pointermove', e => {
   if (!fpd || e.pointerId !== fpd.pid) return;
   if (!fpd.active) { if (Math.hypot(e.clientX - fpd.x, e.clientY - fpd.y) < 5) return; fpdStart(); }
@@ -3318,34 +3372,49 @@ document.addEventListener('pointermove', e => {
 document.addEventListener('pointerup', e => { if (fpd && e.pointerId === fpd.pid) fpdEnd(true); });
 document.addEventListener('pointercancel', e => { if (fpd && e.pointerId === fpd.pid) fpdEnd(false); });
 function fpdStart() {
-  fpd.active = true; clearTimeout(fp.hide); clearTimeout(fp.timer);
-  fpd.rows = [...fpop.querySelectorAll('.fp-row')]; fpd.from = fpd.rows.indexOf(fpd.row); fpd.to = fpd.from;
+  fpd.active = true; clearTimeout(fp.hide); clearTimeout(fp.timer); clearTimeout(fp.sub);
+  closeSubPops(+fpd.pop.dataset.level + 1);
+  fpd.rows = [...fpd.pop.querySelectorAll('.fp-row')]; fpd.from = fpd.rows.indexOf(fpd.row); fpd.to = fpd.from;
   fpd.row.classList.add('drag-src'); document.body.classList.add('dragging-row');
-  fpd.line = document.createElement('div'); fpd.line.className = 'drop-line'; fpop.appendChild(fpd.line);
+  fpd.line = document.createElement('div'); fpd.line.className = 'drop-line'; fpd.pop.appendChild(fpd.line);
 }
 function fpdMove(y) {
-  const rows = fpd.rows; let to = rows.length;
+  const rows = fpd.rows, pop = fpd.pop, id = fpd.row.dataset.open.slice(fpd.row.dataset.open.indexOf(':') + 1);
+  // over the middle of a folder row: drop the playlist into that folder
+  const into = rows.find(r => { if (r === fpd.row || !r.dataset.open.startsWith('folder:') || !canMoveInto(id, r.dataset.open.slice(7))) return false; const b = r.getBoundingClientRect(), m = b.height * .22; return y >= b.top + m && y <= b.bottom - m; }) || null;
+  if (fpd.into !== into) { if (fpd.into) fpd.into.classList.remove('drop-into'); fpd.into = into; if (into) into.classList.add('drop-into'); }
+  fpd.line.style.display = into ? 'none' : '';
+  let to = rows.length;
   for (let i = 0; i < rows.length; i++) { const r = rows[i].getBoundingClientRect(); if (y < r.top + r.height / 2) { to = i; break; } }
   fpd.to = to;
-  const P = fpop.getBoundingClientRect(), edge = to < rows.length ? rows[to].getBoundingClientRect().top : rows[rows.length - 1].getBoundingClientRect().bottom;
-  fpd.line.style.top = (edge - P.top + fpop.scrollTop - 1) + 'px';
-  if (y < P.top + 30) fpop.scrollBy(0, -8); else if (y > P.bottom - 30) fpop.scrollBy(0, 8);
+  const P = pop.getBoundingClientRect(), edge = to < rows.length ? rows[to].getBoundingClientRect().top : rows[rows.length - 1].getBoundingClientRect().bottom;
+  fpd.line.style.top = (edge - P.top + pop.scrollTop - 1) + 'px';
+  if (y < P.top + 30) pop.scrollBy(0, -8); else if (y > P.bottom - 30) pop.scrollBy(0, 8);
 }
 function fpdEnd(commit) {
   const d = fpd; fpd = null;
   if (!d.active) return;
   suppressClick = true; setTimeout(() => { suppressClick = false; }, 80);
   d.line.remove(); d.row.classList.remove('drag-src'); document.body.classList.remove('dragging-row');
+  if (d.into) d.into.classList.remove('drop-into');
   if (!commit) return;
+  const refresh = () => {   // redraw the open previews with the new contents
+    const li = $(`#side-list [data-open="${fp.key}"]`); if (li) { fp.key = null; showFolderPop(li); }
+  };
+  if (d.into) {
+    const id = d.row.dataset.open.slice(d.row.dataset.open.indexOf(':') + 1);
+    if (moveToFolder(id, d.into.dataset.open.slice(7))) refresh();
+    return;
+  }
   let to = d.to; if (to > d.from) to--;
   if (to === d.from) return;
-  const f = S.folders.find(x => 'folder:' + x.id === fp.key); if (!f) return;
+  const f = S.folders.find(x => 'folder:' + x.id === d.pop.dataset.key); if (!f) return;
   const ids = d.rows.map(r => r.dataset.open.slice(r.dataset.open.indexOf(':') + 1)), [m] = ids.splice(d.from, 1);
   ids.splice(to, 0, m);
   f.ids = [...ids, ...f.ids.filter(i => !ids.includes(i))];
   userActed = true; save(); renderSide();
   if (S.view.name === 'folder' && S.view.key === f.id) render();
-  const li = $(`#side-list [data-open="folder:${f.id}"]`); if (li) { fp.key = null; showFolderPop(li); }
+  if (d.pop === fpop) refresh(); else { d.pop.innerHTML = fpBody(f, false); }
 }
 $('#side-list').addEventListener('pointerover', e => {
   if (e.pointerType !== 'mouse' || sd || cd || drag) return;
@@ -3358,11 +3427,9 @@ $('#side-list').addEventListener('pointerout', e => {
   const li = e.target.closest('.li[data-open^="folder:"]'); if (!li || li.contains(e.relatedTarget)) return;
   clearTimeout(fp.timer); fpHideSoon();
 });
-fpop.addEventListener('pointerenter', () => clearTimeout(fp.hide));
-fpop.addEventListener('pointerleave', fpHideSoon);
+wirePop(fpop);
 $('#side-list').addEventListener('scroll', () => hideFolderPop(), { passive: true });
-document.addEventListener('pointerdown', e => { if (!fpop.hidden && !fpop.contains(e.target) && !e.target.closest('.li[data-open^="folder:"]')) hideFolderPop(); }, true);
-fpop.addEventListener('click', () => setTimeout(() => hideFolderPop(true), 0));
+document.addEventListener('pointerdown', e => { if (!fpop.hidden && !e.target.closest('.folder-pop') && !e.target.closest('.li[data-open^="folder:"]')) hideFolderPop(); }, true);
 
 /* ================= Now Playing panel: Wiki, Lyrics, Comments ================= */
 let spTab = 'wiki';
@@ -3921,6 +3988,12 @@ function cdMove(x, y) {
   if (overSide) return;
   cd.line.style.width = '';
   const rects = cd.cards.map(el => el.getBoundingClientRect());
+  // over the middle of a folder card on the page: drop it inside that folder
+  const cardKey = cd.card.dataset.open, cardId = cardKey.slice(cardKey.indexOf(':') + 1);
+  const intoCard = cd.cards.find((el, i) => { if (el === cd.card || !el.dataset.open.startsWith('folder:') || !canMoveInto(cardId, el.dataset.open.slice(7))) return false; const r = rects[i], mx = r.width * .2, my = r.height * .15; return x >= r.left + mx && x <= r.right - mx && y >= r.top + my && y <= r.bottom - my; }) || null;
+  if (cd.into !== intoCard) { if (cd.into) cd.into.classList.remove('drop-into'); cd.into = intoCard; if (intoCard) intoCard.classList.add('drop-into'); }
+  cd.line.style.display = intoCard ? 'none' : '';
+  if (intoCard) return;
   let best = 0, bd = Infinity;
   rects.forEach((r, i) => { const d = Math.hypot(x - (r.left + r.width / 2), y - (r.top + r.height / 2)); if (d < bd) { bd = d; best = i; } });
   const r = rects[best], after = x > r.left + r.width / 2;

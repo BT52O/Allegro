@@ -408,8 +408,31 @@ try {
   await shot(A, 'nested-folder');
   check(fAddOpts.join('|') === 'Add Playlists|New Folder Here' && nestedOk && pathTxt.includes('华语'), 'a folder can hold folders, with a path back up', JSON.stringify({ fAddOpts, nestedOk, pathTxt }));
   check(pickLabel === 'Move Here' && pickedLabel === 'Added' && subNow.ids.includes('pl-example') && !otherNow.ids.includes('pl-example') && subCards.includes('playlist:pl-example'), 'the folder + button picks playlists to put inside', JSON.stringify({ pickLabel, pickedLabel, subNow }));
+  // the preview of a folder opens a preview of each folder inside it, beside it
+  await A.mouse.move(5, 5); await A.hover(`#side-list [data-open="folder:${fd.id}"]`); await A.waitForTimeout(600);
+  await A.hover(`#folder-pop .fp-row[data-open="folder:${sub.id}"]`); await A.waitForTimeout(500);
+  const nest = await A.evaluate(() => { const p = [...document.querySelectorAll('.folder-pop.sub')].find(x => !x.hidden); return p ? [p.querySelector('.fp-head b').textContent, [...p.querySelectorAll('.fp-row')].map(r => r.dataset.open), Math.round(p.getBoundingClientRect().left - document.getElementById('folder-pop').getBoundingClientRect().right)] : null; });
+  await shot(A, 'nested-peek');
+  await A.mouse.move(1000, 720); await A.waitForTimeout(600);
+  const nestGone = await A.evaluate(() => [...document.querySelectorAll('.folder-pop')].every(x => x.hidden));
+  check(!!nest && nest[0] === 'Sub Folder' && nest[1].includes('playlist:pl-example') && nest[2] >= 0 && nestGone, 'hovering a folder inside a folder preview opens its own preview beside it', JSON.stringify({ nest, nestGone }));
   await A.click('.fd-path .link'); await A.waitForTimeout(500);
   const parentCards = await A.$$eval('#view .folder-cards .card', x => x.map(e => e.dataset.open));
+  // on a folder page, drop a playlist card onto a folder card to put it inside
+  await A.click('.folder-head [data-folder-add]'); await A.waitForTimeout(250);
+  await A.click('#menu .mi:has-text("Add Playlists")'); await A.waitForTimeout(400);
+  await A.click(`#fk-list [data-fk-add="${madeId}"]`); await A.waitForTimeout(300);
+  await A.click('#fk-done'); await A.waitForTimeout(600);
+  {
+    const c = await (await A.$(`#view .folder-cards .card[data-open="playlist:${madeId}"]`)).boundingBox(), t = await (await A.$(`#view .folder-cards .card[data-open="folder:${sub.id}"]`)).boundingBox();
+    await A.mouse.move(c.x + c.width / 2, c.y + 60); await A.mouse.down();
+    await A.mouse.move(c.x + c.width / 2 - 20, c.y + 60, { steps: 4 });
+    await A.mouse.move(t.x + t.width / 2, t.y + t.height / 2, { steps: 12 }); await A.waitForTimeout(150);
+    const lit = await A.$eval(`#view .folder-cards .card[data-open="folder:${sub.id}"]`, e => e.classList.contains('drop-into'));
+    await A.mouse.up(); await A.waitForTimeout(800);
+    data = await lib(A);
+    check(lit && data.state.folders.find(f => f.id === sub.id).ids.includes(madeId) && !data.state.folders.find(f => f.id === fd.id).ids.includes(madeId), 'on a folder page, dropping a playlist on a folder card puts it inside', JSON.stringify({ lit }));
+  }
   await A.click(`#view .card[data-open="folder:${sub.id}"]`); await A.waitForTimeout(500);
   await A.click('.folder-head [data-folder-more]'); await A.waitForTimeout(250);
   await A.click('#menu .mi:has-text("Delete Folder")'); await A.waitForTimeout(700);
