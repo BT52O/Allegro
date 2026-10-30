@@ -114,6 +114,22 @@ try {
   data = await lib(A);
   const pl = data.state.playlists.find(p => p.id === 'pl-example');
   check(pl && pl.name === 'Renamed In Test' && pl.desc === 'From the e2e test', 'playlist name and description save online');
+  const firstSide = await A.$eval('#side-list .li', e => e.textContent.trim());
+  const plCount = (await lib(A)).state.playlists.length;
+  await A.click('#side-list .li-create'); await A.waitForTimeout(500);
+  const createdOk = firstSide === 'Create Playlist' && await A.isVisible('#pl-edit');
+  await A.click('#pe-save'); await A.waitForTimeout(1200);
+  check(createdOk && (await lib(A)).state.playlists.length === plCount + 1, 'Create Playlist sits at the top and makes a new playlist');
+  await A.hover('#side-list [data-open="playlist:pl-example"]'); await A.waitForTimeout(300);
+  const penVisible = await A.$eval('#side-list [data-open="playlist:pl-example"] .pl-pen', e => getComputedStyle(e).opacity === '1');
+  check(penVisible && !(await A.$('#side-list [data-open="liked"] .pl-pen')), 'pen appears on hover for your playlists, not Liked Songs');
+  const chooser = A.waitForEvent('filechooser');
+  await A.click('#side-list [data-open="playlist:pl-example"] .pl-pen');
+  await (await chooser).setFiles(join(fixtures, 'cover.png')); await A.waitForTimeout(1500);
+  data = await lib(A);
+  const cv = data.state.playlists.find(p => p.id === 'pl-example').cover;
+  check(!!cv && (await A.evaluate(async c => (await fetch('/api/playlist-cover/pl-example?v=' + c)).status, cv)) === 200, 'pen uploads a new playlist cover');
+  await A.click('#side-list [data-open="playlist:pl-example"]'); await A.waitForTimeout(600);
   const before = await A.$$eval('#view .tl .tr', x => x.map(e => e.dataset.id));
   const r0 = await (await A.$('#view .tl .tr >> nth=0')).boundingBox(), r2 = await (await A.$('#view .tl .tr >> nth=2')).boundingBox();
   await A.mouse.move(r0.x + 300, r0.y + r0.height / 2); await A.mouse.down();
@@ -134,7 +150,7 @@ try {
   const sorts = await A.$$eval('#menu [data-sort-opt] span', x => x.map(e => e.textContent));
   check(sorts[0] === 'Custom Sort' && !sorts.includes('Creator'), 'sort menu starts with Custom Sort, no Creator', JSON.stringify(sorts));
   await A.keyboard.press('Escape');
-  const sideKinds = await A.$$eval('#side-list .li', x => x.map(e => e.dataset.open.split(':')[0]));
+  const sideKinds = await A.$$eval('#side-list .li[data-open]', x => x.map(e => e.dataset.open.split(':')[0]));
   check(sideKinds.every(k => k === 'liked' || k === 'playlist') && (await A.textContent('.sl-head h2')) === 'My Playlists' && !(await A.$('[data-sl-chip]')), 'My Playlists shows only Liked Songs and playlists, no filters');
   for (let n = 0; n < 2; n++) {
     await A.evaluate(() => document.querySelector('.nav-btn[data-nav=library]').click()); await A.waitForTimeout(400);

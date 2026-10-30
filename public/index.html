@@ -633,6 +633,32 @@ body.dragging-row .tr:hover .like:not(.on), body.dragging-row .tr:hover .more { 
 .drag-ghost img { width: 34px; height: 34px; border-radius: 4px; object-fit: cover; }
 .drag-ghost span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
+/* ---------- create playlist item ---------- */
+.create-art { display: grid; place-items: center; background: var(--chip); color: var(--ink); transition: background-color .18s; }
+.create-art .ic { width: 45%; height: 45%; stroke-width: 1.8; }
+.li-create:hover .create-art { background: color-mix(in srgb, var(--ink) 14%, var(--chip)); }
+
+/* ---------- pen on playlist covers ---------- */
+.has-pen { position: relative; }
+.has-pen::after { content: ""; position: absolute; inset: 0; border-radius: inherit; background: rgba(0, 0, 0, .28); opacity: 0; transition: opacity .18s ease-out; pointer-events: none; }
+.pl-pen {
+  position: absolute; top: 8px; right: 8px; z-index: 2; width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center;
+  background: rgba(255, 255, 255, .92); color: #111; box-shadow: 0 2px 8px rgba(0, 0, 0, .25); cursor: pointer;
+  opacity: 0; transform: scale(.85); transition: opacity .18s ease-out, transform .18s ease-out;
+}
+.pl-pen .ic { width: 15px; height: 15px; }
+.pl-pen:hover { background: #fff; transform: scale(1.08) !important; }
+.card:hover .has-pen::after, .li:hover .has-pen::after, .vhead .has-pen:hover::after { opacity: 1; }
+.card:hover .pl-pen, .li:hover .pl-pen, .vhead .has-pen:hover .pl-pen, .pl-pen:focus-visible { opacity: 1; transform: none; }
+.li-art .pl-pen { top: 3px; right: 3px; width: 18px; height: 18px; }
+.li-art .pl-pen .ic { width: 10px; height: 10px; }
+.li.grid .li-art .pl-pen { top: 6px; right: 6px; width: 24px; height: 24px; }
+.li.grid .li-art .pl-pen .ic { width: 12px; height: 12px; }
+.card-art.has-pen::after { border-radius: 8px; }
+.vhead .has-pen .pl-pen { top: 12px; right: 12px; width: 36px; height: 36px; }
+.vhead .has-pen .pl-pen .ic { width: 18px; height: 18px; }
+@media (hover: none) { .pl-pen { opacity: 1; transform: none; } .has-pen::after { display: none; } }
+
 /* ---------- home shelves ---------- */
 .home-rows { display: flex; flex-direction: column; gap: 28px; }
 .shelf-nav { display: flex; align-items: center; gap: 6px; }
@@ -820,6 +846,7 @@ body.dragging-row .tr:hover .like:not(.on), body.dragging-row .tr:hover .more { 
   </form>
 </div>
 <input type="file" id="pe-file" class="sr-only" accept="image/jpeg,image/png,image/webp,image/gif" tabindex="-1" aria-hidden="true">
+<input type="file" id="pen-file" class="sr-only" accept="image/jpeg,image/png,image/webp,image/gif" tabindex="-1" aria-hidden="true">
 <div class="menu-scrim" id="menu-scrim" hidden></div>
 <div class="menu" id="menu" hidden role="menu"></div>
 <div class="drop" id="drop" hidden><div class="drop-box"><i data-ic="upload"></i><h2>Drop to add</h2><p>MP3, M4A, WAV, FLAC and OGG files go straight into your library.</p></div></div>
@@ -1603,15 +1630,16 @@ document.addEventListener('scroll', e => { if (e.target.matches && e.target.matc
 window.addEventListener('resize', () => syncShelves());
 const albumCard = a => card('album:' + a.key, a.name, (a.year ? a.year + ' · ' : '') + a.artist, `<img src="${esc(a.cover)}" alt="" loading="lazy">`);
 const artistCard = a => card('artist:' + a.name, a.name, 'Artist', `<img src="${esc(a.cover)}" alt="" loading="lazy">`, true);
-const plCard = p => card('playlist:' + p.id, p.name, 'Playlist · ' + plural(live(p.ids).length, 'song'), plArt(p));
+const penFor = id => `<span class="pl-pen" data-pen="${esc(id)}" role="button" aria-label="Choose a cover photo" title="Choose photo">${ic('edit')}</span>`;
+const plCard = p => card('playlist:' + p.id, p.name, 'Playlist · ' + plural(live(p.ids).length, 'song'), plArt(p) + penFor(p.id)).replace('class="card-art', 'class="card-art has-pen');
 const likedCard = () => card('liked', 'Liked Songs', 'Playlist · ' + plural(live(S.liked).length, 'song'), likedArt());
 function qtile(key) {
   const c = ctxInfo(key); if (!c) return '';
   return `<div class="qt" data-open="${esc(key)}" tabindex="0" role="link"><div class="art${c.round ? ' round' : ''}">${c.art}</div><span class="qt-name">${esc(c.name)}</span><button class="card-play" data-card-play="${esc(key)}" aria-label="Play ${esc(c.name)}">${ic('play')}</button></div>`;
 }
-function head({ art, round, type, title, meta, desc, tintSrc, editable }) {
+function head({ art, round, type, title, meta, desc, tintSrc, editable, penId }) {
   return `<div class="view-bg" ${tintSrc ? `data-tint-src="${esc(tintSrc)}"` : ''}></div>
-  <header class="vhead${editable ? ' editable' : ''}" ${editable ? 'title="Click to edit details"' : ''}><div class="art${round ? ' round' : ''}">${art}</div><div class="vhead-text"><span class="eyebrow">${esc(type)}</span>${title}${desc ? `<p class="desc">${esc(desc)}</p>` : ''}<div class="meta">${meta}</div></div></header>`;
+  <header class="vhead${editable ? ' editable' : ''}" ${editable ? 'title="Click to edit details"' : ''}><div class="art${round ? ' round' : ''}${penId ? ' has-pen' : ''}">${art}${penId ? penFor(penId) : ''}</div><div class="vhead-text"><span class="eyebrow">${esc(type)}</span>${title}${desc ? `<p class="desc">${esc(desc)}</p>` : ''}<div class="meta">${meta}</div></div></header>`;
 }
 const actions = (key, extra = '') => `<div class="actions"><button class="big-play" data-ctx-play="${esc(key)}" aria-label="Play">${ic('play')}</button><button class="act-btn${S.shuffle ? ' on' : ''}" data-act="shuffle" aria-label="Shuffle" aria-pressed="${S.shuffle}">${ic('shuffle')}</button>${extra}</div>`;
 const fileCount = () => { let n = 0; for (const t of S.tracks.values()) if (t.kind === 'file' || t.kind === 'cloud') n++; return n; };
@@ -1655,8 +1683,7 @@ const VIEWS = {
     const recentIds = [...S.tracks.keys()].sort((a, b) => tk(b).added - tk(a).added).slice(0, 5);
     const where = cloud.canWrite ? 'Songs you add are saved to your Allegro library online, so they play on any device where you sign in.' : 'Songs you add are saved in this browser.';
     const callout = (fileCount() ? '' : `<div class="callout"><div class="callout-ic">${ic('music')}</div><div><h3>Bring your own music</h3><p>Everything here now is a generated demo. Drop MP3s anywhere on this page, or use Add music. ${where}</p></div><button class="btn" data-action="add">${ic('upload')}Add music</button></div>`) + localBanner();
-    return `<div class="view-bg"></div>
-      <h1 class="greet">${greet}</h1>
+    return `<h1 class="greet">${greet}</h1>
       <div id="home-rows" class="home-rows">${homeRows()}</div>
       ${callout}
       <section class="sec"><div class="sec-head"><h2>Albums</h2><button class="link sm" data-open="library:albums">Show all</button></div><div class="cards one-row">${albumsSorted().map(albumCard).join('')}</div></section>
@@ -1666,7 +1693,7 @@ const VIEWS = {
   history() {
     const hist = S.history.filter(h => S.tracks.has(h.id)).slice(0, HISTORY_MAX);
     const ids = hist.map(h => h.id);
-    return `<div class="view-bg"></div><h1 class="page-title">Track History</h1><p class="sm" style="margin-top:-18px">The last ${HISTORY_MAX} songs you played, newest first.</p>`
+    return `<h1 class="page-title">Track History</h1><p class="sm" style="margin-top:-18px">The last ${HISTORY_MAX} songs you played, newest first.</p>`
       + trackList(ids, { key: 'history', name: 'Track History' }, { played: hist.map(h => h.at), empty: `<div class="empty"><h3>Nothing played yet</h3><p>Songs you play will show up here.</p></div>` });
   },
   search() {
@@ -1737,7 +1764,7 @@ const VIEWS = {
     if (!p) return notFound('That playlist was deleted.');
     const key = 'playlist:' + p.id, ids = live(p.ids);
     const title = S.renaming === p.id ? `<input class="rename" id="rename-input" value="${esc(p.name)}" maxlength="80" aria-label="Playlist name">` : `<h1>${esc(p.name)}</h1>`;
-    return head({ art: plArt(p), type: 'Playlist', title, desc: p.desc, editable: true, tintSrc: p.cover ? plCoverUrl(p) : (plCovers(ids)[0] || genCover(p.id, 1, hash(p.id) % 360)), meta: `<span>${plural(ids.length, 'song')}${ids.length ? ', ' + fmtLong(totalDur(ids)) : ''}</span>` })
+    return head({ art: plArt(p), type: 'Playlist', title, desc: p.desc, editable: true, penId: p.id, tintSrc: p.cover ? plCoverUrl(p) : (plCovers(ids)[0] || genCover(p.id, 1, hash(p.id) % 360)), meta: `<span>${plural(ids.length, 'song')}${ids.length ? ', ' + fmtLong(totalDur(ids)) : ''}</span>` })
       + actions(key, `<button class="act-btn" data-ctx-more="${esc(key)}" aria-label="Playlist options">${ic('more')}</button>`)
       + trackList(ids, { key, name: p.name }, { playlist: p.id, empty: `<div class="empty"><h3>This playlist is empty</h3><p>Open the ⋯ menu on any song and choose Add to playlist.</p><button class="btn ghost" data-open="library:songs">${ic('music')}Browse songs</button></div>` });
   },
@@ -1809,12 +1836,13 @@ function renderSide() {
   const items = libItems();
   const cls = S.libView === 'grid' ? ' grid' : '';
   $('#side-list').classList.toggle('grid', S.libView === 'grid');
-  $('#side-list').innerHTML = items.length ? items.map(it =>
+  const create = S.libQ.trim() ? '' : `<button class="li li-create${cls}" data-action="new-pl" title="Create Playlist"><div class="li-art create-art">${ic('plus')}</div><div class="li-text"><div class="li-name">Create Playlist</div></div></button>`;
+  $('#side-list').innerHTML = create + (items.length ? items.map(it =>
     `<button class="li${cls}${it.key === key ? ' active' : ''}${it.key === pctx ? ' playing' : ''}" data-open="${esc(it.key)}" title="${esc(it.name)}"${it.pinned ? '' : ' data-drag="1"'}>`
-    + `<div class="li-art${it.round ? ' round' : ''}">${it.art}</div>`
+    + `<div class="li-art${it.round ? ' round' : ''}${it.key.startsWith('playlist:') ? ' has-pen' : ''}">${it.art}${it.key.startsWith('playlist:') ? penFor(it.key.slice(9)) : ''}</div>`
     + `<div class="li-text"><div class="li-name">${esc(it.name)}</div><div class="li-sub">${it.pinned ? ic('pin') : ''}<span>${esc(it.sub)}</span></div></div>`
     + `<span class="spk" aria-label="Playing">${ic('speaker')}</span></button>`).join('')
-    : `<p class="sl-empty">${S.libQ.trim() ? `None of your playlists match “${esc(S.libQ.trim())}”.` : 'Nothing here yet.'}</p>`;
+    : `<p class="sl-empty">${S.libQ.trim() ? `None of your playlists match “${esc(S.libQ.trim())}”.` : 'Nothing here yet.'}</p>`);
 }
 function sortMenu(anchor) {
   closeMenu();
@@ -2089,6 +2117,23 @@ function setSideCollapsed(c, animate = true) {
 }
 $('#side-toggle').addEventListener('click', () => { setSideCollapsed(!S.sideCollapsed); save(); });
 setSideCollapsed(S.sideCollapsed, false);
+
+/* ================= quick cover change (pen on hover) ================= */
+let penTarget = null;
+$('#pen-file').addEventListener('change', async e => {
+  const f = e.target.files[0]; e.target.value = '';
+  const p = S.playlists.find(x => x.id === penTarget); penTarget = null;
+  if (!f || !p) return;
+  if (!/^image\/(jpeg|png|gif|webp)$/.test(f.type)) { toast('Choose a JPG, PNG, WebP or GIF image.'); return; }
+  if (f.size > MAX_PL_COVER) { toast(`That image is ${(f.size / 1048576).toFixed(1)} MB. The limit is 10 MB.`); return; }
+  if (!cloud.canWrite) { toast('Sign in to change covers.'); return; }
+  toast('Uploading cover…');
+  try { await api('playlist-cover/' + encodeURIComponent(p.id), { method: 'PUT', headers: { 'content-type': f.type }, body: f }); }
+  catch (ex) { toast(`Couldn't save the photo: ${ex.message}`); return; }
+  p.cover = Date.now(); userActed = true; save();
+  render(); renderSide();
+  toast(`New cover for ${p.name}`);
+});
 
 /* ================= drag to rearrange My Library ================= */
 let sd = null;
@@ -2520,6 +2565,8 @@ document.addEventListener('click', e => {
   if (so) { S.libSort = so.dataset.sortOpt; save(); renderSide(); closeMenu(); return; }
   const vo = T.closest('[data-view-opt]');
   if (vo) { S.libView = vo.dataset.viewOpt; save(); renderSide(); closeMenu(); return; }
+  const pn = T.closest('[data-pen]');
+  if (pn) { e.preventDefault(); penTarget = pn.dataset.pen; $('#pen-file').click(); return; }
   const sb = T.closest('[data-shelf]');
   if (sb) { const row = $(`[data-shelf-row="${sb.dataset.shelf}"]`); if (row) row.scrollBy({ left: +sb.dataset.dir * row.clientWidth * .9, behavior: 'smooth' }); return; }
   const slc = T.closest('[data-sl-chip]');
