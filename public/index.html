@@ -593,8 +593,9 @@ input[type="range"]:disabled { opacity: .4; cursor: default; }
 .ly-line.gap { font-size: 1.1rem; }
 .ly-t { display: block; position: relative; }
 .ly-line.on { color: rgba(255, 255, 255, .55); }
-/* the line being sung fills with white from left to right as it goes */
-.ly-line.on .ly-t::after { content: attr(data-text); position: absolute; inset: 0; color: #fff; clip-path: inset(-4px calc(100% - var(--p, 0%)) -4px 0); text-shadow: 0 0 18px rgba(255, 255, 255, .35); }
+/* the line being sung fills with white word by word, following the words onto the next line when it wraps */
+.ly-w { position: relative; }
+.ly-line.on .ly-w::after { content: attr(data-text); position: absolute; left: 0; top: 0; color: #fff; white-space: pre; pointer-events: none; clip-path: inset(-.3em calc(100% - var(--wp, 0%)) -.3em 0); }
 .ly-singer { display: block; font-size: .74rem; font-weight: 700; letter-spacing: .03em; color: rgba(255, 255, 255, .5); margin-bottom: 4px; }
 .ly.plain { padding: 8px 0 24px; gap: 14px; }
 .ly.plain .ly-line { color: rgba(255, 255, 255, .86); font-size: clamp(1.1rem, 1.6vw, 1.35rem); cursor: default; }
@@ -1444,7 +1445,7 @@ const I18N = [
   ['Collapse Sidebar', '收起侧边栏', '收合側邊欄'], ['Expand Sidebar', '展开侧边栏', '展開側邊欄'], ['Song position', '播放进度', '播放進度'], ['Zoom', '缩放', '縮放'], ['Start an Empty One', '新建一个空歌单', '新增一個空歌單'], ['Player', '播放器', '播放器'],
   ['Wiki', '百科', '百科'], ['Lyrics', '歌词', '歌詞'], ['Comments', '评论', '評論'], ['Singer', '歌手', '歌手'], ['Find on Genius', '在 Genius 上查找', '在 Genius 上查找'], ['You can find the words on Genius and paste them in with Add Lyrics. Allegro times them to the song for you.', '你可以在 Genius 上找到歌词，用“添加歌词”粘贴进来，Allegro 会自动把它和歌曲对齐。', '你可以在 Genius 上找到歌詞，用「加入歌詞」貼上，Allegro 會自動把它和歌曲對齊。'], ['Credits', '制作', '製作'], ['Lyricist', '作词', '作詞'], ['Composer', '作曲', '作曲'],
   ['About This Song', '关于这首歌', '關於這首歌'], ['In Liked Songs', '已在喜欢的歌曲中', '已在喜歡的歌曲中'], ['Looking for lyrics…', '正在查找歌词…', '正在尋找歌詞…'], ['No lyrics found for this song.', '没有找到这首歌的歌词。', '沒有找到這首歌的歌詞。'],
-  ['Instrumental', '纯音乐', '純音樂'], ['Add Lyrics', '添加歌词', '加入歌詞'], ['Edit Lyrics', '编辑歌词', '編輯歌詞'], ['Search Online Again', '重新在线查找', '重新線上尋找'], ['Lyrics saved', '歌词已保存', '歌詞已儲存'],
+  ['Instrumental', '纯音乐', '純音樂'], ['Add Lyrics', '添加歌词', '加入歌詞'], ['Sync', '同步', '同步'], ['Add Lyrics Myself', '自己添加歌词', '自己加入歌詞'], ['Edit Lyrics', '编辑歌词', '編輯歌詞'], ['Search Online Again', '重新在线查找', '重新線上尋找'], ['Lyrics saved', '歌词已保存', '歌詞已儲存'],
   ["Paste the lyrics. Put a time like [01:23.45] at the start of a line to make it light up with the song. For a duet, start a line with the singer's name and a colon (Name: …), and their lines go on their own side.", '粘贴歌词。在行首加上 [01:23.45] 这样的时间，歌词就会随歌曲高亮。对唱时，在行首写上歌手名字和冒号（名字：…），他们的歌词会显示在各自的一侧。', '貼上歌詞。在行首加上 [01:23.45] 這樣的時間，歌詞就會隨歌曲亮起。對唱時，在行首寫上歌手名字和冒號（名字：…），他們的歌詞會顯示在各自的一側。'],
   ['Write a comment…', '写下你的评论…', '寫下你的評論…'], ['Write a comment', '写下你的评论', '寫下你的評論'], ['Post', '发布', '發佈'], ['You', '我', '我'], ['No comments yet. Write the first one.', '还没有评论，来写第一条吧。', '還沒有評論，來寫第一則吧。'], ['Comment deleted', '评论已删除', '評論已刪除'], ['Like', '赞', '讚'], ['Delete', '删除', '刪除'],
   ['Nothing here yet. Add your own notes, the story behind the song, or the credits.', '这里还没有内容。添加你的笔记、歌曲背后的故事或制作信息。', '這裡還沒有內容。加入你的筆記、歌曲背後的故事或製作資訊。'], ['Upload this song to add notes and credits.', '上传这首歌后即可添加笔记和制作信息。', '上傳這首歌後即可加入筆記和製作資訊。'],
@@ -3727,21 +3728,25 @@ async function aiSyncLyrics(t) {
 }
 // Genius doesn't offer its lyrics to other apps, so this just opens a Genius search for the song in a new tab.
 const geniusLink = t => `<a class="sp-btn" href="https://genius.com/search?q=${encodeURIComponent(((searchName(t.title) || t.title) + ' ' + (t.artist === 'Unknown artist' ? '' : t.artist)).trim())}" target="_blank" rel="noopener">${ic('search')}<span>Find on Genius</span></a>`;
+// Each word (each character in Chinese, Japanese or Korean) gets its own span, so the fill can run word by word and
+// follow the text onto a second line when it wraps.
+const LY_SEG = /\s+|[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}\u3000-\u303f\uff00-\uffef]|[^\s\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}\u3000-\u303f\uff00-\uffef]+/gu;
+const lySegs = text => (String(text).match(LY_SEG) || []).map(x => /^\s+$/.test(x) ? ' ' : `<span class="ly-w" data-text="${esc(x)}">${esc(x)}</span>`).join('');
 function lyricsHTML(t) {
   const L = SP.lyr, canEdit = t.kind === 'cloud' && cloud.canWrite;
   if (SP.editLyr) return `<label class="sp-field">Lyrics<textarea id="ly-edit" style="min-height:42vh" placeholder="[00:12.30] First line&#10;[00:16.80] Next line">${esc(L.raw || '')}</textarea></label>
     <p class="sp-hint">Paste the lyrics. Put a time like [01:23.45] at the start of a line to make it light up with the song. For a duet, start a line with the singer's name and a colon (Name: …), and their lines go on their own side.</p>
     <div class="sp-actions"><button class="sp-btn solid" data-ly-save>Save</button><button class="sp-btn" data-ly-cancel>Cancel</button>${L.saved ? '<button class="sp-btn" data-ly-reset>Search Online Again</button>' : ''}${geniusLink(t)}</div>`;
   if (L.loading || L.id !== t.id) return '<p class="sp-msg">Looking for lyrics…</p>';
-  if (L.err) return `<p class="sp-msg">${esc(L.err)}</p><div class="sp-actions"><button class="sp-btn" data-ly-retry>Try Again</button></div>`;
-  const aiBtn = canEdit && !L.none && !L.syncing ? `<button class="sp-btn" data-ly-ai>${ic('sparkle')}<span>Sync with AI</span></button>` : '';
+  if (L.err) return `<p class="sp-msg">${esc(L.err)}</p><div class="sp-actions"><button class="sp-btn" data-ly-retry>Try Again</button>${canEdit ? `<button class="sp-btn" data-ly-edit>${ic('edit')}<span>Add Lyrics Myself</span></button>${geniusLink(t)}` : ''}</div>`;
+  const aiBtn = canEdit && !L.none && !L.syncing ? `<button class="sp-btn" data-ly-ai>${ic('sparkle')}<span>Sync</span></button>` : '';
   const tools = canEdit ? `<div class="ly-tools"><button class="sp-btn" data-ly-edit>${ic('edit')}<span>${L.none ? 'Add Lyrics' : 'Edit Lyrics'}</span></button>${aiBtn}</div>` : '';
   const status = L.syncing ? `<p class="ly-status">${ic('sparkle')}<span>${L.syncing.total ? `Timing the lyrics to the song with AI… ${L.syncing.done} of ${L.syncing.total}` : 'Getting the song ready for AI timing…'}</span></p>`
-    : L.syncErr ? `<p class="ly-status err">${esc(L.syncErr)}</p>` : L.aiTimed ? '<p class="ly-status">Timed by AI. If a line is off, try Sync with AI again or adjust the time with Edit Lyrics.</p>' : '';
+    : L.syncErr ? `<p class="ly-status err">${esc(L.syncErr)}</p>` : L.aiTimed ? '<p class="ly-status">Timed by AI. If a line is off, try Sync again or adjust the time with Edit Lyrics.</p>' : '';
   if (L.none) return `<p class="sp-msg">${L.instrumental ? 'Instrumental' : 'No lyrics found for this song.'}</p>${canEdit && !L.instrumental ? '<p class="sp-hint">You can find the words on Genius and paste them in with Add Lyrics. Allegro times them to the song for you.</p>' : ''}${tools.replace('ly-tools', 'sp-actions').replace('</div>', geniusLink(t) + '</div>')}`;
   const singerTag = l => l.singer ? `<span class="ly-singer" data-nt>${esc(l.singer)}</span>` : '';
   const sideCls = l => l.side === 1 ? ' side-1' : l.side === 'c' ? ' side-c' : '';
-  if (L.lines.length) return `${status}<div class="ly" id="ly" data-nt>${L.lines.map((l, i) => `<p class="ly-line${sideCls(l)}${l.text ? '' : ' gap'}" data-ly-i="${i}">${singerTag(l)}<span class="ly-t" data-text="${esc(l.text || '♪')}">${l.text ? esc(l.text) : '♪'}</span></p>`).join('')}</div>${tools}`;
+  if (L.lines.length) return `${status}<div class="ly" id="ly" data-nt>${L.lines.map((l, i) => `<p class="ly-line${sideCls(l)}${l.text ? '' : ' gap'}" data-ly-i="${i}">${singerTag(l)}<span class="ly-t">${lySegs(l.text || '♪')}</span></p>`).join('')}</div>${tools}`;
   return `${status}<div class="ly plain" data-nt>${L.plain.map(l => `<p class="ly-line${sideCls(l)}">${singerTag(l)}${esc(l.text) || '&nbsp;'}</p>`).join('')}</div>${tools}`;
 }
 function lyrSync(force) {
@@ -3751,13 +3756,21 @@ function lyrSync(force) {
   const els = $$('#ly .ly-line'); if (!els.length) return;
   if (i !== L.cur || force) {
     els.forEach((el, k) => el.classList.toggle('on', k === i));
-    L.cur = i;
+    if (L.cur >= 0 && els[L.cur]) els[L.cur].querySelectorAll('.ly-w').forEach(w => w.style.removeProperty('--wp'));
+    L.cur = i; L.fill = null;
     const el = els[Math.max(0, i)], body = $('#sp-body');
     if (el && body && Date.now() - SP.userScroll > 2500) body.scrollTo({ top: el.offsetTop - body.clientHeight * .4 + el.offsetHeight / 2, behavior: force ? 'auto' : 'smooth' });
   }
-  if (i >= 0) {
-    const a = L.lines[i].t, b = (L.lines[i + 1] || { t: a + 4 }).t;
-    els[i].querySelector('.ly-t').style.setProperty('--p', Math.max(0, Math.min(100, (cur - a) / Math.max(.4, b - a) * 100)) + '%');
+  if (i >= 0 && els[i]) {
+    // fill word by word: words already sung are white, the current word fills from its left edge
+    if (!L.fill) { const spans = [...els[i].querySelectorAll('.ly-w')]; let c = 0; L.fill = { spans, at: spans.map(w => { const s0 = c; c += w.textContent.length; return s0; }), total: c, last: [] }; }
+    const F = L.fill, a = L.lines[i].t, b = (L.lines[i + 1] || { t: a + 4 }).t;
+    const span = Math.max(.4, Math.min(b - a, 1 + F.total * .12));   // sing time: up to the next line, but not stretched over a long pause
+    const done = Math.max(0, Math.min(1, (cur - a) / span)) * F.total;
+    F.spans.forEach((w, k) => {
+      const n = w.textContent.length || 1, v = Math.round(Math.max(0, Math.min(1, (done - F.at[k]) / n)) * 1000) / 10;
+      if (F.last[k] !== v) { F.last[k] = v; w.style.setProperty('--wp', v + '%'); }
+    });
   }
 }
 function lyrLoop() {
