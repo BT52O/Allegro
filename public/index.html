@@ -1468,6 +1468,9 @@ function addFileRecord(rec) {
   S.tracks.set(t.id, t);
   return t;
 }
+// "2030-10-19" → "Oct. 19, 2030" (short months get a period; March to July are written out).
+const AP_MONTHS = ['Jan.', 'Feb.', 'March', 'April', 'May', 'June', 'July', 'Aug.', 'Sept.', 'Oct.', 'Nov.', 'Dec.'];
+const longDate = v => { const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(v || ''); return m ? `${AP_MONTHS[+m[2] - 1]} ${+m[3]}, ${m[1]}` : (v || ''); };
 function rebuild() {
   const albums = new Map(), artists = new Map(), genres = new Map();
   for (const t of S.tracks.values()) {
@@ -1477,6 +1480,7 @@ function rebuild() {
     const al = albums.get(key); al.ids.push(t.id);
     if (!al.cover && t.ownCover) al.cover = t.ownCover;
     if (!al.year && t.year) al.year = t.year;
+    if (!al.released && t.released && t.released.slice(0, 4) === al.year) al.released = t.released;
     al.added = Math.max(al.added, t.added);
     if (!artists.has(t.artist)) artists.set(t.artist, { name: t.artist, ids: [], albums: [] });
     const ar = artists.get(t.artist); ar.ids.push(t.id); if (!ar.albums.includes(key)) ar.albums.push(key);
@@ -1874,7 +1878,7 @@ const VIEWS = {
     if (!a) return notFound('That album is no longer in your library.');
     const key = 'album:' + a.key, ar = IDX.artists.get(a.artist);
     return head({ art: `<img src="${esc(a.cover)}" alt="">`, type: 'Album', title: `<h1>${esc(a.name)}</h1>`, tintSrc: a.cover,
-      meta: `<button class="link" data-go-artist="${esc(ar ? a.artist : tk(a.ids[0]).artist)}"><b>${esc(a.artist)}</b></button>${a.year ? ` · <span>${esc(a.year)}</span>` : ''} · <span>${plural(a.ids.length, 'song')}, ${fmtLong(totalDur(a.ids))}</span>` })
+      meta: `<button class="link" data-go-artist="${esc(ar ? a.artist : tk(a.ids[0]).artist)}"><b>${esc(a.artist)}</b></button>${a.year ? ` · <span class="released">${esc(a.released ? longDate(a.released) : a.year)}</span>` : ''} · <span>${plural(a.ids.length, 'song')}, ${fmtLong(totalDur(a.ids))}</span>` })
       + actions(key, `<button class="act-btn" data-ctx-more="${esc(key)}" aria-label="More options">${ic('more')}</button>`)
       + trackList(a.ids, { key, name: a.name }, { cover: false, trackNo: true });
   },
@@ -3032,7 +3036,7 @@ function cloudTrack(id, d) {
   const t = old && old.kind === 'cloud' ? old : { id, kind: 'cloud' };
   Object.assign(t, {
     title: d.title || 'Untitled', artist: d.artist || 'Unknown artist', albumArtist: d.albumArtist || '', album: d.album || 'Unknown album',
-    year: d.year || '', trackNo: d.trackNo || 0, genre: d.genre || '', duration: d.duration, added: d.added || Date.now(),
+    year: d.year || '', released: d.released || '', trackNo: d.trackNo || 0, genre: d.genre || '', duration: d.duration, added: d.added || Date.now(),
     fileName: d.fileName, size: d.size, mime: d.mime, ownCover: d.cover ? coverUrl(id) + (d.coverV ? '?v=' + d.coverV : '') : null,
     hue: hash((d.album || '') + (d.artist || '')) % 360, coverStyle: hash(d.album || '') % 5, meta: JSON.parse(JSON.stringify(d))
   });

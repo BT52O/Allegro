@@ -371,6 +371,10 @@ try {
   data = await lib(A);
   const hit = data.songs.find(s => s.id === tagged.id);
   check(filled.join('|') === 'Mock Hit|Mock Artist|Mock Hit Album|Feb 2, 2021' && hit.album === 'Mock Hit Album' && hit.year === '2021' && hit.released === '2021-02-02' && hit.coverV > ed.coverV, 'Find Info Online fills in the song from the search', JSON.stringify({ filled, hit }));
+  await A.click(`#view .tr[data-id="${tagged.id}"] [data-go-album]`); await A.waitForTimeout(500);
+  const albumDate = await A.textContent('.vhead .meta .released').catch(() => '');
+  check(albumDate === 'Feb. 2, 2021', 'album page shows the full release date', albumDate);
+  await A.click('.nav-btn[data-nav="uploads"]'); await A.waitForTimeout(400);
   // when Apple turns the server away, Deezer still answers
   const dz = await A.evaluate(async () => (await fetch('/api/lookup?term=deezer%20song')).json());
   const dzHit = dz.results && dz.results.find(r => r.title === 'Deezer Song');
