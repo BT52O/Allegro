@@ -52,7 +52,7 @@ const mock = createServer((req, res) => {
 await new Promise(r => mock.listen(MOCK_PORT, '127.0.0.1', r));
 
 execFileSync(process.execPath, [wrangler, 'd1', 'migrations', 'apply', 'allegro', '--local', '--persist-to', state], { cwd: root, env, stdio: 'inherit' });
-const server = spawn(process.execPath, [wrangler, 'dev', '--port', String(PORT), '--ip', '127.0.0.1', '--persist-to', state, '--var', `MUSIC_SEARCH_URL:${MOCK}/search`, '--var', `DEEZER_SEARCH_URL:${MOCK}/deezer`], { cwd: root, env, stdio: ['ignore', 'pipe', 'pipe'] });
+const server = spawn(process.execPath, [wrangler, 'dev', '--port', String(PORT), '--ip', '127.0.0.1', '--persist-to', state, '--var', `MUSIC_SEARCH_URL:${MOCK}/search`, '--var', `DEEZER_SEARCH_URL:${MOCK}/deezer`, '--var', 'HISTORY_MERGE_MS:0'], { cwd: root, env, stdio: ['ignore', 'pipe', 'pipe'] });
 let serverLog = '';
 server.stdout.on('data', d => { serverLog += d; });
 server.stderr.on('data', d => { serverLog += d; });
@@ -735,6 +735,24 @@ try {
   const stillIn = (await A.evaluate(async () => (await fetch('/api/library')).status)) === 200;
   const loginNew = await (await browser.newContext()).request.post(URL + 'api/login', { data: { password: 'brand new pass 1' } }).then(r => r.status());
   check(pwBad.includes('not right') && pwGood.includes('changed') && stillIn && loginNew === 200, 'Settings can change the password', JSON.stringify({ pwBad, pwGood, stillIn, loginNew }));
+
+  // --- playlist version history: see every change, preview an old version, restore it
+  await A.click('#side-list [data-open="playlist:pl-example"]'); await A.waitForTimeout(600);
+  await A.click('.actions [data-ctx-more]'); await A.waitForTimeout(250);
+  await A.click('#menu .mi:has-text("Version History")');
+  await A.waitForSelector('#view .vh-item', { timeout: 10000 }).catch(() => {});
+  const vhItems = await A.$$eval('#view .vh-item', x => x.map(e => e.textContent.replace(/\s+/g, ' ').trim()));
+  const vhAll = vhItems.join(' | ');
+  await shot(A, 'version-history');
+  check(vhItems.length >= 3 && vhItems[0].includes('Current Version') && vhAll.includes('Renamed from “Late Night Study” to “Renamed In Test”') && vhAll.includes('Created the playlist') && vhAll.includes('Changed the song order'), 'Version History lists each change to the playlist', JSON.stringify(vhItems.slice(0, 6)));
+  await A.click('#view .vh-item >> nth=-1'); await A.waitForTimeout(300);
+  const oldName = await A.textContent('.vh-head h2');
+  await A.click('[data-vh-restore]'); await A.waitForTimeout(2500);
+  data = await lib(A);
+  const restored = data.state.playlists.find(p => p.id === 'pl-example');
+  await A.waitForTimeout(500);
+  const vhTop = await A.$eval('#view .vh-item', e => e.textContent).catch(() => '');
+  check(oldName === 'Late Night Study' && restored.name === 'Late Night Study' && vhTop.includes('Restored the version from'), 'an old version can be restored, and the restore is listed too', JSON.stringify({ oldName, restoredName: restored.name, vhTop: vhTop.slice(0, 120) }));
 
   // --- nothing is reachable without a session
   const anon = await (await browser.newContext()).newPage();

@@ -118,6 +118,53 @@ async function putObject(request, env, key, max, typeOk) {
   return json({ size: obj.size });
 }
 
+/* ---------- playlist version history ---------- */
+// Each time playlists are saved, every playlist that changed gets a version: a snapshot of before and after plus a
+// plain list of what changed. Edits less than a few minutes apart are folded into the same version, like Google Docs.
+let m0;
+const snapPl = p => p ? { name: str(p.name, 200), desc: str(p.desc, 400), cover: p.cover || 0, ids: Array.isArray(p.ids) ? p.ids.filter(x => typeof x === 'string') : [], breaks: p.breaks && typeof p.breaks === 'object' ? p.breaks : {} } : null;
+const isBrk = x => x.startsWith('brk:');
+function diffPl(a, b) {
+  const out = [];
+  if (!b) return a ? [{ t: 'deleted' }] : [];
+  if (!a) { out.push({ t: 'created' }); a = { name: b.name, desc: '', cover: 0, ids: [], breaks: {} }; }
+  if (a.name !== b.name) out.push({ t: 'renamed', from: a.name, to: b.name });
+  if ((a.desc || '') !== (b.desc || '')) out.push({ t: 'desc' });
+  if ((a.cover || 0) !== (b.cover || 0)) out.push({ t: b.cover ? 'cover' : 'cover-removed' });
+  const sa = a.ids.filter(x => !isBrk(x)), sb = b.ids.filter(x => !isBrk(x)), A = new Set(sa), B = new Set(sb);
+  const added = sb.filter(x => !A.has(x)), removed = sa.filter(x => !B.has(x));
+  if (added.length) out.push({ t: 'added', ids: added.slice(0, 500) });
+  if (removed.length) out.push({ t: 'removed', ids: removed.slice(0, 500) });
+  const ka = a.ids.filter(isBrk).map(x => x.slice(4)), kb = b.ids.filter(isBrk).map(x => x.slice(4));
+  for (const k of kb) if (!ka.includes(k)) out.push({ t: 'break-added', name: str(b.breaks[k] || 'Untitled Section', 100) });
+  for (const k of ka) if (!kb.includes(k)) out.push({ t: 'break-removed', name: str(a.breaks[k] || 'Untitled Section', 100) });
+  for (const k of kb) if (ka.includes(k) && (a.breaks[k] || '') !== (b.breaks[k] || '')) out.push({ t: 'break-renamed', from: str(a.breaks[k] || '', 100), to: str(b.breaks[k] || '', 100) });
+  const both = new Set(a.ids.filter(x => b.ids.includes(x)));
+  if (a.ids.filter(x => both.has(x)).join('|') !== b.ids.filter(x => both.has(x)).join('|')) out.push({ t: 'reordered' });
+  return out;
+}
+async function recordPlaylistHistory(env, prev, next, notes) {
+  const merge = env.HISTORY_MERGE_MS != null && env.HISTORY_MERGE_MS !== '' ? Number(env.HISTORY_MERGE_MS) : 5 * 60 * 1000;
+  const now = Date.now();
+  const P = new Map(prev.filter(p => p && typeof p.id === 'string').map(p => [p.id, snapPl(p)]));
+  const N = new Map(next.filter(p => p && typeof p.id === 'string').map(p => [p.id, snapPl(p)]));
+  for (const id of new Set([...P.keys(), ...N.keys()])) {
+    const a = P.get(id) || null, b = N.get(id) || null;
+    if (JSON.stringify(a) === JSON.stringify(b)) continue;
+    const note = typeof notes[id] === 'string' ? notes[id].slice(0, 200) : '';
+    const last = await env.DB.prepare('SELECT id, at, base, note FROM playlist_versions WHERE pl = ? ORDER BY at DESC, id DESC LIMIT 1').bind(id).first();
+    if (last && a && b && !note && !last.note && now - last.at < merge) {
+      const base = last.base ? JSON.parse(last.base) : null, changes = diffPl(base, b);
+      if (!changes.length) await env.DB.prepare('DELETE FROM playlist_versions WHERE id = ?').bind(last.id).run();
+      else await env.DB.prepare('UPDATE playlist_versions SET at = ?, data = ?, changes = ? WHERE id = ?').bind(now, JSON.stringify(b), JSON.stringify(changes), last.id).run();
+    } else {
+      await env.DB.prepare('INSERT INTO playlist_versions (pl, at, base, data, changes, note) VALUES (?, ?, ?, ?, ?, ?)')
+        .bind(id, now, a ? JSON.stringify(a) : null, b ? JSON.stringify(b) : null, JSON.stringify(diffPl(a, b)), note).run();
+      await env.DB.prepare('DELETE FROM playlist_versions WHERE pl = ? AND id NOT IN (SELECT id FROM playlist_versions WHERE pl = ? ORDER BY at DESC, id DESC LIMIT 300)').bind(id, id).run();
+    }
+  }
+}
+
 /* ---------- API ---------- */
 async function api(request, env, path) {
   const method = request.method;
@@ -189,7 +236,8 @@ async function api(request, env, path) {
       artistPics: v => v.filter(x => x && typeof x.name === 'string' && ID_RE.test(x.id) && typeof x.v === 'number').slice(0, 5000)
     };
     // PATCH changes only the parts it sends; PUT (older pages) replaces everything.
-    const state = method === 'PATCH' ? ((await kvGet(env, 'state')) || {}) : {};
+    const before = (await kvGet(env, 'state')) || {};
+    const state = method === 'PATCH' ? JSON.parse(JSON.stringify(before)) : {};
     for (const [k, fn] of Object.entries(clean)) {
       if (Array.isArray(body[k])) state[k] = fn(body[k]);
       else if (method === 'PUT') state[k] = [];
@@ -203,6 +251,10 @@ async function api(request, env, path) {
     }
     state.updatedAt = Date.now();
     await kvSet(env, 'state', state);
+    if (Array.isArray(body.playlists)) {
+      try { await recordPlaylistHistory(env, before.playlists || [], state.playlists || [], body.notes && typeof body.notes === 'object' ? body.notes : {}); }
+      catch (e) { console.error('playlist history', e); }   // history never blocks saving
+    }
     return json({ ok: true });
   }
 
@@ -255,6 +307,12 @@ async function api(request, env, path) {
     const buf = await r.arrayBuffer();
     if (buf.byteLength > MAX_COVER) return fail(413, 'That artwork is too large.');
     return new Response(buf, { headers: { 'content-type': type, 'cache-control': 'no-store' } });
+  }
+
+  m0 = path.match(/^playlist-history\/([^/]+)$/);
+  if (m0 && method === 'GET') {
+    const { results } = await env.DB.prepare('SELECT id, at, base, data, changes, note FROM playlist_versions WHERE pl = ? ORDER BY at DESC, id DESC LIMIT 300').bind(m0[1]).all();
+    return json({ versions: results.map(r => ({ id: r.id, at: r.at, note: r.note, changes: JSON.parse(r.changes || '[]'), base: r.base ? JSON.parse(r.base) : null, data: r.data ? JSON.parse(r.data) : null })) });
   }
 
   let m = path.match(/^audio\/([^/]+)$/);

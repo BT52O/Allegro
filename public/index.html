@@ -742,6 +742,40 @@ body.dragging-row .tr:hover .like:not(.on), body.dragging-row .tr:hover .more { 
 
 /* ---------- create playlist item ---------- */
 .fd-modal { width: min(100%, 420px); }
+.vh-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.vh-top .btn { height: 38px; padding: 0 16px; font-size: .9rem; }
+.vh-wrap { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 24px; align-items: start; }
+.vh-list { position: sticky; top: 72px; display: flex; flex-direction: column; gap: 4px; max-height: calc(100vh - 220px); overflow-y: auto; padding: 8px; border-radius: 14px; background: var(--chip); }
+.vh-day { font-size: .78rem; font-weight: 700; color: var(--muted); padding: 10px 10px 4px; }
+.vh-item { text-align: left; padding: 10px 12px; border-radius: 10px; display: flex; flex-direction: column; gap: 4px; }
+.vh-item:hover { background: color-mix(in srgb, var(--ink) 7%, transparent); }
+.vh-item.on { background: var(--panel); box-shadow: 0 1px 4px rgba(0, 0, 0, .08), inset 3px 0 0 var(--ink); }
+.vh-when { font-weight: 700; font-size: .92rem; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.vh-cur { font-size: .7rem; font-weight: 700; padding: 2px 8px; border-radius: 999px; background: var(--ink); color: var(--panel); }
+.vh-item ul { margin: 0; padding: 0 0 0 16px; font-size: .84rem; color: var(--muted); }
+.vh-item li { overflow-wrap: anywhere; }
+.vh-more { list-style: none; margin-left: -16px; font-style: italic; }
+.vh-preview { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.vh-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 12px; }
+.vh-head h2 { margin: 2px 0; font: 800 1.6rem var(--f-display); letter-spacing: -.02em; overflow-wrap: anywhere; }
+.vh-head p { margin: 0; }
+.vh-head .btn { flex: none; height: 40px; }
+.vh-label { font-size: .82rem; font-weight: 700; color: var(--muted); }
+.vh-row { display: grid; grid-template-columns: 28px 40px minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 6px 10px; border-radius: 8px; }
+.vh-row img, .vh-gone-art { width: 40px; height: 40px; border-radius: 4px; object-fit: cover; background: var(--chip); }
+.vh-n { text-align: right; color: var(--muted); font: 500 .85rem var(--f-mono); }
+.vh-t { min-width: 0; }
+.vh-t b { display: block; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.vh-t span { display: block; font-size: .84rem; color: var(--muted); }
+.vh-row.added { background: #e6f4ea; box-shadow: inset 3px 0 0 #1e8e3e; }
+.vh-row.removed { background: #fce8e6; box-shadow: inset 3px 0 0 #c5221f; }
+.vh-row.removed .vh-t b { text-decoration: line-through; }
+.vh-tag { font-size: .72rem; font-weight: 700; padding: 2px 8px; border-radius: 999px; }
+.vh-tag.add { background: #ceead6; color: #0d652d; }
+.vh-tag.del { background: #fad2cf; color: #a50e0e; }
+.vh-break { display: flex; align-items: center; gap: 10px; margin: 18px 0 4px; padding: 0 10px; font: 700 1.1rem var(--f-display); }
+.vh-sub { margin: 22px 0 6px; font: 700 1rem var(--f-display); }
+@media (max-width: 900px) { .vh-wrap { grid-template-columns: minmax(0, 1fr); } .vh-list { position: static; max-height: 320px; order: -1; } }
 .set-sec { display: flex; flex-direction: column; gap: 4px; max-width: 760px; }
 .set-sec h2 { margin: 0 0 6px; font: 700 1.15rem var(--f-display); }
 .set-row { display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 14px 0; border-top: 1px solid var(--line); }
@@ -2085,6 +2119,42 @@ const VIEWS = {
       <section class="sec"><div class="sec-head"><h2>Artists</h2><button class="link sm" data-open="library:artists">Show All</button></div><div class="cards one-row">${artistsSorted().map(artistCard).join('')}</div></section>
       <section class="sec"><div class="sec-head"><h2>Recently Added</h2><button class="link sm" data-open="library:songs">Show All</button></div>${trackList(recentIds, { key: 'library', name: 'Recently Added' }, { noHead: true })}</section>`;
   },
+  plhistory(v) {
+    const p = S.playlists.find(x => x.id === v.key);
+    if (!p) return notFound('That playlist was deleted.');
+    const H = plHist.id === p.id ? plHist : null;
+    if (!H || H.loading) { if (!H) loadPlHistory(p.id); return `<h1 class="page-title">Version History</h1><p class="sm">Loading…</p>`; }
+    if (H.error) return `<h1 class="page-title">Version History</h1><div class="empty"><h3>Couldn't Load the History</h3><p>${esc(H.error)}</p><button class="btn ghost" data-vh-retry="${esc(p.id)}">Try Again</button></div>`;
+    const entries = H.entries;
+    if (!entries.length) return `<div class="vh-top"><h1 class="page-title">Version History</h1><button class="btn ghost-sm" data-open="playlist:${esc(p.id)}">Back to Playlist</button></div><div class="empty"><h3>No Versions Yet</h3><p>Allegro saves a version each time you change ${esc(p.name)}. Make a change and it will show up here.</p></div>`;
+    const sel = entries.find(e => e.key === H.sel) || entries[0];
+    let lastDay = '';
+    const list = entries.map(e => {
+      const day = vhDay(e.at), dayHead = day !== lastDay ? `<div class="vh-day">${esc(day)}</div>` : ''; lastDay = day;
+      const lines = e.lines.slice(0, 3).map(l => `<li>${esc(l)}</li>`).join('') + (e.lines.length > 3 ? `<li class="vh-more">and ${e.lines.length - 3} more</li>` : '');
+      return dayHead + `<button class="vh-item${e === sel ? ' on' : ''}" data-vh="${esc(e.key)}"><span class="vh-when">${esc(e.label)}${e.current ? '<b class="vh-cur">Current Version</b>' : ''}</span><ul>${lines}</ul></button>`;
+    }).join('');
+    // the selected version, with what changed in it
+    const snap = sel.data, prev = sel.base;
+    const prevSet = new Set(prev ? prev.ids : []), nowSet = new Set(snap ? snap.ids : []);
+    let n = 0;
+    const rows = snap ? snap.ids.map(id => {
+      if (id.startsWith('brk:')) { n = 0; return `<div class="vh-break">${esc((snap.breaks || {})[id.slice(4)] || 'Untitled Section')}${prev && !prevSet.has(id) ? '<span class="vh-tag add">Added</span>' : ''}</div>`; }
+      const t = tk(id), isNew = prev && !prevSet.has(id) && !sel.original;
+      return `<div class="vh-row${isNew ? ' added' : ''}"><span class="vh-n">${++n}</span>${t ? `<img src="${esc(t.cover)}" alt="" loading="lazy">` : '<span class="vh-gone-art"></span>'}<span class="vh-t"><b>${esc(t ? t.title : 'A song no longer in your library')}</b><span>${esc(t ? t.artist : '')}</span></span>${isNew ? '<span class="vh-tag add">Added</span>' : ''}</div>`;
+    }).join('') : '';
+    const gone = prev && snap && !sel.original ? prev.ids.filter(id => !id.startsWith('brk:') && !nowSet.has(id)) : [];
+    const goneHtml = gone.length ? `<h3 class="vh-sub">Removed in This Version</h3>` + gone.map(id => { const t = tk(id); return `<div class="vh-row removed"><span class="vh-n">–</span>${t ? `<img src="${esc(t.cover)}" alt="" loading="lazy">` : '<span class="vh-gone-art"></span>'}<span class="vh-t"><b>${esc(t ? t.title : 'A song no longer in your library')}</b><span>${esc(t ? t.artist : '')}</span></span><span class="vh-tag del">Removed</span></div>`; }).join('') : '';
+    const restore = !sel.current && snap ? `<button class="btn" data-vh-restore="${esc(sel.key)}">Restore This Version</button>` : '';
+    return `<div class="vh-top"><h1 class="page-title">Version History</h1><button class="btn ghost-sm" data-open="playlist:${esc(p.id)}">Back to Playlist</button></div>
+      <div class="vh-wrap">
+        <section class="vh-preview">
+          <div class="vh-head"><div><span class="vh-label">${esc(sel.current ? 'Current Version' : sel.label)}</span><h2>${esc(snap ? snap.name : p.name)}</h2>${snap && snap.desc ? `<p class="sm">${esc(snap.desc)}</p>` : ''}<p class="sm">${plural(snap ? snap.ids.filter(x => !x.startsWith('brk:')).length : 0, 'song')}</p></div>${restore}</div>
+          ${rows || '<p class="sm">No songs in this version.</p>'}${goneHtml}
+        </section>
+        <aside class="vh-list" aria-label="Versions">${list}</aside>
+      </div>`;
+  },
   settings() {
     const demos = !pref('hideDemos'), nCols = S.listCols.length;
     const toggle = (id, on, label) => `<button class="switch${on ? ' on' : ''}" id="${id}" role="switch" aria-checked="${on}" aria-label="${esc(label)}"><i></i></button>`;
@@ -2490,6 +2560,7 @@ function ctxMenu(anchor, key) {
     items.push({ sep: true },
       { label: 'Edit Details', icon: 'edit', fn: () => editPlaylist(p.id) },
       { label: 'Move to Folder', icon: 'folder', sub: folderSub(p.id) },
+      { label: 'Version History', icon: 'clock', fn: () => { plHist = { id: null }; go({ name: 'plhistory', key: p.id }); } },
       { label: 'Delete Playlist', icon: 'trash', danger: true, fn: () => deletePlaylist(p.id) });
   }
   openMenu(anchor, items, c.name);
@@ -2834,6 +2905,67 @@ fpop.addEventListener('pointerleave', fpHideSoon);
 $('#side-list').addEventListener('scroll', () => hideFolderPop(), { passive: true });
 document.addEventListener('pointerdown', e => { if (!fpop.hidden && !fpop.contains(e.target) && !e.target.closest('.li[data-open^="folder:"]')) hideFolderPop(); }, true);
 fpop.addEventListener('click', () => setTimeout(() => hideFolderPop(true), 0));
+
+/* ================= playlist version history ================= */
+let plHist = { id: null };
+const vhTime = at => new Date(at).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+function vhDay(at) {
+  const d = new Date(at), t = new Date(); t.setHours(0, 0, 0, 0);
+  const diff = Math.round((t - new Date(d.getFullYear(), d.getMonth(), d.getDate())) / 864e5);
+  return diff === 0 ? 'Today' : diff === 1 ? 'Yesterday' : d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: d.getFullYear() === t.getFullYear() ? undefined : 'numeric' });
+}
+const songName = id => { const t = tk(id); return t ? `“${t.title}”` : 'a song no longer in your library'; };
+function vhLines(v) {
+  const out = [];
+  if (v.note) out.push(v.note);
+  for (const c of v.changes) {
+    if (c.t === 'created') out.push('Created the playlist');
+    else if (c.t === 'deleted') out.push('Deleted the playlist');
+    else if (c.t === 'renamed') out.push(`Renamed from “${c.from}” to “${c.to}”`);
+    else if (c.t === 'desc') out.push('Changed the description');
+    else if (c.t === 'cover') out.push('Changed the cover photo');
+    else if (c.t === 'cover-removed') out.push('Removed the cover photo');
+    else if (c.t === 'added') out.push(c.ids.length === 1 ? `Added ${songName(c.ids[0])}` : `Added ${plural(c.ids.length, 'song')}`);
+    else if (c.t === 'removed') out.push(c.ids.length === 1 ? `Removed ${songName(c.ids[0])}` : `Removed ${plural(c.ids.length, 'song')}`);
+    else if (c.t === 'reordered') out.push('Changed the song order');
+    else if (c.t === 'break-added') out.push(`Added page break “${c.name}”`);
+    else if (c.t === 'break-removed') out.push(`Removed page break “${c.name}”`);
+    else if (c.t === 'break-renamed') out.push(`Renamed page break “${c.from}” to “${c.to}”`);
+  }
+  return out.length ? out : ['Small changes'];
+}
+async function loadPlHistory(id) {
+  plHist = { id, loading: true };
+  let d;
+  try { d = await api('playlist-history/' + encodeURIComponent(id)); }
+  catch (e) { plHist = { id, error: e.message || "Couldn't reach Allegro." }; if (S.view.name === 'plhistory') render(); return; }
+  const vs = (d.versions || []).filter(v => v.data);
+  const entries = vs.map((v, i) => ({ key: 'v' + v.id, at: v.at, data: v.data, base: v.base, current: i === 0, lines: vhLines(v), label: vhDay(v.at) + ', ' + vhTime(v.at) }));
+  // the version before the oldest recorded change, if the playlist existed before history started
+  const oldest = vs[vs.length - 1];
+  if (oldest && oldest.base) entries.push({ key: 'orig', at: oldest.at - 1, data: oldest.base, base: null, original: true, lines: ['How it was before the changes above'], label: 'Earlier version' });
+  plHist = { id, entries, sel: plHist.sel };
+  if (S.view.name === 'plhistory' && S.view.key === id) render();
+}
+document.addEventListener('click', e => {
+  const it = e.target.closest('[data-vh]');
+  if (it && plHist.entries) { plHist.sel = it.dataset.vh; const top = $('#main').scrollTop; render(); $('#main').scrollTop = top; return; }
+  const rt = e.target.closest('[data-vh-retry]'); if (rt) { loadPlHistory(rt.dataset.vhRetry); render(); return; }
+  const rs = e.target.closest('[data-vh-restore]');
+  if (rs && plHist.entries) {
+    const v = plHist.entries.find(x => x.key === rs.dataset.vhRestore), p = S.playlists.find(x => x.id === plHist.id);
+    if (!v || !p) return;
+    const when = v.original ? 'the earlier version' : 'the version from ' + v.label;
+    p.name = v.data.name || p.name;
+    if (v.data.desc) p.desc = v.data.desc; else delete p.desc;
+    p.ids = v.data.ids.slice(); p.breaks = { ...(v.data.breaks || {}) };
+    cloud.notes[p.id] = `Restored ${when}`;
+    userActed = true; save(); renderSide();
+    toast(`Restored ${when}`);
+    setTimeout(() => loadPlHistory(p.id), 1500);
+    plHist.sel = null; render();
+  }
+});
 
 /* ================= settings ================= */
 const pref = k => S.prefs.includes(k);
@@ -3886,7 +4018,7 @@ function refreshUsage() { loadLibrary(); }
 // your phone (which updates history) can never overwrite a playlist you just made on your laptop.
 const SYNC_KEYS = ['playlists', 'liked', 'libOrder', 'history', 'recent', 'artistPics', 'listCols', 'folders', 'prefs'];
 const syncJSON = () => JSON.stringify(Object.fromEntries(SYNC_KEYS.map(k => [k, S[k]])));
-cloud.synced = {};
+cloud.synced = {}; cloud.notes = {};
 function applyState(st) {
   st = st || {};
   let changed = false;
@@ -3930,8 +4062,11 @@ async function pushState() {
   if (!Object.keys(patch).length) return;
   if (cloud.writing) { cloud.again = true; return; }
   cloud.writing = true;
+  const notes = cloud.notes; cloud.notes = {};
+  if (Object.keys(notes).length && patch.playlists) patch.notes = JSON.stringify(notes);
   try {
     await api('state', { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: '{' + Object.entries(patch).map(([k, v]) => JSON.stringify(k) + ':' + v).join(',') + '}' });
+    delete patch.notes;
     Object.assign(cloud.synced, patch);
   } catch (e) { if (e.status !== 401) toast("Couldn't save your playlists online. They'll save on your next change."); }
   cloud.writing = false;
