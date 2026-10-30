@@ -142,6 +142,10 @@ try {
   await A.mouse.move(cb.x + cb.width / 2, cb.y + cb.height / 2); await A.mouse.down();
   await A.mouse.move(cb.x + cb.width / 2 - 80, cb.y + cb.height / 2, { steps: 6 }); await A.mouse.up();
   await A.$eval('#crop-zoom', el => { el.value = 1.5; el.dispatchEvent(new Event('input', { bubbles: true })); });
+  const off = await A.$eval('#crop-img', i => i.style.transform);
+  await A.click('#crop-center'); await A.waitForTimeout(400);
+  const centered = await A.$eval('#crop-img', i => { const m = i.style.transform.match(/translate\(([-\d.]+)px, ([-\d.]+)px\) scale\(([\d.]+)\)/); const V = document.getElementById('crop-box').clientWidth, s = +m[3]; return Math.abs(+m[1] - (V - i.naturalWidth * s) / 2) < 1 && Math.abs(+m[2] - (V - i.naturalHeight * s) / 2) < 1; });
+  check(centered && off !== await A.$eval('#crop-img', i => i.style.transform), 'Center Image centers the photo');
   await A.click('#crop-apply'); await A.waitForTimeout(1800);
   check(cropOpen && !(await A.isVisible('#cropper')), 'choosing a photo opens the crop window');
   data = await lib(A);

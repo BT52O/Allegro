@@ -564,6 +564,8 @@ input[type="range"]:disabled { opacity: .4; cursor: default; }
               linear-gradient(to bottom, transparent calc(33.33% - .5px), rgba(255,255,255,.45) calc(33.33% - .5px), rgba(255,255,255,.45) calc(33.33% + .5px), transparent calc(33.33% + .5px), transparent calc(66.66% - .5px), rgba(255,255,255,.45) calc(66.66% - .5px), rgba(255,255,255,.45) calc(66.66% + .5px), transparent calc(66.66% + .5px));
   opacity: 0; transition: opacity .15s; }
 .crop-box.grabbing .crop-grid { opacity: 1; }
+.crop-tools { display: flex; justify-content: flex-end; width: min(100%, 380px); margin: 0 auto -4px; }
+.crop-center { height: 30px; padding: 0 12px; border-radius: 999px; font-size: .8rem; }
 .crop-hint { margin: 0; text-align: center; color: var(--muted); font-size: .82rem; }
 .crop-zoom { display: flex; align-items: center; gap: 10px; color: var(--muted); padding: 0 6px; }
 .crop-zoom .ic { width: 18px; height: 18px; flex: none; }
@@ -875,6 +877,7 @@ body.dragging-row .tr:hover .like:not(.on), body.dragging-row .tr:hover .more { 
 <div class="modal-scrim crop-scrim" id="cropper" hidden>
   <div class="modal crop-modal" role="dialog" aria-modal="true" aria-labelledby="crop-title">
     <div class="modal-head"><h2 id="crop-title">Crop photo</h2><button type="button" class="circ" id="crop-close" aria-label="Cancel"><i data-ic="close"></i></button></div>
+    <div class="crop-tools"><button type="button" class="pill-btn crop-center" id="crop-center">Center Image</button></div>
     <div class="crop-box" id="crop-box" tabindex="0" aria-label="Photo. Drag to move it, or use the arrow keys."><img id="crop-img" alt="" draggable="false"><div class="crop-grid" aria-hidden="true"></div></div>
     <p class="crop-hint">Drag to move. Scroll or pinch to zoom.</p>
     <label class="crop-zoom" for="crop-zoom"><i data-ic="search"></i><input type="range" id="crop-zoom" min="1" max="5" step="0.01" value="1" aria-label="Zoom"></label>
@@ -2263,6 +2266,13 @@ async function cropExport() {
     else if (e.key === '-') cropZoomTo(crop.zoom / 1.1);
   });
   $('#crop-zoom').addEventListener('input', e => { if (crop) cropZoomTo(+e.target.value); });
+  $('#crop-center').addEventListener('click', () => {
+    if (!crop) return;
+    const s = crop.base * crop.zoom;
+    $('#crop-img').style.transition = 'transform .25s cubic-bezier(.2, .8, .2, 1)';
+    cropSet(crop.zoom, (crop.V - crop.w * s) / 2, (crop.V - crop.h * s) / 2);
+    setTimeout(() => { $('#crop-img').style.transition = ''; }, 260);
+  });
   $('#crop-cancel').addEventListener('click', () => { if (crop) cropClose(null); });
   $('#crop-close').addEventListener('click', () => { if (crop) cropClose(null); });
   $('#crop-apply').addEventListener('click', async () => {
