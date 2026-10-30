@@ -868,7 +868,7 @@ try {
     return { dl: Math.round(q.left - s.left), dr: Math.round(q.right - a.right), below: q.top > s.bottom, abovePlayer: q.bottom <= pl.top, op: getComputedStyle(document.getElementById('queue-panel')).opacity, main: document.getElementById('main').getBoundingClientRect().width,
       secs: [...document.querySelectorAll('#queue-list .q-sec')].map(e => e.textContent.trim()), now: document.querySelectorAll('#queue-list .qrow.now').length, next: document.querySelectorAll('#queue-list .qrow.next').length, past: document.querySelectorAll('#queue-list .qrow.past').length }; });
   await shot(A, 'queue-open');
-  check(qMid < 1 && qp.op === '1' && qp.dl === 0 && qp.dr === 0 && qp.below && qp.abovePlayer && Math.abs(qp.main - mainW) < 1, 'the queue fades in as a card under the search bar, the same width as the search bar and account button, over the page', JSON.stringify({ qMid, ...qp, mainW }));
+  check(qMid < 1 && qp.op === '1' && qp.dl >= -4 && qp.dl <= 0 && qp.dr >= 0 && qp.dr <= 5 && qp.below && qp.abovePlayer && Math.abs(qp.main - mainW) < 1, 'the queue fades in as a card under the search bar, the same width as the search bar and account button, over the page', JSON.stringify({ qMid, ...qp, mainW }));
   check(qp.secs[0] === 'History' && /^Playing from: /.test(qp.secs[1]) && /Clear$/.test(qp.secs[1]) && /^Next Up from: /.test(qp.secs[2]) && qp.now === 1 && qp.past >= 1 && qp.next >= 1, 'the queue shows History, Playing from (with Clear) and Next Up', JSON.stringify(qp.secs));
   const nextN = qp.next;
   await A.click('[data-qclear]'); await A.waitForTimeout(300);

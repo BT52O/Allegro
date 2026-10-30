@@ -152,10 +152,10 @@ body.is-playing .li.grid.playing .spk { display: grid; }
 /* The queue floats over the page as a card tucked under the search bar: its left edge lines up with the search box and its
    right edge with the account button (placeQueue sets the numbers). It fades and drops in, and runs the same way back out. */
 .queue-panel {
-  position: fixed; z-index: 25; top: 76px; right: 24px; width: 440px; max-height: 70vh; display: flex; flex-direction: column; min-height: 0;
-  background: var(--raise); border: 1px solid var(--line); border-radius: 22px; overflow: hidden;
-  box-shadow: 0 24px 60px -18px rgba(0, 0, 0, .38), 0 2px 10px rgba(0, 0, 0, .08);
-  opacity: 0; visibility: hidden; pointer-events: none; transform: translateY(-12px) scale(.97); transform-origin: 80% 0;
+  position: fixed; z-index: 25; top: 64px; right: 20px; width: 333px; max-height: 70vh; display: flex; flex-direction: column; min-height: 0;
+  background: var(--raise); border: 1px solid var(--line); border-radius: 14px; overflow: hidden;
+  box-shadow: 0 20px 50px -16px rgba(0, 0, 0, .4), 0 2px 8px rgba(0, 0, 0, .08);
+  opacity: 0; visibility: hidden; pointer-events: none; transform: translateY(-10px) scale(.97); transform-origin: 80% 0;
   transition: opacity .2s ease, transform .26s cubic-bezier(.4, 0, .2, 1), visibility 0s linear .26s;
 }
 .queue-panel.open {
@@ -175,7 +175,7 @@ body.is-playing .li.grid.playing .spk { display: grid; }
 .tb-nav .circ { background: color-mix(in srgb, var(--ink) 8%, transparent); color: var(--ink); }
 .tb-logo { display: none; }
 .search-box {
-  flex: 0 1 420px; min-width: 0; display: flex; align-items: center; gap: 10px; height: 44px; padding: 0 14px;
+  flex: 0 1 280px; min-width: 0; display: flex; align-items: center; gap: 10px; height: 38px; padding: 0 14px;
   border-radius: 999px; background: var(--chip); border: 0; color: var(--muted); transition: background-color .18s;
 }
 .search-box:hover { background: color-mix(in srgb, var(--ink) 10%, var(--chip)); }
@@ -411,45 +411,48 @@ body.touch-input .tr .more { opacity: 1; }
 .empty p { margin: 0; max-width: 46ch; }
 
 /* ---------- queue panel ---------- */
-.qp-head { flex: none; display: flex; align-items: center; gap: 4px; padding: 22px 16px 6px 28px; }
-.qp-head h2 { margin: 0; flex: 1; min-width: 0; font: 700 1.6rem var(--f-display); letter-spacing: -.015em; }
-.qp-head .circ { width: 40px; height: 40px; }
-.qp-head .circ .ic { width: 22px; height: 22px; }
-.queue-panel .queue-list { overflow-y: auto; min-height: 0; padding: 0 10px 16px 16px; }
-.queue-panel .queue-list::-webkit-scrollbar-track { margin: 6px 0 14px; }
-.queue-list { display: flex; flex-direction: column; gap: 2px; }
-.q-sec { display: flex; align-items: baseline; gap: 6px; padding: 22px 12px 10px; font-weight: 700; font-size: 1rem; min-width: 0; }
-.q-sec:first-child { padding-top: 12px; }
+/* Queue rows and headings, sized after Tidal's play queue: 44px covers on a 60px rhythm, 14px type, wide gaps between sections. */
+.qp-head { flex: none; display: flex; align-items: center; gap: 15px; padding: 21px 20px 0 16px; }
+.qp-head h2 { margin: 0; flex: 1; min-width: 0; font: 700 1.18rem/28px var(--f-display); letter-spacing: -.01em; }
+.qp-head .circ { width: 32px; height: 32px; }
+.qp-head .circ .ic { width: 19px; height: 19px; }
+.queue-panel .queue-list { overflow-y: auto; min-height: 0; padding: 0 0 8px 10px; }
+.queue-panel .queue-list::-webkit-scrollbar-track { margin: 4px 0 12px; }
+.queue-list { display: flex; flex-direction: column; gap: 0; }
+.q-sec { display: flex; align-items: center; gap: 6px; min-height: 28px; padding: 46px 0 6px 6px; font-weight: 700; font-size: .875rem; min-width: 0; }
+.q-sec:first-child { padding-top: 18px; padding-bottom: 0; }
 .q-sec .q-from { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.q-sec .link { text-decoration: underline; text-underline-offset: 3px; text-decoration-thickness: 1.5px; }
 .q-sec .q-from .link { font: inherit; color: inherit; text-decoration: underline; text-underline-offset: 3px; text-decoration-thickness: 1.5px; }
-.q-clear { margin-left: auto; flex: none; color: var(--muted); font-weight: 700; font-size: .95rem; padding: 2px 4px; border-radius: 6px; }
+.q-clear { margin-left: auto; flex: none; height: 28px; color: var(--muted); font-weight: 700; font-size: .875rem; padding: 0 8px; border-radius: 6px; }
 .q-clear:hover { color: var(--ink); }
-.q-gap { height: 18px; flex: none; }
-.qrow { display: grid; grid-template-columns: 52px minmax(0, 1fr) auto; gap: 14px; align-items: center; padding: 6px 6px 6px 10px; border-radius: 10px; cursor: pointer; }
+.q-gap { display: none; }
+.qrow { display: grid; grid-template-columns: 44px minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 8px 2px 8px 8px; border-radius: 8px; cursor: pointer; }
 .qrow:hover { background: var(--hover); }
-.q-art { position: relative; width: 52px; height: 52px; }
-.q-art img { width: 100%; height: 100%; border-radius: 5px; object-fit: cover; display: block; }
-.q-art .spk { position: absolute; inset: 0; display: none; place-items: center; border-radius: 5px; background: rgba(0, 0, 0, .45); color: #fff; }
-.q-art .spk .ic { width: 24px; height: 24px; }
+.q-art { position: relative; width: 44px; height: 44px; }
+.q-art img { width: 100%; height: 100%; border-radius: 4px; object-fit: cover; display: block; }
+.q-art .spk { position: absolute; inset: 0; display: none; place-items: center; border-radius: 4px; background: rgba(0, 0, 0, .35); color: var(--q-now); }
+.q-art .spk .ic { width: 22px; height: 22px; }
 body.is-playing .qrow.now .q-art .spk { display: grid; }
-.qrow .tt { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
-.qrow .t-name { font-size: 1rem; font-weight: 600; }
-.qrow .t-artist { font-size: .92rem; color: var(--muted); }
+.qrow .tt { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.qrow .t-name { font-size: .9rem; font-weight: 600; line-height: 1.2; }
+.qrow .t-artist { font-size: .86rem; color: var(--muted); line-height: 1.2; }
 .qrow .t-name, .qrow .t-artist { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.qrow.now .t-name { color: var(--accent); font-weight: 700; }
-.qrow.past .t-name, .qrow.past img { opacity: .55; }
-.qrow.past .t-artist { opacity: .75; }
-.q-acts { display: flex; align-items: center; gap: 2px; }
-.qmore, .qrm { width: 34px; height: 34px; display: grid; place-items: center; color: var(--muted); border-radius: 50%; }
+/* the playing song is picked out in yellow, like Tidal (a deeper gold on light backgrounds so it stays readable) */
+:root { --q-now: #a87700; }
+:root[data-theme="dark"], .s-panel { --q-now: #ffd432; }
+.qrow.now .t-name { color: var(--q-now); font-weight: 700; }
+.qrow.past .t-name, .qrow.past img { opacity: .5; }
+.qrow.past .t-artist { opacity: .7; }
+.q-acts { display: flex; align-items: center; gap: 0; }
+.qmore, .qrm { width: 32px; height: 32px; display: grid; place-items: center; color: var(--muted); border-radius: 50%; }
 .qmore:hover, .qrm:hover { color: var(--ink); background: var(--hover); }
 .qmore { opacity: 0; }
 .qrow:hover .qmore, .qrow.now .qmore, .qrow.past .qmore, .qmore:focus-visible, body.touch-input .qmore { opacity: 1; }
-.qrow:not(:hover) .qmore { color: var(--muted); }
 .qrm { color: var(--ink); }
-.qmore .ic { width: 20px; height: 20px; }
-.qrm .ic { width: 18px; height: 18px; }
-.q-empty { padding: 8px 12px; color: var(--muted); font-size: .9rem; }
+.qrow.next:not(:hover) .qmore { display: none; }
+.qmore .ic { width: 18px; height: 18px; }
+.qrm .ic { width: 17px; height: 17px; }
+.q-empty { padding: 8px 6px; color: var(--muted); font-size: .86rem; }
 
 /* ---------- player bar ---------- */
 .player {
@@ -532,6 +535,7 @@ input[type="range"]:disabled { opacity: .4; cursor: default; }
 .s-art.tilting { transition: box-shadow .5s; box-shadow: 0 46px 90px -30px rgba(0, 0, 0, .75); }
 .s-shine { position: absolute; inset: 0; pointer-events: none; opacity: 0; transition: opacity .45s; border-radius: inherit; }
 .s-art.tilting .s-shine { transition: none; }
+@media (min-width: 760px) { .s-art::after { content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .14); } }
 /* Now Playing panel: Wiki, Lyrics, Comments */
 .s-panel { display: none; flex-direction: column; min-height: 0; border-radius: 24px; background: rgba(255, 255, 255, .1); -webkit-backdrop-filter: blur(24px); backdrop-filter: blur(24px); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .08); overflow: hidden; color: #fff; }
 .sp-tabs { display: inline-flex; align-self: flex-start; gap: 1px; margin: 12px 14px 0; padding: 3px; border-radius: 999px; background: rgba(0, 0, 0, .28); flex: none; }
@@ -794,7 +798,7 @@ img { -webkit-user-drag: none; user-select: none; }
 .gate-card .btn { height: 48px; margin-top: 4px; }
 .gate-card .btn:disabled { opacity: .5; }
 .gate-err { margin: 0; min-height: 1.3em; color: #b3261e; font-size: .9rem; }
-.topbar .acct { flex: none; background: color-mix(in srgb, var(--ink) 8%, transparent); color: var(--ink); width: 40px; height: 40px; }
+.topbar .acct { flex: none; background: color-mix(in srgb, var(--ink) 8%, transparent); color: var(--ink); width: 38px; height: 38px; }
 
 /* ---------- crop photo ---------- */
 .crop-scrim { z-index: 75; }
@@ -2846,9 +2850,10 @@ function queueHTML() {
 function placeQueue() {
   if (innerWidth < 760) return;
   const qp = $('#queue-panel'), s = $('#search-box').getBoundingClientRect(), a = $('#acct-btn').getBoundingClientRect(), p = $('#player').getBoundingClientRect();
-  let w = Math.round(a.right - s.left), l = Math.round(s.left);
-  if (w < 340) { l -= 340 - w; w = 340; }
-  const top = Math.round(s.bottom + 14);
+  // the card is a hair wider than the search bar and account button, so they sit just inside its edges
+  let l = Math.round(s.left) - 3, w = Math.round(a.right - s.left) + 7;
+  if (w < 320) { l -= 320 - w; w = 320; }
+  const top = Math.round(s.bottom + 12);
   Object.assign(qp.style, { left: l + 'px', right: 'auto', width: w + 'px', top: top + 'px', maxHeight: Math.max(220, Math.round(p.top - 14 - top)) + 'px' });
 }
 function renderQueue() {
@@ -3562,17 +3567,17 @@ $('#s-ptoggle').addEventListener('click', e => {
 /* --- the cover leans toward the pointer, with a glint of light (mouse only) --- */
 (() => {
   const art = $('#s-art'), shine = art.querySelector('.s-shine');
-  // The cover eases toward the pointer instead of snapping to it: each frame it covers a small part of the distance left.
-  // The glint of light sits on the opposite side from the pointer, small and soft.
+  // Modeled on Tidal's Now Playing cover: the side under the pointer presses away a few degrees, easing there with a lag
+  // rather than snapping, and a wide, faint glow of light rises on the far side, centered just past the cover's edge.
   const cur = { x: .5, y: .5, k: 0 }, goal = { x: .5, y: .5, k: 0 };
   let raf = 0;
   const draw = () => {
     const f = .075;
     cur.x += (goal.x - cur.x) * f; cur.y += (goal.y - cur.y) * f; cur.k += (goal.k - cur.k) * f;
     const dx = cur.x - .5, dy = cur.y - .5;
-    art.style.transform = `perspective(1100px) rotateX(${(-dy * 13 * cur.k).toFixed(2)}deg) rotateY(${(dx * 13 * cur.k).toFixed(2)}deg) scale(${(1 + .025 * cur.k).toFixed(4)})`;
-    const lx = (1 - cur.x) * 100, ly = (1 - cur.y) * 100;
-    shine.style.background = `radial-gradient(circle at ${lx.toFixed(1)}% ${ly.toFixed(1)}%, rgba(255, 255, 255, .34), rgba(255, 255, 255, .1) 11%, rgba(255, 255, 255, 0) 26%)`;
+    art.style.transform = `perspective(1100px) rotateX(${(-dy * 9 * cur.k).toFixed(2)}deg) rotateY(${(dx * 9 * cur.k).toFixed(2)}deg) scale(${(1 + .02 * cur.k).toFixed(4)})`;
+    const lx = (1 - cur.x) * 140 - 20, ly = (1 - cur.y) * 140 - 20;
+    shine.style.background = `radial-gradient(62% 62% at ${lx.toFixed(1)}% ${ly.toFixed(1)}%, rgba(255, 255, 255, .1), rgba(255, 255, 255, .055) 40%, rgba(255, 255, 255, .015) 75%, rgba(255, 255, 255, 0) 100%)`;
     shine.style.opacity = cur.k.toFixed(3);
     const still = Math.abs(goal.x - cur.x) + Math.abs(goal.y - cur.y) + Math.abs(goal.k - cur.k) < .002;
     if (still && goal.k === 0) { art.classList.remove('tilting'); art.style.transform = ''; shine.style.opacity = ''; raf = 0; return; }
