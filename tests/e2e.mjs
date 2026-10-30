@@ -170,6 +170,18 @@ try {
   const order = data.state.playlists.find(p => p.id === 'pl-example').ids;
   check(order[2] === before[0] && order[0] === before[1], 'dragging a song reorders the playlist and saves', JSON.stringify(order.slice(0, 3)));
 
+  // --- the Add to Playlist submenu stays where the menu opened
+  for (const pos of ['first', 'last']) {
+    const row = pos === 'first' ? '#view .tl .tr >> nth=0' : '#view .tl .tr >> nth=-1';
+    await A.click(`${row} >> .more`, { force: true }); await A.waitForTimeout(250);
+    const m1 = await A.$eval('#menu', m => m.getBoundingClientRect().toJSON());
+    await A.click('#menu .mi:has-text("Add to Playlist")'); await A.waitForTimeout(250);
+    const m2 = await A.$eval('#menu', m => m.getBoundingClientRect().toJSON());
+    const same = Math.abs(m1.left - m2.left) < 1 && (Math.abs(m1.top - m2.top) < 1 || Math.abs(m1.bottom - m2.bottom) < 1);
+    check(same, `Add to Playlist submenu grows from the same spot (${pos} song)`, JSON.stringify([Math.round(m1.top), Math.round(m1.bottom), Math.round(m2.top), Math.round(m2.bottom)]));
+    await A.keyboard.press('Escape'); await A.waitForTimeout(200);
+  }
+
   // --- back and forward go one page only
   await A.click('.nav-btn[data-nav="home"]'); await A.waitForTimeout(400);
   await A.click('.nav-btn[data-nav="search"]'); await A.waitForTimeout(400);

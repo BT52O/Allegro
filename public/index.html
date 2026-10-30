@@ -1975,17 +1975,27 @@ function openMenu(anchor, items, title) {
   placeMenu();
   const f = m.querySelector('.mi'); if (f && !sheet) f.focus({ preventScroll: true });
 }
-function placeMenu() {
+let menuPlace = null;
+function placeMenu(keep = false) {
   const m = $('#menu'); if (m.classList.contains('as-sheet') || !menuAnchor) return;
   const r = menuAnchor.getBoundingClientRect(), w = m.offsetWidth, h = m.offsetHeight;
+  m.style.bottom = 'auto'; m.style.maxHeight = '';
   if (menuAnchor.point) {
     const left = Math.min(menuAnchor.point.x, innerWidth - w - 8), top = menuAnchor.point.y + h > innerHeight - 8 ? Math.max(8, innerHeight - h - 8) : menuAnchor.point.y;
     m.style.left = Math.max(8, left) + 'px'; m.style.top = top + 'px'; return;
   }
-  let left = r.right - w, top = r.bottom + 6;
-  if (left < 8) left = Math.min(r.left, innerWidth - w - 8);
-  if (top + h > innerHeight - 8) top = Math.max(8, r.top - h - 6);
-  m.style.left = Math.max(8, left) + 'px'; m.style.top = top + 'px';
+  // The menu opens below the button when it fits (or when there's more room below), otherwise above it.
+  // Submenus keep that same side and left edge, so the menu grows in place instead of jumping.
+  const below = innerHeight - r.bottom - 14, above = r.top - 14;
+  if (!keep || !menuPlace) {
+    let left = r.right - w;
+    if (left < 8) left = Math.min(r.left, innerWidth - w - 8);
+    menuPlace = { dir: h <= below || below >= above ? 'down' : 'up', left: Math.max(8, left) };
+  }
+  const left = Math.max(8, Math.min(menuPlace.left, innerWidth - w - 8));
+  m.style.left = left + 'px';
+  if (menuPlace.dir === 'down') { m.style.top = (r.bottom + 6) + 'px'; m.style.bottom = 'auto'; m.style.maxHeight = below + 'px'; }
+  else { m.style.top = 'auto'; m.style.bottom = (innerHeight - r.top + 6) + 'px'; m.style.maxHeight = above + 'px'; }
 }
 function drawMenu(items, title) {
   menuItems = items;
@@ -1993,6 +2003,7 @@ function drawMenu(items, title) {
     : `<button class="mi${it.danger ? ' danger' : ''}" data-mi="${i}" role="menuitem">${ic(it.icon || 'music')}<span>${esc(it.label)}</span>${it.sub ? ic('fwd') : ''}</button>`).join('');
 }
 function closeMenu() {
+  $('#menu').removeAttribute('style'); menuPlace = null;
   $('#menu').hidden = true; $('#menu-scrim').hidden = true;
   $$('.tr.menu-open').forEach(r => r.classList.remove('menu-open'));
   menuItems = null; menuAnchor = null;
@@ -2754,8 +2765,8 @@ document.addEventListener('click', e => {
   const mi = T.closest('[data-mi]');
   if (mi) {
     const it = menuItems && menuItems[+mi.dataset.mi]; if (!it) return;
-    if (it.back) { const prevItems = menuStack.pop(); drawMenu(prevItems.items, prevItems.title); placeMenu(); return; }
-    if (it.sub) { menuStack.push({ items: menuItems, title: $('#menu .m-title')?.textContent }); drawMenu([{ label: 'Back', icon: 'back', back: true }, { sep: true }, ...it.sub()], it.label); placeMenu(); return; }
+    if (it.back) { const prevItems = menuStack.pop(); drawMenu(prevItems.items, prevItems.title); placeMenu(true); return; }
+    if (it.sub) { menuStack.push({ items: menuItems, title: $('#menu .m-title')?.textContent }); drawMenu([{ label: 'Back', icon: 'back', back: true }, { sep: true }, ...it.sub()], it.label); placeMenu(true); return; }
     closeMenu(); it.fn(); return;
   }
   if (T.closest('#menu-scrim')) { closeMenu(); return; }
