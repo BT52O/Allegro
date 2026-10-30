@@ -84,7 +84,7 @@ img { display: block; }
   font: 500 var(--nf)/1 var(--f-nav); color: var(--ink); text-align: left; letter-spacing: -.02em; border-radius: 10px;
 }
 .logo .clef, .nav-btn .ic { width: var(--icn); height: var(--icn); flex: none; }
-.logo .clef { font: 400 calc(var(--icn) * .92)/1 var(--f-clef); display: grid; place-items: center; overflow: visible; }
+.logo .clef { font: 400 calc(var(--icn) * .64)/1 var(--f-clef); display: grid; place-items: center; overflow: visible; }
 .nav-btn .ic { stroke-width: 1.6; }
 .logo > span:not(.clef) { font-weight: 700; font-size: 16px; }
 .nav-btn:hover, .logo:hover { background: var(--hover); }
@@ -633,6 +633,18 @@ body.dragging-row .tr:hover .like:not(.on), body.dragging-row .tr:hover .more { 
 .drag-ghost img { width: 34px; height: 34px; border-radius: 4px; object-fit: cover; }
 .drag-ghost span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
+/* ---------- home shelves ---------- */
+.home-rows { display: flex; flex-direction: column; gap: 28px; }
+.shelf-nav { display: flex; align-items: center; gap: 6px; }
+.shelf-btn { width: 32px; height: 32px; background: color-mix(in srgb, var(--ink) 7%, transparent); color: var(--ink); }
+.shelf-btn:disabled { opacity: .3; cursor: default; background: color-mix(in srgb, var(--ink) 7%, transparent); }
+.shelf-nav .link { margin-left: 8px; }
+.shelf-row { display: grid; grid-auto-flow: column; grid-auto-columns: clamp(140px, 14cqi, 200px); gap: 4px 8px; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; margin: 0 -10px; padding: 0 0 4px; overscroll-behavior-x: contain; }
+.shelf-row::-webkit-scrollbar { display: none; }
+.shelf-row .card { scroll-snap-align: start; }
+.shelf-empty { margin: 0; color: var(--muted); font-size: .9rem; }
+@media (max-width: 759px) { .shelf-row { grid-auto-columns: 42vw; } .shelf-btn { display: none; } }
+
 /* ---------- page transitions ---------- */
 #view.enter-fwd > :not(.view-bg) { animation: page-in-fwd .38s cubic-bezier(.2, .8, .2, 1) both; }
 #view.enter-back > :not(.view-bg) { animation: page-in-back .38s cubic-bezier(.2, .8, .2, 1) both; }
@@ -909,7 +921,7 @@ const S = {
   view: { name: 'home' }, back: [], fwd: [],
   q: '', libTab: 'playlists', sort: 'added', queueOpen: false,
   demoAdded: Date.parse('2026-10-01T12:00:00Z'), last: null, renaming: null,
-  libSort: 'custom', libOrder: [], libView: 'list', libFilter: null, libQ: '', sideCollapsed: false
+  libSort: 'custom', libOrder: [], history: [], libView: 'list', libFilter: null, libQ: '', sideCollapsed: false
 };
 let IDX = { albums: new Map(), artists: new Map(), genres: new Map() };
 const STORE_KEY = 'waxwing.state.v1';
@@ -921,6 +933,7 @@ try {
     S.playlists = Array.isArray(p.playlists) ? p.playlists : [];
     S.liked = Array.isArray(p.liked) ? p.liked : [];
     S.recent = Array.isArray(p.recent) ? p.recent : [];
+    S.history = Array.isArray(p.history) ? p.history.filter(h => h && typeof h.id === 'string') : [];
     if (typeof p.volume === 'number') S.volume = p.volume;
     S.shuffle = !!p.shuffle;
     if (['off', 'all', 'one'].includes(p.repeat)) S.repeat = p.repeat;
@@ -940,7 +953,7 @@ function save() {
   saveTimer = setTimeout(() => {
     try {
       localStorage.setItem(STORE_KEY, JSON.stringify({
-        playlists: S.playlists, liked: S.liked, libOrder: S.libOrder, recent: S.recent, volume: S.volume, shuffle: S.shuffle, repeat: S.repeat,
+        playlists: S.playlists, liked: S.liked, libOrder: S.libOrder, recent: S.recent, history: S.history, volume: S.volume, shuffle: S.shuffle, repeat: S.repeat,
         demoAdded: S.demoAdded, libTab: S.libTab, sort: S.sort, queueOpen: S.queueOpen, libSort: S.libSort, libView: S.libView, sideCollapsed: S.sideCollapsed,
         last: S.current ? { ctx: S.context && S.context.key, id: S.current } : null
       }));
@@ -1396,7 +1409,16 @@ function unshuffle() {
 }
 function pushRecent(key) {
   if (!key || key === 'library' || key.startsWith('search')) return;
-  S.recent = [key, ...S.recent.filter(k => k !== key)].slice(0, 10);
+  S.recent = [key, ...S.recent.filter(k => k !== key)].slice(0, 30);
+}
+const HISTORY_MAX = 48;
+let pendingHistory = null;
+function recordPlay(id) {
+  if (!id || !S.tracks.has(id)) return;
+  if (S.history[0] && S.history[0].id === id && Date.now() - S.history[0].at < 5000) return;
+  S.history = [{ id, at: Date.now() }, ...S.history].slice(0, HISTORY_MAX);
+  userActed = true; save();
+  if (S.view.name === 'home' && !S.renaming) refreshHomeRows();
 }
 function playIds(ids, i, ctx, autoplay = true) {
   ids = ids.filter(id => S.tracks.has(id));
@@ -1421,7 +1443,7 @@ async function startCurrent(autoplay) {
   const id = S.queue[S.qi], t = tk(id);
   if (!t) return;
   const token = ++loadToken;
-  S.current = id;
+  S.current = id; pendingHistory = id;
   updateMeta(); markPlaying(); renderQueue(); save();
   if (!t.url) {
     setLoading(true); userWaiting++;
@@ -1511,6 +1533,7 @@ function openKey(key) {
   else if (type === 'liked') go({ name: 'liked' });
   else if (type === 'genre') go({ name: 'genre', key: id });
   else if (type === 'library') go({ name: 'library', tab: id || S.libTab });
+  else if (type === 'history') go({ name: 'history' });
 }
 
 /* ================= rendering ================= */
@@ -1521,22 +1544,63 @@ function trackRow(t, i, opt) {
     <span class="c-n"><span class="num">${n}</span><span class="eq" aria-hidden="true"><i></i><i></i><i></i></span><span class="hov">${ic('play')}</span></span>
     <span class="c-title">${opt.cover === false ? '' : `<img src="${esc(t.cover)}" alt="" loading="lazy">`}<span class="tt"><span class="t-name">${esc(t.title)}</span><span class="t-artist">${t.kind === 'demo' ? '<b class="demo-tag">Demo</b>' : ''}<button class="link" data-go-artist="${esc(t.artist)}">${esc(t.artist)}</button></span></span></span>
     <span class="c-album"><button class="link" data-go-album="${esc(t.albumKey)}">${esc(t.album)}</button></span>
-    <span class="c-added">${relDate(t.added)}</span>
+    <span class="c-added">${opt.played ? playedWhen(opt.played[i]) : relDate(t.added)}</span>
     <span class="c-like"><button class="like${liked ? ' on' : ''}" data-like="${esc(t.id)}" aria-pressed="${liked}" aria-label="${liked ? 'Remove from' : 'Save to'} Liked Songs">${ic(liked ? 'heartFill' : 'heart')}</button></span>
     <span class="c-dur">${fmt(t.duration)}</span>
     <span class="c-more"><button class="more" data-more="${esc(t.id)}" aria-label="More options for ${esc(t.title)}">${ic('more')}</button></span>
   </div>`;
 }
+function playedWhen(ts) {
+  const m = (Date.now() - ts) / 60000;
+  if (m < 1) return 'Just now';
+  if (m < 60) return Math.floor(m) + ' min ago';
+  if (m < 24 * 60 && new Date(ts).getDate() === new Date().getDate()) return new Date(ts).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+  return relDate(ts);
+}
 function trackList(ids, ctx, opt = {}) {
   const lid = 'l' + (++listSeq);
   LISTS[lid] = { ids, ctx, playlist: opt.playlist };
   if (!ids.length) return opt.empty || '';
-  const head = opt.noHead ? '' : `<div class="tl-head" aria-hidden="true"><span class="c-n">#</span><span>Title</span><span class="c-album">${opt.cover === false ? '' : 'Album'}</span><span class="c-added">Date added</span><span></span><span class="c-dur">${ic('clock')}</span><span></span></div>`;
+  const head = opt.noHead ? '' : `<div class="tl-head" aria-hidden="true"><span class="c-n">#</span><span>Title</span><span class="c-album">${opt.cover === false ? '' : 'Album'}</span><span class="c-added">${opt.played ? 'Played' : 'Date added'}</span><span></span><span class="c-dur">${ic('clock')}</span><span></span></div>`;
   return `<div class="tl${opt.cover === false ? ' no-cover' : ''}${opt.playlist ? ' reorder' : ''}" data-list="${lid}">${head}${ids.map((id, i) => trackRow(tk(id), i, opt)).join('')}</div>`;
 }
 function card(key, title, sub, cover, round) {
   return `<div class="card" data-open="${esc(key)}" tabindex="0" role="link" aria-label="${esc(title)}"><div class="card-art${round ? ' round' : ''}">${cover}<button class="card-play" data-card-play="${esc(key)}" aria-label="Play ${esc(title)}">${ic('play')}</button></div><div class="card-t">${esc(title)}</div><div class="card-s">${esc(sub)}</div></div>`;
 }
+function shelf(id, title, cardsHtml, opt = {}) {
+  const more = opt.viewAll ? `<button class="link sm" data-open="${esc(opt.viewAll)}">View all</button>` : '';
+  return `<section class="sec shelf" id="${id}"><div class="sec-head"><h2>${esc(title)}</h2><div class="shelf-nav">`
+    + `<button class="circ shelf-btn" data-shelf="${id}" data-dir="-1" aria-label="Scroll ${esc(title)} left">${ic('back')}</button>`
+    + `<button class="circ shelf-btn" data-shelf="${id}" data-dir="1" aria-label="Scroll ${esc(title)} right">${ic('fwd')}</button>${more}</div></div>`
+    + (cardsHtml ? `<div class="shelf-row" data-shelf-row="${id}">${cardsHtml}</div>` : `<p class="shelf-empty">${esc(opt.empty || '')}</p>`) + `</section>`;
+}
+function recentPlaylistKeys() {
+  return S.recent.filter(k => (k === 'liked' || k.startsWith('playlist:')) && ctxInfo(k));
+}
+function historyAlbums() {
+  const seen = new Set(), out = [];
+  for (const h of S.history) { const t = tk(h.id); if (!t || seen.has(t.albumKey)) continue; seen.add(t.albumKey); const a = IDX.albums.get(t.albumKey); if (a) out.push(a); }
+  return out;
+}
+function homeRows() {
+  const pl = recentPlaylistKeys().map(k => k === 'liked' ? likedCard() : plCard(S.playlists.find(p => 'playlist:' + p.id === k))).join('');
+  const al = historyAlbums().map(a => card('album:' + a.key, a.name, a.artist, `<img src="${esc(a.cover)}" alt="" loading="lazy">`)).join('');
+  return shelf('shelf-recent', 'Recently Played', pl, { empty: 'Playlists you play will show up here.' })
+    + shelf('shelf-history', 'Track History', al, { viewAll: 'history', empty: 'Albums, singles and EPs you play will show up here.' });
+}
+function refreshHomeRows() {
+  const box = $('#home-rows'); if (!box) return;
+  box.innerHTML = homeRows(); syncShelves(); syncPlayIcons();
+}
+function syncShelves() {
+  $$('[data-shelf-row]').forEach(row => {
+    const id = row.dataset.shelfRow, max = row.scrollWidth - row.clientWidth - 2;
+    $$(`[data-shelf="${id}"]`).forEach(b => { b.disabled = +b.dataset.dir < 0 ? row.scrollLeft <= 2 : row.scrollLeft >= max; });
+  });
+  $$('.shelf').forEach(sec => { if (!sec.querySelector('[data-shelf-row]')) sec.querySelectorAll('.shelf-btn').forEach(b => { b.disabled = true; }); });
+}
+document.addEventListener('scroll', e => { if (e.target.matches && e.target.matches('[data-shelf-row]')) syncShelves(); }, true);
+window.addEventListener('resize', () => syncShelves());
 const albumCard = a => card('album:' + a.key, a.name, (a.year ? a.year + ' · ' : '') + a.artist, `<img src="${esc(a.cover)}" alt="" loading="lazy">`);
 const artistCard = a => card('artist:' + a.name, a.name, 'Artist', `<img src="${esc(a.cover)}" alt="" loading="lazy">`, true);
 const plCard = p => card('playlist:' + p.id, p.name, 'Playlist · ' + plural(live(p.ids).length, 'song'), plArt(p));
@@ -1593,11 +1657,17 @@ const VIEWS = {
     const callout = (fileCount() ? '' : `<div class="callout"><div class="callout-ic">${ic('music')}</div><div><h3>Bring your own music</h3><p>Everything here now is a generated demo. Drop MP3s anywhere on this page, or use Add music. ${where}</p></div><button class="btn" data-action="add">${ic('upload')}Add music</button></div>`) + localBanner();
     return `<div class="view-bg"></div>
       <h1 class="greet">${greet}</h1>
-      <div class="qgrid">${keys.map(qtile).join('')}</div>
+      <div id="home-rows" class="home-rows">${homeRows()}</div>
       ${callout}
       <section class="sec"><div class="sec-head"><h2>Albums</h2><button class="link sm" data-open="library:albums">Show all</button></div><div class="cards one-row">${albumsSorted().map(albumCard).join('')}</div></section>
       <section class="sec"><div class="sec-head"><h2>Artists</h2><button class="link sm" data-open="library:artists">Show all</button></div><div class="cards one-row">${artistsSorted().map(artistCard).join('')}</div></section>
-      <section class="sec"><div class="sec-head"><h2>Recently added</h2><button class="link sm" data-open="library:songs">Show all</button></div>${trackList(recentIds, { key: 'library', name: 'Recently added' }, { noHead: true })}</section>`;
+      <section class="sec"><div class="sec-head"><h2>Recently Added</h2><button class="link sm" data-open="library:songs">Show all</button></div>${trackList(recentIds, { key: 'library', name: 'Recently added' }, { noHead: true })}</section>`;
+  },
+  history() {
+    const hist = S.history.filter(h => S.tracks.has(h.id)).slice(0, HISTORY_MAX);
+    const ids = hist.map(h => h.id);
+    return `<div class="view-bg"></div><h1 class="page-title">Track History</h1><p class="sm" style="margin-top:-18px">The last ${HISTORY_MAX} songs you played, newest first.</p>`
+      + trackList(ids, { key: 'history', name: 'Track History' }, { played: hist.map(h => h.at), empty: `<div class="empty"><h3>Nothing played yet</h3><p>Songs you play will show up here.</p></div>` });
   },
   search() {
     const q = S.q.trim().toLowerCase();
@@ -1707,7 +1777,7 @@ function render(scrollTop) {
     void vw.offsetWidth;
     vw.classList.add(scrollTop === 'back' ? 'enter-back' : 'enter-fwd');
   }
-  markPlaying(); syncPlayIcons(); renderSide();
+  markPlaying(); syncPlayIcons(); renderSide(); syncShelves();
   if (S.renaming) { const inp = $('#rename-input'); if (inp) { inp.focus(); inp.select(); } }
 }
 const SORTS = [['custom', 'Custom Sort'], ['recents', 'Recents'], ['added', 'Recently Added'], ['alpha', 'Alphabetical']];
@@ -2335,13 +2405,14 @@ async function uploadLocal(btn) {
   toast(fail ? `Uploaded ${ok} · ${fail} couldn't upload (${why})` : `Uploaded ${plural(ok, 'song')}. They now play on any device.`);
 }
 function refreshUsage() { loadLibrary(); }
+const syncJSON = () => JSON.stringify({ playlists: S.playlists, liked: S.liked, libOrder: S.libOrder, history: S.history, recent: S.recent });
 function applyState(st) {
   if (st) {
-    const json = JSON.stringify({ playlists: Array.isArray(st.playlists) ? st.playlists : [], liked: Array.isArray(st.liked) ? st.liked : [], libOrder: Array.isArray(st.libOrder) ? st.libOrder : S.libOrder });
+    const json = JSON.stringify({ playlists: Array.isArray(st.playlists) ? st.playlists : [], liked: Array.isArray(st.liked) ? st.liked : [], libOrder: Array.isArray(st.libOrder) ? st.libOrder : S.libOrder, history: Array.isArray(st.history) ? st.history : S.history, recent: Array.isArray(st.recent) ? st.recent : S.recent });
     cloud.lastJSON = json;
-    if (json !== JSON.stringify({ playlists: S.playlists, liked: S.liked, libOrder: S.libOrder }) && !cloud.writing) {
-      const v = JSON.parse(json); S.playlists = v.playlists; S.liked = v.liked; S.libOrder = v.libOrder;
-      try { const p = JSON.parse(localStorage.getItem(STORE_KEY) || '{}'); p.playlists = S.playlists; p.liked = S.liked; p.libOrder = S.libOrder; localStorage.setItem(STORE_KEY, JSON.stringify(p)); } catch (e) {}
+    if (json !== syncJSON() && !cloud.writing) {
+      const v = JSON.parse(json); S.playlists = v.playlists; S.liked = v.liked; S.libOrder = v.libOrder; S.history = v.history; S.recent = v.recent;
+      try { const p = JSON.parse(localStorage.getItem(STORE_KEY) || '{}'); Object.assign(p, { playlists: S.playlists, liked: S.liked, libOrder: S.libOrder, history: S.history, recent: S.recent }); localStorage.setItem(STORE_KEY, JSON.stringify(p)); } catch (e) {}
     }
   } else cloud.lastJSON = null;
   cloud.stateLoaded = true;
@@ -2368,7 +2439,7 @@ async function loadLibrary(first) {
 }
 async function pushState() {
   if (!cloud.canWrite || !cloud.stateLoaded || !userActed) return;
-  const json = JSON.stringify({ playlists: S.playlists, liked: S.liked, libOrder: S.libOrder });
+  const json = syncJSON();
   if (json === cloud.lastJSON) return;
   if (cloud.writing) { cloud.again = true; return; }
   cloud.writing = true;
@@ -2449,6 +2520,8 @@ document.addEventListener('click', e => {
   if (so) { S.libSort = so.dataset.sortOpt; save(); renderSide(); closeMenu(); return; }
   const vo = T.closest('[data-view-opt]');
   if (vo) { S.libView = vo.dataset.viewOpt; save(); renderSide(); closeMenu(); return; }
+  const sb = T.closest('[data-shelf]');
+  if (sb) { const row = $(`[data-shelf-row="${sb.dataset.shelf}"]`); if (row) row.scrollBy({ left: +sb.dataset.dir * row.clientWidth * .9, behavior: 'smooth' }); return; }
   const slc = T.closest('[data-sl-chip]');
   if (slc) { S.libFilter = slc.dataset.slChip || null; renderSide(); return; }
   const mi = T.closest('[data-mi]');
@@ -2555,6 +2628,7 @@ function syncVolIcon() { const b = $('#vol-btn'), m = S.muted || S.volume === 0;
 $('#vol-btn').addEventListener('click', () => { S.muted = !S.muted; applyVolume(); syncVolIcon(); });
 
 audio.addEventListener('play', syncPlayIcons);
+audio.addEventListener('playing', () => { if (pendingHistory && pendingHistory === S.current && audio.getAttribute('src') !== SILENT) { const id = pendingHistory; pendingHistory = null; recordPlay(id); } });
 audio.addEventListener('pause', () => { syncPlayIcons(); save(); });
 audio.addEventListener('ended', () => next(true));
 audio.addEventListener('loadedmetadata', () => { const t = tk(S.current); if (t && isFinite(audio.duration) && audio.getAttribute('src') !== SILENT) { t.duration = audio.duration; $$('.t-dur').forEach(e => { e.textContent = fmt(audio.duration); }); } });

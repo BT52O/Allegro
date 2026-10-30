@@ -98,6 +98,12 @@ try {
   await B.click(`.tr[data-id="${tagged.id}"]`); await B.waitForTimeout(2000);
   check(await B.evaluate(() => document.body.classList.contains('is-playing')), 'an uploaded song plays on the second device');
   check(await B.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'phone layout has no sideways scroll');
+  await B.click('.tab[data-nav=home]'); await B.waitForTimeout(600);
+  check((await B.$$eval('#shelf-history .card-t', x => x.map(e => e.textContent))).includes('Test Album'), 'Track History shows the album you just played');
+  await B.click('#shelf-history [data-open="history"]'); await B.waitForTimeout(600);
+  check((await B.$$eval('#view .tr .t-name', x => x.map(e => e.textContent)))[0] === '晴天', 'View all lists recently played songs, newest first');
+  data = await lib(B);
+  check(Array.isArray(data.state.history) && data.state.history[0] && data.state.history[0].id === tagged.id, 'play history saves online');
 
   // --- playlist: edit details and drag to reorder (desktop)
   await A.click('#side-list [data-open="playlist:pl-example"]'); await A.waitForTimeout(700);

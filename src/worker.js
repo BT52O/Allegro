@@ -174,7 +174,9 @@ async function api(request, env, path) {
     const text = await request.text();
     if (text.length > 512 * 1024) return fail(413, 'Library data is too large.');
     let body; try { body = JSON.parse(text); } catch (e) { return fail(400, 'Bad data.'); }
-    const state = { playlists: Array.isArray(body.playlists) ? body.playlists : [], liked: Array.isArray(body.liked) ? body.liked : [], libOrder: Array.isArray(body.libOrder) ? body.libOrder.filter(k => typeof k === 'string').slice(0, 5000) : [], updatedAt: Date.now() };
+    const state = { playlists: Array.isArray(body.playlists) ? body.playlists : [], liked: Array.isArray(body.liked) ? body.liked : [], libOrder: Array.isArray(body.libOrder) ? body.libOrder.filter(k => typeof k === 'string').slice(0, 5000) : [],
+      history: Array.isArray(body.history) ? body.history.filter(h => h && typeof h.id === 'string' && typeof h.at === 'number').slice(0, 100) : [],
+      recent: Array.isArray(body.recent) ? body.recent.filter(k => typeof k === 'string').slice(0, 50) : [], updatedAt: Date.now() };
     await kvSet(env, 'state', state);
     return json({ ok: true });
   }
