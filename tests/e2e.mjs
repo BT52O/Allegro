@@ -176,8 +176,10 @@ try {
   await A.click('#side-list [data-open="playlist:pl-example"]'); await A.waitForTimeout(600);
   await A.hover('.vhead .art'); await A.waitForTimeout(300);
   const penVisible = await A.$eval('.vhead .pl-pen', e => getComputedStyle(e).opacity === '1');
-  const headTop = await A.evaluate(() => { const art = document.querySelector('.vhead .art').getBoundingClientRect(), h = document.querySelector('.vhead h1').getBoundingClientRect(), m = document.querySelector('.vhead .meta'); const mb = m.getBoundingClientRect(); return [Math.round(h.top - art.top), Math.round(art.bottom - mb.bottom), getComputedStyle(m).fontWeight]; });
-  check(headTop[0] >= 0 && headTop[0] <= 6 && headTop[1] >= 0 && headTop[1] <= 8 && headTop[2] === '600', 'playlist title is level with the top of the cover, bold details along the bottom', JSON.stringify(headTop));
+  const plLayout = await A.evaluate(() => { const art = document.querySelector('.pl-head .art').getBoundingClientRect(), h = document.querySelector('.pl-head h1').getBoundingClientRect(), list = document.querySelector('.pl-main').getBoundingClientRect();
+    return [h.top > art.bottom, list.left > art.right, [...document.querySelectorAll('.pl-btns button span')].map(e => e.textContent).join('|'), [...document.querySelectorAll('.pl-icons .pl-ic span')].map(e => e.textContent).join('|'), getComputedStyle(document.querySelector('.pl-head')).position]; });
+  await shot(A, 'playlist-layout');
+  check(plLayout[0] && plLayout[1] && plLayout[2] === 'Play|Shuffle' && plLayout[3] === 'Edit|Add|History|More' && plLayout[4] === 'sticky', 'playlist page: cover, title, Play/Shuffle and buttons on the left, songs on the right', JSON.stringify(plLayout));
   check(noCardPens && penVisible, 'pen shows only on the playlist page cover');
   const chooser = A.waitForEvent('filechooser');
   await A.click('.vhead .pl-pen');
@@ -481,7 +483,7 @@ try {
   const newestId = (await lib(A)).state.playlists.find(p => p.name === 'Newest In Test').id;
   const sideTop = await A.$$eval('#side-list .li[data-open]', x => x.map(e => e.dataset.open));
   // the column menu covers the whole cover when it opens upward over it
-  await A.click('#side-list [data-open="playlist:pl-example"]'); await A.waitForTimeout(600);
+  await A.click('#side-list [data-open="liked"]'); await A.waitForTimeout(600);
   await A.setViewportSize({ width: 1440, height: 640 }); await A.waitForTimeout(300);
   await A.click('#view [data-cols]'); await A.waitForTimeout(300);
   const covered = await A.evaluate(() => { const m = document.getElementById('menu').getBoundingClientRect(), a = document.querySelector('#view .vhead .art').getBoundingClientRect(); return [Math.round(m.left - a.left), Math.round(m.top - a.top), m.right >= a.right - 1, m.bottom >= a.bottom - 1]; });
@@ -670,11 +672,11 @@ try {
   await A.click('.nav-btn[data-nav="library"]'); await A.waitForTimeout(400); await A.click('[data-chip="songs"]'); await A.waitForTimeout(300);
   const libCovers = await A.$$eval('#view .tr .c-title img', x => x.length);
   check(coversBefore > 0 && coversAfter === 0 && titlesAfter > 0 && libCovers > 0, 'Song Cover can be hidden for one list and stays on elsewhere', JSON.stringify({ coversBefore, coversAfter, titlesAfter, libCovers }));
-  await A.click('#side-list [data-open="playlist:pl-example"]'); await A.waitForTimeout(600);
+  await A.click('.nav-btn[data-nav="library"]'); await A.waitForTimeout(400); await A.click('[data-chip="songs"]'); await A.waitForTimeout(500);
   const wantTop = await A.evaluate(() => { const m = document.getElementById('main'); m.scrollTop = 120; return m.scrollTop; }); await A.waitForTimeout(500);
   await A.reload(); await A.waitForTimeout(2500);
   const stayed = [await A.textContent('#view h1').catch(() => ''), await A.evaluate(() => document.getElementById('main').scrollTop)];
-  check(stayed[0] === 'Renamed In Test' && wantTop > 20 && Math.abs(stayed[1] - wantTop) <= 4, 'reloading keeps you on the same page and scroll spot', JSON.stringify([...stayed, wantTop]));
+  check(stayed[0] === 'My Library' && wantTop > 20 && Math.abs(stayed[1] - wantTop) <= 4, 'reloading keeps you on the same page and scroll spot', JSON.stringify([...stayed, wantTop]));
   check(libCols[0] > 0 && libCols[1] && !!savedCols && savedCols.cols.join() === 'cover,title,artist,date', 'each list keeps its own columns, saved online', JSON.stringify({ libCols, savedCols }));
   // Find Missing Info repairs older uploads
   await A.evaluate(async id => {

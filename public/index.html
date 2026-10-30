@@ -253,6 +253,28 @@ body.is-playing .li.grid.playing .spk { display: grid; }
 .vhead .desc { color: var(--muted); font-size: .9rem; font-weight: 600; margin: 0; max-width: 62ch; }
 .rename { font: 800 clamp(2rem, 6cqi, 4rem)/1.05 var(--f-display); letter-spacing: -.03em; background: var(--raise); border: 1px solid var(--line); border-radius: 8px; padding: 2px 10px; width: 100%; max-width: 640px; }
 .actions { display: flex; align-items: center; gap: 18px; margin-top: -8px; }
+/* playlist page: details on the left, songs on the right */
+.pl-layout { display: grid; grid-template-columns: minmax(240px, 300px) minmax(0, 1fr); gap: 32px; align-items: start; padding-top: 8px; }
+.vhead.pl-head { position: sticky; top: 72px; flex-direction: column; align-items: stretch; gap: 14px; padding: 0; text-align: center; }
+.pl-head .art { width: 100%; max-width: 280px; align-self: center; }
+.pl-head .vhead-text { align-items: center; gap: 4px; }
+.pl-head h1 { font-size: clamp(1.6rem, 3cqi, 2.4rem); }
+.pl-head .rename { font-size: 1.6rem; text-align: center; }
+.pl-head .desc { max-width: none; }
+.pl-head .meta { justify-content: center; }
+.pl-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.pill-play, .pill-shuffle { height: 46px; border-radius: 999px; display: flex; align-items: center; justify-content: center; gap: 8px; font-weight: 700; font-size: .98rem; transition: transform .12s, background-color .18s; }
+.pill-play { background: var(--ink); color: var(--panel); }
+.pill-shuffle { background: var(--chip); color: var(--ink); }
+.pill-shuffle:hover { background: color-mix(in srgb, var(--ink) 12%, var(--chip)); }
+.pill-play:active, .pill-shuffle:active { transform: scale(.97); }
+.pill-play .ic, .pill-shuffle .ic { width: 20px; height: 20px; }
+.pl-icons.actions { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px; margin: 0; }
+.pl-ic { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 10px 0; border-radius: 12px; color: var(--ink); font-size: .8rem; font-weight: 600; }
+.pl-ic:hover { background: var(--hover); }
+.pl-ic .ic { width: 22px; height: 22px; }
+.pl-main { min-width: 0; }
+@container (max-width: 760px) { .pl-layout { grid-template-columns: minmax(0, 1fr); gap: 20px; } .vhead.pl-head { position: static; width: min(100%, 420px); margin: 0 auto; } }
 .big-play {
   width: 56px; height: 56px; border-radius: 50%; background: var(--accent); color: var(--accent-ink);
   display: grid; place-items: center; box-shadow: 0 10px 24px -10px var(--accent); transition: transform .12s;
@@ -2445,9 +2467,19 @@ const VIEWS = {
     if (!p) return notFound('That playlist was deleted.');
     const key = 'playlist:' + p.id, ids = live(p.ids);
     const title = S.renaming === p.id ? `<input class="rename" id="rename-input" value="${esc(p.name)}" maxlength="80" aria-label="Playlist name">` : `<h1>${esc(p.name)}</h1>`;
-    return head({ art: plArt(p), type: 'Playlist', title, desc: p.desc, editable: true, penId: p.id, tintSrc: p.cover ? plCoverUrl(p) : (plCovers(ids)[0] || genCover(p.id, 1, hash(p.id) % 360)), meta: `<span>${plural(ids.length, 'song')}${ids.length ? ', ' + fmtLong(totalDur(ids)) : ''}</span>` })
-      + actions(key, `<button class="act-btn" data-pl-add="${esc(p.id)}" aria-label="Add a song or page break" title="Add">${ic('plus')}</button><button class="act-btn" data-ctx-more="${esc(key)}" aria-label="Playlist options">${ic('more')}</button>`)
-      + trackList(ids, { key, name: p.name }, { playlist: p.id, empty: `<div class="empty"><h3>This Playlist Is Empty</h3><p>Use the + button above, or open the ⋯ menu on any song and choose Add to Playlist.</p><button class="btn ghost" data-open="library:songs">${ic('music')}Browse Songs</button></div>` });
+    // Two columns: the playlist's cover, name and buttons on the left (they stay put as you scroll), songs on the right.
+    const tint = p.cover ? plCoverUrl(p) : (plCovers(ids)[0] || genCover(p.id, 1, hash(p.id) % 360));
+    const side = `<header class="vhead editable pl-head"><div class="art has-pen" title="Edit Details">${plArt(p)}${penFor(p.id)}</div>
+      <div class="vhead-text" data-type="Playlist">${title}${p.desc ? `<p class="desc">${esc(p.desc)}</p>` : ''}<div class="meta"><span>${plural(ids.length, 'song')}${ids.length ? ', ' + fmtLong(totalDur(ids)) : ''}</span></div></div>
+      <div class="pl-btns"><button class="pill-play" data-ctx-play="${esc(key)}" aria-label="Play">${ic('play')}<span>Play</span></button><button class="pill-shuffle" data-shuffle-play="${esc(key)}">${ic('shuffle')}<span>Shuffle</span></button></div>
+      <div class="pl-icons actions">
+        <button class="pl-ic" data-pl-edit="${esc(p.id)}">${ic('edit')}<span>Edit</span></button>
+        <button class="pl-ic" data-pl-add="${esc(p.id)}" aria-label="Add a song or page break">${ic('plus')}<span>Add</span></button>
+        <button class="pl-ic" data-pl-hist="${esc(p.id)}">${ic('clock')}<span>History</span></button>
+        <button class="pl-ic" data-ctx-more="${esc(key)}" aria-label="Playlist options">${ic('more')}<span>More</span></button>
+      </div></header>`;
+    return `<div class="view-bg" data-tint-src="${esc(tint)}"></div><div class="pl-layout">${side}<section class="pl-main">`
+      + trackList(ids, { key, name: p.name }, { playlist: p.id, empty: `<div class="empty"><h3>This Playlist Is Empty</h3><p>Use the + button above, or open the ⋯ menu on any song and choose Add to Playlist.</p><button class="btn ghost" data-open="library:songs">${ic('music')}Browse Songs</button></div>` }) + `</section></div>`;
   },
   liked() {
     const ids = live(S.liked);
@@ -2660,7 +2692,7 @@ function placeMenu(keep = false) {
   const art = menuAnchor.classList.contains('col-btn') && menuPlace.dir === 'up' && $('#view .vhead .art');
   if (art) {
     const a = art.getBoundingClientRect();
-    if (a.top >= 8 && a.bottom > 0 && a.top < r.top) {
+    if (a.top >= 8 && a.bottom > 0 && a.top < r.top && a.left < r.right && a.right > r.left) {
       m.style.left = a.left + 'px'; m.style.width = Math.max(a.width, w) + 'px'; m.style.minHeight = a.height + 'px';
       m.style.top = a.top + 'px'; m.style.bottom = 'auto'; m.style.maxHeight = (r.top - 6 - a.top) + 'px';
       return;
@@ -4374,6 +4406,9 @@ document.addEventListener('click', e => {
   const more = T.closest('[data-more]');
   if (more) { const tl = more.closest('[data-list]'); trackMenu(more, more.dataset.more, tl && LISTS[tl.dataset.list]); return; }
   const pa = T.closest('[data-pl-add]'); if (pa) { plAddMenu(pa, pa.dataset.plAdd); return; }
+  const pe2 = T.closest('[data-pl-edit]'); if (pe2) { editPlaylist(pe2.dataset.plEdit); return; }
+  const ph = T.closest('[data-pl-hist]'); if (ph) { plHist = { id: null }; go({ name: 'plhistory', key: ph.dataset.plHist }); return; }
+  const sh = T.closest('[data-shuffle-play]'); if (sh) { if (!S.shuffle) { S.shuffle = true; syncToggles(); save(); } playCtx(sh.dataset.shufflePlay); return; }
   const bm = T.closest('[data-break-more]'); if (bm && S.view.name === 'playlist') { breakMenu(bm, S.view.key, bm.dataset.breakMore); return; }
   const fa = T.closest('[data-folder-add]'); if (fa) { folderAddMenu(fa, fa.dataset.folderAdd); return; }
   const fm = T.closest('[data-folder-more]'); if (fm) { folderMenu(fm, fm.dataset.folderMore); return; }
