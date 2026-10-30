@@ -167,8 +167,8 @@ try {
   await A.click('#side-list [data-open="playlist:pl-example"]'); await A.waitForTimeout(600);
   await A.hover('.vhead .art'); await A.waitForTimeout(300);
   const penVisible = await A.$eval('.vhead .pl-pen', e => getComputedStyle(e).opacity === '1');
-  const headTop = await A.evaluate(() => { const art = document.querySelector('.vhead .art').getBoundingClientRect(), h = document.querySelector('.vhead h1').getBoundingClientRect(), m = document.querySelector('.vhead .meta'); return [Math.round(h.top - art.top), getComputedStyle(m).fontWeight]; });
-  check(headTop[0] >= 0 && headTop[0] <= 6 && headTop[1] === '600', 'playlist title sits level with the top of the cover, details in bold', JSON.stringify(headTop));
+  const headTop = await A.evaluate(() => { const art = document.querySelector('.vhead .art').getBoundingClientRect(), h = document.querySelector('.vhead h1').getBoundingClientRect(), m = document.querySelector('.vhead .meta'); const mb = m.getBoundingClientRect(); return [Math.round(h.top - art.top), Math.round(art.bottom - mb.bottom), getComputedStyle(m).fontWeight]; });
+  check(headTop[0] >= 0 && headTop[0] <= 6 && headTop[1] >= 0 && headTop[1] <= 8 && headTop[2] === '600', 'playlist title is level with the top of the cover, bold details along the bottom', JSON.stringify(headTop));
   check(noCardPens && penVisible, 'pen shows only on the playlist page cover');
   const chooser = A.waitForEvent('filechooser');
   await A.click('.vhead .pl-pen');
@@ -344,7 +344,7 @@ try {
   await A.fill('#se-name', 'Sunny Day'); await A.fill('#se-artist', 'Edited Artist'); await A.fill('#se-album', 'Edited Album');
   await A.fill('#se-date', 'someday'); await A.click('#se-save'); await A.waitForTimeout(300);
   const dateErr = (await A.textContent('#se-err')).includes('release date') && await A.isVisible('#song-edit');
-  await A.fill('#se-date', '4/11/2024');
+  await A.fill('#se-date', '4/11/2024'); await A.fill('#se-bpm', '128'); await A.fill('#se-key', 'A minor');
   const artChooser = A.waitForEvent('filechooser');
   await A.click('#se-cover');
   await (await artChooser).setFiles(join(fixtures, 'wide.png')); await A.waitForTimeout(600);
@@ -355,6 +355,7 @@ try {
   const ed = data.songs.find(s => s.id === tagged.id);
   const edImg = await A.$eval(`#view [data-edit-song="${tagged.id}"] img`, i => i.getAttribute('src')).catch(() => '');
   const edDims = await A.evaluate(src => new Promise(r => { const i = new Image(); i.onload = () => r([i.naturalWidth, i.naturalHeight]); i.onerror = () => r(null); i.src = src; }), edImg);
+  check(ed.bpm === 128 && ed.key === 'A minor', 'BPM and Key can be typed in the song editor', JSON.stringify([ed.bpm, ed.key]));
   check(dateErr && ed.released === '2024-04-11' && ed.year === '2024', 'release date is checked and saved from 4/11/2024 as 2024-04-11', JSON.stringify([dateErr, ed.released, ed.year]));
   check(seOpen && ed.title === 'Sunny Day' && ed.artist === 'Edited Artist' && ed.album === 'Edited Album' && ed.coverV > 0 && edImg.includes('?v=') && !!edDims && edDims[0] === edDims[1], 'editing a song saves its name, artist, album and new square art', JSON.stringify({ ed, edImg, edDims }));
   // Find Info Online in the editor fills everything in from the pick
@@ -420,6 +421,28 @@ try {
   const songsMenu = await A.$$eval('#menu .mi', x => x.map(e => e.textContent.trim()));
   await A.keyboard.press('Escape');
   check(upMenu.includes('Edit Song') && !songsMenu.includes('Edit Song'), 'Edit Song is in the menu only in Uploads');
+
+  // --- column picker at the left of the list header: each list keeps its own columns, saved online
+  await A.click('.nav-btn[data-nav="uploads"]'); await A.waitForTimeout(400);
+  await A.click('#view [data-cols]'); await A.waitForTimeout(250);
+  const colOpts = await A.$$eval('#menu [data-col-opt]', x => x.map(e => e.textContent.trim()));
+  for (const c of ['album', 'bpm', 'key']) { await A.click(`#menu [data-col-opt="${c}"]`); await A.waitForTimeout(250); }
+  const stillOpen = await A.isVisible('#menu') && (await A.$$eval('#menu [data-col-opt][aria-checked="true"]', x => x.map(e => e.dataset.colOpt))).join() === 'title,artist,date,duration,bpm,key';
+  await shot(A, 'columns-menu');
+  const menuInPanel = await A.evaluate(() => document.getElementById('menu').getBoundingClientRect().left >= document.getElementById('main').getBoundingClientRect().left);
+  await A.keyboard.press('Escape'); await A.waitForTimeout(200);
+  const upHead = await A.$$eval('#view .tl-head > span', x => x.map(e => e.textContent.trim()).filter(Boolean));
+  const bpmCell = await A.$eval(`#view .tr[data-id="${tagged.id}"] .c-bpm`, e => e.textContent).catch(() => '');
+  const keyCell = await A.$eval(`#view .tr[data-id="${tagged.id}"] .c-key`, e => e.textContent).catch(() => '');
+  const upAlbums = await A.$$eval('#view .tr .c-album', x => x.length);
+  const colsLeft = await A.evaluate(() => { const b = document.querySelector('#view .col-btn').getBoundingClientRect(), n = [...document.querySelectorAll('#view .tl-head .c-n span')].pop().getBoundingClientRect(); return b.right <= n.left; });
+  check(colOpts.join('|') === 'Title|Artist|Album|Date|Duration|BPM|Key' && stillOpen && colsLeft && menuInPanel, 'column menu sits left of # and lists Title, Artist, Album, Date, Duration, BPM and Key', JSON.stringify(colOpts));
+  check(upAlbums === 0 && !upHead.includes('Album') && upHead.includes('BPM') && upHead.includes('Key') && bpmCell === '128' && keyCell === 'A minor', 'checked columns show and unchecked ones hide', JSON.stringify({ upHead, bpmCell, keyCell, upAlbums }));
+  await A.click('.nav-btn[data-nav="library"]'); await A.waitForTimeout(400); await A.click('[data-chip="songs"]'); await A.waitForTimeout(300);
+  const libCols = [await A.$$eval('#view .tr .c-album', x => x.length), !!(await A.$('#view .tr .c-bpm'))];
+  data = await lib(A);
+  const savedCols = (data.state.listCols || []).find(x => x.key === 'uploads');
+  check(libCols[0] > 0 && !libCols[1] && !!savedCols && savedCols.cols.join() === 'title,artist,date,duration,bpm,key', 'each list keeps its own columns, saved online', JSON.stringify({ libCols, savedCols }));
   // Find Missing Info repairs older uploads
   await A.evaluate(async id => {
     const s = (await (await fetch('/api/library')).json()).songs.find(x => x.id === id);

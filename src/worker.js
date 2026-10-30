@@ -80,7 +80,8 @@ function cleanMeta(d) {
     album: str(d.album) || 'Unknown album', year: str(d.year, 10), trackNo: Number(d.trackNo) || 0, genre: str(d.genre, 80),
     duration: Number(d.duration) || 0, added: Number(d.added) || Date.now(), fileName: str(d.fileName),
     mime: str(d.mime, 60), cover: !!d.cover, coverV: Number(d.coverV) || 0,
-    released: /^\d{4}(-\d{2}-\d{2})?$/.test(str(d.released, 10)) ? str(d.released, 10) : ''
+    released: /^\d{4}(-\d{2}-\d{2})?$/.test(str(d.released, 10)) ? str(d.released, 10) : '',
+    bpm: Number(d.bpm) > 0 && Number(d.bpm) < 1000 ? Math.round(Number(d.bpm) * 10) / 10 : 0, key: str(d.key, 12), tagsRead: !!d.tagsRead
   };
 }
 
@@ -182,6 +183,7 @@ async function api(request, env, path) {
       libOrder: v => v.filter(k => typeof k === 'string').slice(0, 5000),
       history: v => v.filter(h => h && typeof h.id === 'string' && typeof h.at === 'number').slice(0, 100),
       recent: v => v.filter(k => typeof k === 'string').slice(0, 50),
+      listCols: v => v.filter(x => x && typeof x.key === 'string' && Array.isArray(x.cols)).slice(0, 3000).map(x => ({ key: x.key.slice(0, 300), cols: x.cols.filter(c => typeof c === 'string').slice(0, 12) })),
       artistPics: v => v.filter(x => x && typeof x.name === 'string' && ID_RE.test(x.id) && typeof x.v === 'number').slice(0, 5000)
     };
     // PATCH changes only the parts it sends; PUT (older pages) replaces everything.
