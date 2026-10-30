@@ -59,7 +59,7 @@ try {
   check(await A.isVisible('#gate-code'), 'first visit asks for the setup code');
   if (usingOurCode) {
     await A.fill('#gate-code', 'WRONG-CODE'); await A.fill('#gate-pw', PASSWORD); await A.fill('#gate-pw2', PASSWORD);
-    await A.click('#gate-btn'); await A.waitForTimeout(1200);
+    await A.click('#gate-btn'); await A.waitForFunction(() => document.getElementById('gate-err').textContent.trim(), null, { timeout: 10000 }).catch(() => {});
     check((await A.textContent('#gate-err')).includes('not right'), 'wrong setup code is rejected');
     await A.fill('#gate-code', SETUP_CODE); await A.click('#gate-btn'); await A.waitForTimeout(1500);
     check(!(await A.isVisible('#gate')), 'setup with the right code signs you in');
@@ -90,7 +90,7 @@ try {
   // --- second device: phone, signs in with the password and sees everything
   const B = await device({ width: 390, height: 844 });
   check(await B.isVisible('#gate') && !(await B.isVisible('#gate-code')), 'second device asks for the password only');
-  await B.fill('#gate-pw', 'not the password'); await B.click('#gate-btn'); await B.waitForTimeout(1200);
+  await B.fill('#gate-pw', 'not the password'); await B.click('#gate-btn'); await B.waitForFunction(() => document.getElementById('gate-err').textContent.trim(), null, { timeout: 10000 }).catch(() => {});
   check((await B.textContent('#gate-err')).includes('Wrong password'), 'wrong password is rejected');
   await B.fill('#gate-pw', PASSWORD); await B.click('#gate-btn'); await B.waitForTimeout(2000);
   await B.click('.tab[data-nav=library]'); await B.click('[data-chip="songs"]'); await B.waitForTimeout(400);
