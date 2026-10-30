@@ -1,0 +1,14 @@
+{
+  "name": "allegro",
+  "private": true,
+  "description": "A private music library for your own MP3s, running on Cloudflare Workers + R2 + D1.",
+  "scripts": {
+    "dev": "wrangler d1 migrations apply allegro --local && wrangler dev",
+    "deploy": "wrangler d1 migrations apply allegro --remote && wrangler deploy",
+    "test": "node tests/e2e.mjs"
+  },
+  "devDependencies": {
+    "playwright": "1.64.0",
+    "wrangler": "4.150.0"
+  }
+}
