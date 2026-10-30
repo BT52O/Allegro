@@ -209,6 +209,44 @@ try {
   const order = data.state.playlists.find(p => p.id === 'pl-example').ids;
   check(order[2] === before[0] && order[0] === before[1], 'dragging a song reorders the playlist and saves', JSON.stringify(order.slice(0, 3)));
 
+  // --- page breaks: + > Add a Page Break, after a chosen song, numbering restarts; rename; + > Add a Song
+  await A.click('#side-list [data-open="playlist:pl-example"]'); await A.waitForTimeout(500);
+  const plRows = await A.$$eval('#view .tl .tr', x => x.map(e => e.dataset.id));
+  await A.click('.actions [data-pl-add]'); await A.waitForTimeout(250);
+  const addOpts = await A.$$eval('#menu .mi', x => x.map(e => e.textContent.trim()));
+  await A.click('#menu .mi:has-text("Add a Page Break")'); await A.waitForTimeout(400);
+  const bkDefault = await A.inputValue('#bk-name');
+  await A.selectOption('#bk-after', plRows[2]);
+  await A.click('#bk-save'); await A.waitForTimeout(700);
+  data = await lib(A);
+  let plx = data.state.playlists.find(p => p.id === 'pl-example');
+  const at = plx.ids.indexOf(plRows[2]), marker = plx.ids[at + 1] || '';
+  const nums = await A.$$eval('#view .tl .tr .num', x => x.map(e => e.textContent));
+  const bkHead = await A.$$eval('#view .pl-break h3', x => x.map(e => e.textContent));
+  check(addOpts.join('|') === 'Add a Song|Add a Page Break' && bkDefault === 'Volume 2' && marker.startsWith('brk:') && bkHead.join() === 'Volume 2' && nums[2] === '3' && nums[3] === '1', 'a page break goes after the chosen song, is named, and numbering starts over', JSON.stringify({ addOpts, bkDefault, marker, bkHead, nums }));
+  await A.hover('#view .pl-break'); await A.click('#view .pl-break [data-break-more]'); await A.waitForTimeout(250);
+  await A.click('#menu .mi:has-text("Rename or Move")'); await A.waitForTimeout(400);
+  await A.fill('#bk-name', 'Disc Two'); await A.selectOption('#bk-after', plRows[0]); await A.click('#bk-save'); await A.waitForTimeout(700);
+  data = await lib(A); plx = data.state.playlists.find(p => p.id === 'pl-example');
+  check(plx.breaks[marker.slice(4)] === 'Disc Two' && plx.ids.indexOf(marker) === plx.ids.indexOf(plRows[0]) + 1 && (await A.textContent('#view .pl-break h3')) === 'Disc Two', 'a page break can be renamed and moved');
+  await shot(A, 'page-break');
+  await A.click('.actions [data-pl-add]'); await A.waitForTimeout(250);
+  await A.click('#menu .mi:has-text("Add a Song")'); await A.waitForTimeout(400);
+  await A.fill('#sp-q', 'Untagged'); await A.waitForTimeout(200);
+  const spRows = await A.$$eval('#sp-list .sp-row b', x => x.map(e => e.textContent));
+  const untaggedId = (await lib(A)).songs.find(x => x.title === 'Untagged Song').id;
+  const already = plx.ids.includes(untaggedId);
+  if (!already) await A.click('#sp-list [data-sp-add]');
+  await A.waitForTimeout(200);
+  const addedLabel = await A.textContent('#sp-list [data-sp-add]');
+  await A.click('#sp-done'); await A.waitForTimeout(600);
+  data = await lib(A); plx = data.state.playlists.find(p => p.id === 'pl-example');
+  check(spRows.join() === 'Untagged Song' && addedLabel === 'Added' && plx.ids.includes(untaggedId) && !!(await A.$(`#view .tl .tr[data-id="${untaggedId}"]`)), 'Add a Song finds songs and adds them to the playlist', JSON.stringify({ spRows, addedLabel, already }));
+  await A.hover('#view .pl-break'); await A.click('#view .pl-break [data-break-more]'); await A.waitForTimeout(250);
+  await A.click('#menu .mi:has-text("Remove Page Break")'); await A.waitForTimeout(600);
+  data = await lib(A); plx = data.state.playlists.find(p => p.id === 'pl-example');
+  check(!plx.ids.some(x => x.startsWith('brk:')) && !(await A.$('#view .pl-break')), 'a page break can be removed');
+
   // --- folders: Create > Folder, name it, move a playlist in, and the folder page shows its playlists
   const foldersBefore = ((await lib(A)).state.folders || []).length;
   await A.click('#side-list .li-create'); await A.waitForTimeout(300);
