@@ -711,6 +711,26 @@ body.dragging-row .tr:hover .like:not(.on), body.dragging-row .tr:hover .more { 
 
 /* ---------- create playlist item ---------- */
 .fd-modal { width: min(100%, 420px); }
+.set-sec { display: flex; flex-direction: column; gap: 4px; max-width: 760px; }
+.set-sec h2 { margin: 0 0 6px; font: 700 1.15rem var(--f-display); }
+.set-row { display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 14px 0; border-top: 1px solid var(--line); }
+.set-row:first-of-type { border-top: 0; }
+.set-row:has(.pw-form) { align-items: flex-start; }
+.set-sec .storage-note + .set-row { border-top: 0; }
+.set-row h3 { margin: 0; font-size: .98rem; font-weight: 600; }
+.set-row p { margin: 2px 0 0; font-size: .86rem; color: var(--muted); max-width: 52ch; }
+.set-row .btn { height: 38px; padding: 0 16px; font-size: .9rem; flex: none; text-decoration: none; }
+.pw-form { display: grid; gap: 8px; width: min(100%, 300px); flex: none; }
+.pw-form input { height: 40px; border-radius: 10px; border: 1px solid var(--line); background: var(--chip); padding: 0 12px; font-size: .92rem; }
+.pw-form input:focus { outline: 2px solid var(--ink); outline-offset: 1px; background: var(--panel); }
+.pw-form .btn { justify-self: start; }
+.pw-msg { margin: 0; font-size: .82rem; min-height: 0; }
+.pw-msg.bad { color: #b3261e; } .pw-msg.good { color: #1e7a3a; }
+.switch { position: relative; width: 46px; height: 28px; border-radius: 999px; background: color-mix(in srgb, var(--ink) 22%, transparent); flex: none; transition: background-color .2s; }
+.switch i { position: absolute; top: 3px; left: 3px; width: 22px; height: 22px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.25); transition: transform .2s cubic-bezier(.2, .8, .2, 1); }
+.switch.on { background: var(--ink); }
+.switch.on i { transform: translateX(18px); }
+@media (max-width: 600px) { .set-row { flex-direction: column; align-items: stretch; } .set-row .btn, .switch { align-self: flex-start; } .pw-form { width: 100%; } }
 .bk-select { height: 46px; border-radius: 10px; border: 1px solid var(--line); background: var(--chip); padding: 0 12px; font: 400 .95rem var(--f-body); color: var(--ink); width: 100%; }
 .bk-select:focus { outline: 2px solid var(--ink); outline-offset: 1px; }
 .pl-break { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 26px 0 4px; padding: 0 12px; border-radius: 8px; }
@@ -1103,6 +1123,7 @@ const STROKE = {
   loader: '<path d="M12 3a9 9 0 1 0 9 9"/>',
   compass: '<circle cx="12" cy="12" r="8.6"/><path d="m15.6 8.4-2.1 5.1-5.1 2.1 2.1-5.1z"/>',
   check: '<path d="m5 12.5 4.5 4.5L19 7.5"/>',
+  gear: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>',
   columns: '<path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/>',
   viewCompact: '<path d="M4 6h16M4 10h16M4 14h16M4 18h16"/>',
   viewList: '<path d="M9 6h11M9 12h11M9 18h11M4.5 6h.5M4.5 12h.5M4.5 18h.5"/>',
@@ -1159,7 +1180,7 @@ const S = {
   view: { name: 'home' }, back: [], fwd: [],
   q: '', libTab: 'playlists', sort: 'added', queueOpen: false,
   demoAdded: Date.parse('2026-10-01T12:00:00Z'), last: null, renaming: null,
-  libSort: 'custom', libOrder: [], history: [], artistPics: [], listCols: [], folders: [], libView: 'list', libFilter: null, libQ: '', sideCollapsed: false
+  libSort: 'custom', libOrder: [], history: [], artistPics: [], listCols: [], folders: [], prefs: [], libView: 'list', libFilter: null, libQ: '', sideCollapsed: false
 };
 let IDX = { albums: new Map(), artists: new Map(), genres: new Map() };
 const STORE_KEY = 'waxwing.state.v1';
@@ -1183,6 +1204,7 @@ try {
     if (Array.isArray(p.artistPics)) S.artistPics = p.artistPics;
     if (Array.isArray(p.listCols)) S.listCols = p.listCols;
     if (Array.isArray(p.folders)) S.folders = p.folders;
+    if (Array.isArray(p.prefs)) S.prefs = p.prefs;
     if (['list', 'grid'].includes(p.libView)) S.libView = p.libView;
     S.sideCollapsed = !!p.sideCollapsed;
     S.last = p.last || null;
@@ -1194,7 +1216,7 @@ function save() {
   saveTimer = setTimeout(() => {
     try {
       localStorage.setItem(STORE_KEY, JSON.stringify({
-        playlists: S.playlists, liked: S.liked, libOrder: S.libOrder, recent: S.recent, history: S.history, artistPics: S.artistPics, listCols: S.listCols, folders: S.folders, volume: S.volume, shuffle: S.shuffle, repeat: S.repeat,
+        playlists: S.playlists, liked: S.liked, libOrder: S.libOrder, recent: S.recent, history: S.history, artistPics: S.artistPics, listCols: S.listCols, folders: S.folders, prefs: S.prefs, volume: S.volume, shuffle: S.shuffle, repeat: S.repeat,
         demoAdded: S.demoAdded, libTab: S.libTab, sort: S.sort, queueOpen: S.queueOpen, libSort: S.libSort, libView: S.libView, sideCollapsed: S.sideCollapsed,
         last: S.current ? { ctx: S.context && S.context.key, id: S.current } : null
       }));
@@ -1996,6 +2018,32 @@ const VIEWS = {
       <section class="sec"><div class="sec-head"><h2>Artists</h2><button class="link sm" data-open="library:artists">Show All</button></div><div class="cards one-row">${artistsSorted().map(artistCard).join('')}</div></section>
       <section class="sec"><div class="sec-head"><h2>Recently Added</h2><button class="link sm" data-open="library:songs">Show All</button></div>${trackList(recentIds, { key: 'library', name: 'Recently Added' }, { noHead: true })}</section>`;
   },
+  settings() {
+    const demos = !pref('hideDemos'), nCols = S.listCols.length;
+    const toggle = (id, on, label) => `<button class="switch${on ? ' on' : ''}" id="${id}" role="switch" aria-checked="${on}" aria-label="${esc(label)}"><i></i></button>`;
+    return `<h1 class="page-title">Settings</h1>
+      <section class="set-sec"><h2>Account</h2>
+        <div class="set-row"><div><h3>Password</h3><p>Change the password you use to sign in. Your other devices will need to sign in again.</p></div>
+          <form class="pw-form" id="pw-form" novalidate autocomplete="off">
+            <input type="password" id="pw-cur" placeholder="Current password" autocomplete="current-password" aria-label="Current password">
+            <input type="password" id="pw-new" placeholder="New password (8+ characters)" autocomplete="new-password" aria-label="New password">
+            <input type="password" id="pw-new2" placeholder="New password again" autocomplete="new-password" aria-label="New password again">
+            <p class="pw-msg" id="pw-msg" role="status"></p>
+            <button class="btn" type="submit" id="pw-save">Change Password</button>
+          </form></div>
+        <div class="set-row"><div><h3>Sign Out</h3><p>Sign out of Allegro on this device.</p></div><button class="btn ghost-sm" data-action="sign-out">Sign Out</button></div>
+      </section>
+      <section class="set-sec"><h2>Library</h2>
+        <div class="set-row"><div><h3>Show Demo Songs</h3><p>The generated sample songs that came with Allegro. Turning this off hides them everywhere, on all your devices.</p></div>${toggle('set-demos', demos, 'Show demo songs')}</div>
+        <div class="set-row"><div><h3>Column Choices</h3><p>${nCols ? `You've picked columns for ${plural(nCols, 'list')}. Reset them all to the usual Song Cover, Title, Artist, Album, Date Released and Duration.` : 'Every list shows the usual columns.'}</p></div><button class="btn ghost-sm" data-action="reset-cols"${nCols ? '' : ' disabled'}>Reset</button></div>
+      </section>
+      <section class="set-sec"><h2>Storage</h2>${storageNote()}
+        <div class="set-row"><div><h3>Your Uploads</h3><p>See, edit and add the songs you've uploaded.</p></div><button class="btn ghost-sm" data-nav="uploads">Open Uploads</button></div>
+      </section>
+      <section class="set-sec"><h2>About</h2>
+        <div class="set-row"><div><h3>Allegro</h3><p>Your own music library, saved online on Cloudflare. The code is on GitHub.</p></div><a class="btn ghost-sm" href="https://github.com/BT52O/Allegro" target="_blank" rel="noopener">View on GitHub</a></div>
+      </section>`;
+  },
   uploads() {
     return `<h1 class="page-title">Uploads</h1>` + uploadsTab();
   },
@@ -2312,7 +2360,7 @@ function placeMenu(keep = false) {
 }
 function drawMenu(items, title) {
   menuItems = items;
-  $('#menu').innerHTML = (title ? `<div class="m-title">${esc(title)}</div>` : '') + items.map((it, i) => it.sep ? '<div class="m-sep"></div>'
+  $('#menu').innerHTML = (title ? `<div class="m-title">${esc(title)}</div>` : '') + items.map((it, i) => it.sep ? '<div class="m-sep"></div>' : it.head ? `<div class="m-title">${esc(it.head)}</div>`
     : `<button class="mi${it.danger ? ' danger' : ''}" data-mi="${i}" role="menuitem">${ic(it.icon || 'music')}<span>${esc(it.label)}</span>${it.sub ? ic('fwd') : ''}</button>`).join('');
 }
 function closeMenu() {
@@ -2719,6 +2767,42 @@ fpop.addEventListener('pointerleave', fpHideSoon);
 $('#side-list').addEventListener('scroll', () => hideFolderPop(), { passive: true });
 document.addEventListener('pointerdown', e => { if (!fpop.hidden && !fpop.contains(e.target) && !e.target.closest('.li[data-open^="folder:"]')) hideFolderPop(); }, true);
 fpop.addEventListener('click', () => setTimeout(() => hideFolderPop(true), 0));
+
+/* ================= settings ================= */
+const pref = k => S.prefs.includes(k);
+function setPref(k, on) { S.prefs = on ? [...new Set([...S.prefs, k])] : S.prefs.filter(x => x !== k); userActed = true; save(); }
+// Demo songs come and go with the "Show Demo Songs" setting.
+function syncDemoTracks() {
+  const has = [...S.tracks.values()].some(t => t.kind === 'demo');
+  if (pref('hideDemos') && has) [...S.tracks.values()].filter(t => t.kind === 'demo').forEach(t => detachTrack(t.id));
+  else if (!pref('hideDemos') && !has) addDemoTracks();
+}
+document.addEventListener('click', e => {
+  const sw = e.target.closest('#set-demos');
+  if (sw) {
+    setPref('hideDemos', sw.getAttribute('aria-checked') === 'true');
+    syncDemoTracks(); rebuild(); render(); renderSide(); renderQueue(); updateMeta();
+    toast(pref('hideDemos') ? 'Demo songs hidden' : 'Demo songs are back');
+    return;
+  }
+  const ac = e.target.closest('[data-action="reset-cols"], [data-action="sign-out"]'); if (!ac) return;
+  if (ac.dataset.action === 'sign-out') { signOut(); return; }
+  const before = S.listCols; S.listCols = []; userActed = true; save(); render();
+  toast('Columns reset', { label: 'Undo', fn: () => { S.listCols = before; save(); render(); } });
+});
+document.addEventListener('submit', async e => {
+  if (e.target.id !== 'pw-form') return;
+  e.preventDefault();
+  const cur = $('#pw-cur').value, nw = $('#pw-new').value, nw2 = $('#pw-new2').value, msg = $('#pw-msg');
+  const say = (t, ok) => { msg.textContent = t; msg.className = 'pw-msg ' + (ok ? 'good' : 'bad'); };
+  if (!cur) return say('Type your current password.');
+  if (nw.length < 8) return say('Use at least 8 characters for the new password.');
+  if (nw !== nw2) return say("The new passwords don't match.");
+  $('#pw-save').disabled = true;
+  try { await api('password', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ current: cur, next: nw }) }); $('#pw-form').reset(); say('Password changed. Use the new one next time you sign in.', true); }
+  catch (ex) { say(ex.message || "Couldn't change the password."); }
+  if ($('#pw-save')) $('#pw-save').disabled = false;
+});
 
 /* ---- drag playlists around inside a folder page ---- */
 let cd = null;
@@ -3733,12 +3817,13 @@ async function uploadLocal(btn) {
 function refreshUsage() { loadLibrary(); }
 // Each part of the library syncs on its own: a device only sends the parts it changed, so playing a song on
 // your phone (which updates history) can never overwrite a playlist you just made on your laptop.
-const SYNC_KEYS = ['playlists', 'liked', 'libOrder', 'history', 'recent', 'artistPics', 'listCols', 'folders'];
+const SYNC_KEYS = ['playlists', 'liked', 'libOrder', 'history', 'recent', 'artistPics', 'listCols', 'folders', 'prefs'];
 const syncJSON = () => JSON.stringify(Object.fromEntries(SYNC_KEYS.map(k => [k, S[k]])));
 cloud.synced = {};
 function applyState(st) {
   st = st || {};
   let changed = false;
+  const prefsBefore = JSON.stringify(S.prefs);
   for (const k of SYNC_KEYS) {
     if (!Array.isArray(st[k])) continue;
     const remote = JSON.stringify(st[k]), local = JSON.stringify(S[k]);
@@ -3747,6 +3832,7 @@ function applyState(st) {
     if (!unsynced) cloud.synced[k] = remote;
   }
   if (changed) { try { const p = JSON.parse(localStorage.getItem(STORE_KEY) || '{}'); for (const k of SYNC_KEYS) p[k] = S[k]; localStorage.setItem(STORE_KEY, JSON.stringify(p)); } catch (e) {} }
+  if (JSON.stringify(S.prefs) !== prefsBefore) syncDemoTracks();
   cloud.stateLoaded = true;
 }
 let loadingLib = false;
@@ -3942,7 +4028,11 @@ $('#sl-search-btn').addEventListener('click', () => { const w = $('#sl-search-wr
 $('#sl-search').addEventListener('input', e => { S.libQ = e.target.value; renderSide(); });
 $('#sl-search').addEventListener('blur', e => { if (!e.target.value) { e.target.hidden = true; $('#sl-search-wrap').classList.remove('open'); } });
 $('#sl-search').addEventListener('keydown', e => { if (e.key === 'Escape') { e.target.value = ''; S.libQ = ''; renderSide(); e.target.blur(); } });
-$('#acct-btn').addEventListener('click', e => openMenu(e.currentTarget, [{ label: 'Sign Out', icon: 'user', fn: signOut }], 'Allegro Account'));
+$('#acct-btn').addEventListener('click', e => openMenu(e.currentTarget, [
+  { label: 'Settings', icon: 'gear', fn: () => go({ name: 'settings' }) },
+  { sep: true }, { head: 'Allegro Account' },
+  { label: 'Sign Out', icon: 'user', fn: signOut }
+]));
 $('#search-input').addEventListener('input', e => {
   S.q = e.target.value;
   if (S.view.name !== 'search') { if (S.q.trim()) go({ name: 'search' }); return; }
@@ -4022,7 +4112,7 @@ try {
 
 /* ================= boot ================= */
 async function boot() {
-  addDemoTracks();
+  if (!pref('hideDemos')) addDemoTracks();
   if (firstRun) {
     S.playlists.push({ id: 'pl-example', name: 'Late Night Study', desc: 'Example playlist. Rename it, delete it, or add your own songs.', ids: ['demo-2-0', 'demo-0-1', 'demo-1-2', 'demo-0-0', 'demo-2-1'], created: Date.now() });
     S.liked = ['demo-1-0', 'demo-0-0'];

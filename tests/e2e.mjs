@@ -702,6 +702,34 @@ try {
   await A.waitForTimeout(1500);
   check(dropped === 'none' && (await lib(A)).songs.length === songsBefore, 'no Drop to Add: dropped files are ignored and pictures cannot be dragged', String(dropped));
 
+  // --- Settings: in the account menu above "Allegro Account"; demo songs switch; change password
+  await A.click('#acct-btn'); await A.waitForTimeout(250);
+  const acctMenu = await A.$$eval('#menu > *', x => x.map(e => e.textContent.trim()).filter(Boolean));
+  await A.click('#menu .mi:has-text("Settings")'); await A.waitForTimeout(500);
+  const setH1 = await A.textContent('#view h1');
+  await shot(A, 'settings');
+  check(acctMenu.join('|') === 'Settings|Allegro Account|Sign Out' && setH1 === 'Settings', 'Settings sits above Allegro Account and opens the Settings page', JSON.stringify(acctMenu));
+  await A.click('#set-demos'); await A.waitForTimeout(800);
+  data = await lib(A);
+  const demoOff = [(data.state.prefs || []).includes('hideDemos'), await A.evaluate(() => document.querySelector('#set-demos').getAttribute('aria-checked'))];
+  await A.click('.nav-btn[data-nav="library"]'); await A.waitForTimeout(400); await A.click('[data-chip="songs"]'); await A.waitForTimeout(300);
+  const demoTagsOff = await A.$$eval('#view .demo-tag', x => x.length);
+  await A.click('#acct-btn'); await A.waitForTimeout(250); await A.click('#menu .mi:has-text("Settings")'); await A.waitForTimeout(400);
+  await A.click('#set-demos'); await A.waitForTimeout(800);
+  await A.click('.nav-btn[data-nav="library"]'); await A.waitForTimeout(400); await A.click('[data-chip="songs"]'); await A.waitForTimeout(300);
+  const demoTagsOn = await A.$$eval('#view .demo-tag', x => x.length);
+  check(demoOff[0] && demoOff[1] === 'false' && demoTagsOff === 0 && demoTagsOn > 0, 'Show Demo Songs hides and brings back the demo songs, saved online', JSON.stringify({ demoOff, demoTagsOff, demoTagsOn }));
+  await A.click('#acct-btn'); await A.waitForTimeout(250); await A.click('#menu .mi:has-text("Settings")'); await A.waitForTimeout(400);
+  await A.fill('#pw-cur', 'wrong password!'); await A.fill('#pw-new', 'brand new pass 1'); await A.fill('#pw-new2', 'brand new pass 1');
+  await A.click('#pw-save'); await A.waitForFunction(() => document.getElementById('pw-msg').textContent.trim(), null, { timeout: 8000 }).catch(() => {});
+  const pwBad = await A.textContent('#pw-msg');
+  await A.fill('#pw-cur', PASSWORD); await A.fill('#pw-new', 'brand new pass 1'); await A.fill('#pw-new2', 'brand new pass 1');
+  await A.click('#pw-save'); await A.waitForFunction(() => document.getElementById('pw-msg').textContent.includes('changed'), null, { timeout: 8000 }).catch(() => {});
+  const pwGood = await A.textContent('#pw-msg');
+  const stillIn = (await A.evaluate(async () => (await fetch('/api/library')).status)) === 200;
+  const loginNew = await (await browser.newContext()).request.post(URL + 'api/login', { data: { password: 'brand new pass 1' } }).then(r => r.status());
+  check(pwBad.includes('not right') && pwGood.includes('changed') && stillIn && loginNew === 200, 'Settings can change the password', JSON.stringify({ pwBad, pwGood, stillIn, loginNew }));
+
   // --- nothing is reachable without a session
   const anon = await (await browser.newContext()).newPage();
   check((await anon.goto(URL + 'api/library')).status() === 401, 'library needs sign-in');
