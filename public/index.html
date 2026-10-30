@@ -597,7 +597,7 @@ input[type="range"]:disabled { opacity: .4; cursor: default; }
 .modal-head h2 { margin: 0; font: 700 1.4rem var(--f-display); letter-spacing: -.02em; }
 .modal-body { display: grid; grid-template-columns: 180px minmax(0, 1fr); gap: 18px; align-items: start; }
 .pe-left { display: flex; flex-direction: column; align-items: stretch; gap: 10px; }
-.pe-actions { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.pe-actions { display: flex; flex-direction: column; align-items: flex-start; gap: 12px; }
 .pe-actions .pill-btn { height: 32px; padding: 0 16px; border-radius: 999px; font-size: .82rem; }
 .pe-actions[hidden] { display: none; }
 .pill-btn { height: 36px; padding: 0 14px; border-radius: 10px; background: var(--chip); color: var(--ink); font-weight: 600; font-size: .85rem; transition: background-color .18s; }
@@ -931,7 +931,7 @@ body.touch-input .has-pen::after { display: none; }
         <label class="field">Song Name<input id="se-name" maxlength="200" autocomplete="off"></label>
         <label class="field">Artist<input id="se-artist" maxlength="200" autocomplete="off"></label>
         <label class="field">Album<input id="se-album" maxlength="200" autocomplete="off"></label>
-        <label class="field">Release Date<input id="se-date" maxlength="10" autocomplete="off" placeholder="YYYY-MM-DD, or just the year"></label>
+        <label class="field">Release Date<input id="se-date" maxlength="10" autocomplete="off" placeholder="e.g. Oct 24, 2024"></label>
       </div>
     </div>
     <div class="se-find"><button type="button" class="pill-btn" id="se-search"><i data-ic="search"></i>Find Info Online</button><span class="se-status" id="se-status" role="status"></span></div>
@@ -2602,6 +2602,9 @@ async function fillMissingInfo(btn) {
 
 /* ---- the song editor (Uploads only) ---- */
 // "2024-04-11", "4/11/2024", "April 11, 2024" or "2024" → "2024-04-11" / "2024". Empty → "". Not a date → null.
+// "2024-10-24" → "Oct 24, 2024"; "2024" stays "2024".
+const showDate = v => /^\d{4}-\d{2}-\d{2}$/.test(v || '') ? new Date(v + 'T00:00:00Z').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' }) : (v || '');
+$('#se-date').addEventListener('blur', e => { const v = parseReleaseDate(e.target.value); if (v) e.target.value = showDate(v); });
 function parseReleaseDate(v) {
   v = (v || '').trim(); if (!v) return '';
   if (/^\d{4}$/.test(v)) return v;
@@ -2619,11 +2622,12 @@ function editSong(id) {
   if (!cloud.canWrite) { toast('Sign in to edit songs.'); return; }
   closeMenu();
   se = { id, file: null, artUrl: null, remove: false, preview: null, extra: {}, back: document.activeElement, seq: 0 };
-  $('#se-name').value = t.title; $('#se-artist').value = t.artist === 'Unknown artist' ? '' : t.artist; $('#se-album').value = t.album === 'Unknown album' ? '' : t.album; $('#se-date').value = (t.meta && t.meta.released) || t.year || '';
+  $('#se-name').value = t.title; $('#se-artist').value = t.artist === 'Unknown artist' ? '' : t.artist; $('#se-album').value = t.album === 'Unknown album' ? '' : t.album; $('#se-date').value = showDate((t.meta && t.meta.released) || t.year);
   $('#se-err').textContent = ''; $('#se-status').textContent = ''; $('#se-results').hidden = true; $('#se-results').innerHTML = '';
   $('#se-save').disabled = false; $('#se-save').textContent = 'Save';
   drawSeArt();
   $('#song-edit').hidden = false;
+  alignSeActions();
   setTimeout(() => $('#se-name').focus(), 30);
 }
 function seSrc() {
@@ -2637,7 +2641,17 @@ function drawSeArt() {
   const fallback = t ? genCover(t.albumKey + '·' + se.id, t.coverStyle, t.hue) : '';
   $('#se-art').innerHTML = `<img src="${esc(src || fallback)}" alt="">`;
   $('#se-actions').hidden = !src;
+  alignSeActions();
 }
+// Remove Photo lines up with the Album box beside it (side-by-side layout only).
+function alignSeActions() {
+  const box = $('#se-actions'), album = $('#se-album');
+  box.style.marginTop = '';
+  if (!se || box.hidden || $('#song-edit').hidden || innerWidth <= 520) return;
+  const btn = box.firstElementChild, a = album.getBoundingClientRect(), b = btn.getBoundingClientRect();
+  box.style.marginTop = Math.max(0, Math.round((a.top + a.height / 2) - (b.top + b.height / 2))) + 'px';
+}
+window.addEventListener('resize', () => { if (se) alignSeActions(); });
 function closeSe() {
   if (!se) return;
   if (se.preview) URL.revokeObjectURL(se.preview);
@@ -2686,7 +2700,7 @@ $('#se-results').addEventListener('click', e => {
   const b = e.target.closest('[data-hit]'); if (!b || !se) return;
   const r = SE_HITS[+b.dataset.hit]; if (!r) return;
   $('#se-name').value = r.title; $('#se-artist').value = r.artist; $('#se-album').value = r.album || '';
-  if (r.released || r.year) $('#se-date').value = r.released || r.year;
+  if (r.released || r.year) $('#se-date').value = showDate(r.released || r.year);
   se.extra = { albumArtist: r.albumArtist || '', genre: r.genre || '', trackNo: r.trackNo || 0 };
   if (r.art) { if (se.preview) URL.revokeObjectURL(se.preview); se.preview = null; se.file = null; se.remove = false; se.artUrl = r.art; }
   drawSeArt();
@@ -2700,7 +2714,7 @@ $('#song-edit-form').addEventListener('submit', async e => {
   const title = $('#se-name').value.trim(), artist = $('#se-artist').value.trim(), album = $('#se-album').value.trim();
   if (!title) { $('#se-err').textContent = 'Give the song a name.'; $('#se-name').focus(); return; }
   const released = parseReleaseDate($('#se-date').value);
-  if (released === null) { $('#se-err').textContent = 'Write the release date like 2024-04-11, 4/11/2024, or just 2024.'; $('#se-date').focus(); return; }
+  if (released === null) { $('#se-err').textContent = 'Write the release date like Oct 24, 2024, 10/24/2024, or just 2024.'; $('#se-date').focus(); return; }
   $('#se-save').disabled = true; $('#se-err').textContent = ''; $('#se-save').textContent = 'Saving…';
   const ch = { title, artist: artist || 'Unknown artist', album: album || 'Unknown album', ...se.extra, released, year: released.slice(0, 4) };
   // Keep the album together: if the album artist was just the old artist, it follows the new one.

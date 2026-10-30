@@ -336,6 +336,9 @@ try {
   // edit a song by hand: name, artist, album and a cropped photo
   await A.click(`#view [data-edit-song="${tagged.id}"]`); await A.waitForTimeout(400);
   const seOpen = await A.isVisible('#song-edit');
+  const rowFit = await A.evaluate(() => { const r = document.getElementById('se-remove').getBoundingClientRect(), a = document.getElementById('se-album').getBoundingClientRect(), v = document.getElementById('se-view').getBoundingClientRect(), c = document.getElementById('se-cover').getBoundingClientRect();
+    return [Math.round((r.top + r.height / 2) - (a.top + a.height / 2)), Math.round(r.left - c.left), Math.round(v.top - r.bottom), Math.round(v.left - c.left)]; });
+  check(Math.abs(rowFit[0]) <= 2 && rowFit[1] === 0 && rowFit[3] === 0 && rowFit[2] >= 10, 'Remove Photo lines up with the Album box, buttons left-aligned and spaced apart', JSON.stringify(rowFit));
   await A.fill('#se-name', 'Sunny Day'); await A.fill('#se-artist', 'Edited Artist'); await A.fill('#se-album', 'Edited Album');
   await A.fill('#se-date', 'someday'); await A.click('#se-save'); await A.waitForTimeout(300);
   const dateErr = (await A.textContent('#se-err')).includes('release date') && await A.isVisible('#song-edit');
@@ -354,18 +357,20 @@ try {
   check(seOpen && ed.title === 'Sunny Day' && ed.artist === 'Edited Artist' && ed.album === 'Edited Album' && ed.coverV > 0 && edImg.includes('?v=') && !!edDims && edDims[0] === edDims[1], 'editing a song saves its name, artist, album and new square art', JSON.stringify({ ed, edImg, edDims }));
   // Find Info Online in the editor fills everything in from the pick
   await A.click(`#view [data-edit-song="${tagged.id}"]`); await A.waitForTimeout(400);
+  const shownDate = await A.inputValue('#se-date');
+  check(shownDate === 'Apr 11, 2024', 'the editor shows the release date as Apr 11, 2024', shownDate);
   await A.fill('#se-name', 'Nightcore - Mock Hit (Official Audio)'); await A.fill('#se-artist', '');
   await A.click('#se-search');
   await A.waitForSelector('#se-results .se-hit', { timeout: 10000 }).catch(() => {});
   await shot(A, 'editor-search');
   await A.click('#se-results .se-hit >> nth=0').catch(() => {});
   await shot(A, 'editor-filled');
-  const filled = [await A.inputValue('#se-name'), await A.inputValue('#se-artist'), await A.inputValue('#se-album')];
+  const filled = [await A.inputValue('#se-name'), await A.inputValue('#se-artist'), await A.inputValue('#se-album'), await A.inputValue('#se-date')];
   await A.click('#se-save');
   await A.waitForFunction(() => document.getElementById('song-edit').hidden, null, { timeout: 10000 }).catch(() => {});
   data = await lib(A);
   const hit = data.songs.find(s => s.id === tagged.id);
-  check(filled.join('|') === 'Mock Hit|Mock Artist|Mock Hit Album' && hit.album === 'Mock Hit Album' && hit.year === '2021' && hit.released === '2021-02-02' && hit.coverV > ed.coverV, 'Find Info Online fills in the song from the search', JSON.stringify({ filled, hit }));
+  check(filled.join('|') === 'Mock Hit|Mock Artist|Mock Hit Album|Feb 2, 2021' && hit.album === 'Mock Hit Album' && hit.year === '2021' && hit.released === '2021-02-02' && hit.coverV > ed.coverV, 'Find Info Online fills in the song from the search', JSON.stringify({ filled, hit }));
   // when Apple turns the server away, Deezer still answers
   const dz = await A.evaluate(async () => (await fetch('/api/lookup?term=deezer%20song')).json());
   const dzHit = dz.results && dz.results.find(r => r.title === 'Deezer Song');
