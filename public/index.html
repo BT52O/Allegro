@@ -602,7 +602,7 @@ input[type="range"]:disabled { opacity: .4; cursor: default; }
 .pe-note { margin: 0; font-size: .8rem; color: var(--muted); }
 .modal-foot { display: flex; justify-content: flex-end; }
 .modal .gate-err { min-height: 0; }
-.vhead.editable .art, .vhead.editable h1 { cursor: pointer; }
+.vhead.editable .art { cursor: pointer; }
 @keyframes fade-in { from { opacity: 0; } }
 @keyframes pop-in { from { opacity: 0; transform: translateY(10px) scale(.98); } }
 @media (max-width: 520px) { .modal-body { grid-template-columns: minmax(0, 1fr); } .pe-cover { width: 160px; } }
@@ -1692,7 +1692,7 @@ function qtile(key) {
 }
 function head({ art, round, type, title, meta, desc, tintSrc, editable, penId }) {
   return `<div class="view-bg" ${tintSrc ? `data-tint-src="${esc(tintSrc)}"` : ''}></div>
-  <header class="vhead${editable ? ' editable' : ''}" ${editable ? 'title="Click to edit details"' : ''}><div class="art${round ? ' round' : ''}${penId ? ' has-pen' : ''}">${art}${penId ? penFor(penId) : ''}</div><div class="vhead-text"><span class="eyebrow">${esc(type)}</span>${title}${desc ? `<p class="desc">${esc(desc)}</p>` : ''}<div class="meta">${meta}</div></div></header>`;
+  <header class="vhead${editable ? ' editable' : ''}"><div class="art${round ? ' round' : ''}${penId ? ' has-pen' : ''}"${editable ? ' title="Edit Details"' : ''}>${art}${penId ? penFor(penId) : ''}</div><div class="vhead-text"><span class="eyebrow">${esc(type)}</span>${title}${desc ? `<p class="desc">${esc(desc)}</p>` : ''}<div class="meta">${meta}</div></div></header>`;
 }
 const actions = (key, extra = '') => `<div class="actions"><button class="big-play" data-ctx-play="${esc(key)}" aria-label="Play">${ic('play')}</button><button class="act-btn${S.shuffle ? ' on' : ''}" data-act="shuffle" aria-label="Shuffle" aria-pressed="${S.shuffle}">${ic('shuffle')}</button>${extra}</div>`;
 const fileCount = () => { let n = 0; for (const t of S.tracks.values()) if (t.kind === 'file' || t.kind === 'cloud') n++; return n; };
@@ -2838,7 +2838,7 @@ document.addEventListener('click', e => {
   const chip = T.closest('[data-chip]'); if (chip) { S.libTab = chip.dataset.chip; save(); S.view = { name: 'library', tab: S.libTab }; render(); return; }
   const ac = T.closest('[data-action]');
   if (ac) { if (ac.dataset.action === 'add') addMenu(ac); else if (ac.dataset.action === 'new-pl') newPlaylist(); else if (ac.dataset.action === 'upload-local') uploadLocal(ac); return; }
-  if (S.view.name === 'playlist' && T.closest('.vhead .art, .vhead h1')) { editPlaylist(S.view.key); return; }
+  if (S.view.name === 'playlist' && T.closest('.vhead .art')) { editPlaylist(S.view.key); return; }
   const op = T.closest('[data-open]'); if (op) { openKey(op.dataset.open); return; }
 });
 document.addEventListener('keydown', e => {

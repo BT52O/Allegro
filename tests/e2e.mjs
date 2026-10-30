@@ -109,7 +109,9 @@ try {
   // --- playlist: edit details and drag to reorder (desktop)
   await A.click('#side-list [data-open="playlist:pl-example"]'); await A.waitForTimeout(700);
   await A.click('.vhead h1'); await A.waitForTimeout(300);
-  check(await A.isVisible('#pl-edit'), 'clicking the playlist title opens Edit details');
+  const titleOpens = await A.isVisible('#pl-edit');
+  await A.click('.vhead .art', { position: { x: 30, y: 120 } }); await A.waitForTimeout(300);
+  check(!titleOpens && await A.isVisible('#pl-edit'), 'Edit Details opens from the cover only, not the title');
   await A.fill('#pe-name', 'Renamed In Test'); await A.fill('#pe-desc', 'From the e2e test');
   await A.click('#pe-save'); await A.waitForTimeout(1200);
   data = await lib(A);
@@ -153,7 +155,7 @@ try {
   const dims = cv ? await A.evaluate(c => new Promise(r => { const i = new Image(); i.onload = () => r([i.naturalWidth, i.naturalHeight]); i.onerror = () => r(null); i.src = '/api/playlist-cover/pl-example?v=' + c; }), cv) : null;
   check(!!dims && dims[0] === dims[1], 'pen uploads the cropped, square cover', JSON.stringify(dims));
   await A.click('#side-list [data-open="playlist:pl-example"]'); await A.waitForTimeout(600);
-  await A.click('.vhead h1'); await A.waitForTimeout(400);
+  await A.click('.vhead .art', { position: { x: 30, y: 120 } }); await A.waitForTimeout(400);
   const bubbles = await A.$$eval('#pe-actions .pill-btn', x => x.filter(e => e.offsetParent).map(e => e.textContent));
   await A.click('#pe-view');
   const lbOk = await A.waitForFunction(() => { const i = document.getElementById('lightbox-img'); return !document.getElementById('lightbox').hidden && i.complete && i.naturalWidth > 0; }, null, { timeout: 10000 }).then(() => true, () => false);
