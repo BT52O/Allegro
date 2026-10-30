@@ -167,6 +167,8 @@ try {
   await A.click('#side-list [data-open="playlist:pl-example"]'); await A.waitForTimeout(600);
   await A.hover('.vhead .art'); await A.waitForTimeout(300);
   const penVisible = await A.$eval('.vhead .pl-pen', e => getComputedStyle(e).opacity === '1');
+  const headTop = await A.evaluate(() => { const art = document.querySelector('.vhead .art').getBoundingClientRect(), h = document.querySelector('.vhead h1').getBoundingClientRect(), m = document.querySelector('.vhead .meta'); return [Math.round(h.top - art.top), getComputedStyle(m).fontWeight]; });
+  check(headTop[0] >= 0 && headTop[0] <= 6 && headTop[1] === '600', 'playlist title sits level with the top of the cover, details in bold', JSON.stringify(headTop));
   check(noCardPens && penVisible, 'pen shows only on the playlist page cover');
   const chooser = A.waitForEvent('filechooser');
   await A.click('.vhead .pl-pen');
