@@ -257,7 +257,6 @@ body.is-playing .li.grid.playing .spk { display: grid; }
 .col-btn { width: 26px; height: 26px; margin-left: -6px; display: grid; place-items: center; border-radius: 6px; color: var(--muted); }
 .col-btn .ic { width: 17px; height: 17px; }
 .col-btn:hover, .col-btn[aria-expanded="true"] { background: var(--hover); color: var(--ink); }
-.c-bpm, .c-key { font: 400 .85rem var(--f-mono); color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .tt-artist-only .t-artist { font-size: .95rem; color: var(--ink); }
 .mi.col-opt .ic { order: 2; margin-left: auto; color: var(--ink); }
 .mi.col-opt:not(.on) .ic { visibility: hidden; }
@@ -318,7 +317,7 @@ body.touch-input .tr .more { opacity: 1; }
 @container (max-width: 560px) {
   .tl-head { display: none; }
   .tl > .tr { grid-template-columns: minmax(0, 1fr) 34px 34px; gap: 6px; padding: 0 4px 0 8px; }
-  .tr .c-n, .tr .c-album, .tr .c-dur, .tr .c-bpm, .tr .c-key { display: none; }
+  .tr .c-n, .tr .c-album, .tr .c-dur { display: none; }
   .tr .like:not(.on) { display: none; }
   .tr .like.on { opacity: 1; }
   .tr .c-like:has(.like:not(.on)) { visibility: hidden; }
@@ -629,9 +628,6 @@ img { -webkit-user-drag: none; user-select: none; }
 @keyframes pop-in { from { opacity: 0; transform: translateY(10px) scale(.98); } }
 @media (max-width: 520px) { .modal-body { grid-template-columns: minmax(0, 1fr); } .pe-cover { width: 160px; } }
 /* song editor */
-.se-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-.se-pair .field { min-width: 0; }
-.se-pair input { min-width: 0; width: 100%; }
 .se-find { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .se-find .pill-btn { display: inline-flex; align-items: center; gap: 6px; }
 .se-find .pill-btn .ic { width: 16px; height: 16px; }
@@ -697,6 +693,7 @@ body.dragging-row .tr:hover .like:not(.on), body.dragging-row .tr:hover .more { 
 .folder-cards .card { -webkit-user-select: none; user-select: none; }
 .folder-cards .card.drag-src { opacity: .35; }
 .drop-line.fixed { position: fixed; width: 3px; border-radius: 2px; z-index: 60; }
+#side-list.drop-out { background: color-mix(in srgb, var(--ink) 5%, transparent); border-radius: 10px; }
 .drop-line { position: absolute; left: 8px; right: 8px; height: 2px; border-radius: 2px; background: var(--ink); pointer-events: none; z-index: 3; }
 .drop-line.vertical::before { left: -3px; top: -4px; }
 .sl-list { position: relative; }
@@ -736,6 +733,19 @@ body.dragging-row .tr:hover .like:not(.on), body.dragging-row .tr:hover .more { 
 .sp-none { color: var(--muted); padding: 8px; margin: 0; }
 .li.drop-into { background: color-mix(in srgb, var(--ink) 10%, transparent); box-shadow: inset 0 0 0 2px var(--ink); }
 .li.drop-into .folder-art { background: var(--ink); color: var(--panel); }
+.folder-pop { position: fixed; z-index: 45; width: 280px; max-height: min(420px, calc(100vh - 16px)); overflow-y: auto; padding: 8px; border-radius: 12px; background: var(--panel); box-shadow: var(--shadow), 0 0 0 1px var(--line); animation: pop-in .16s cubic-bezier(.2, .8, .2, 1); }
+.folder-pop[hidden] { display: none; }
+.fp-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; padding: 6px 8px 8px; }
+.fp-head b { font: 700 .95rem var(--f-display); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fp-head span { font-size: .78rem; color: var(--muted); flex: none; }
+.fp-row { display: grid; grid-template-columns: 40px minmax(0, 1fr); gap: 10px; align-items: center; width: 100%; padding: 6px 8px; border-radius: 8px; text-align: left; }
+.fp-row:hover, .fp-row:focus-visible { background: var(--hover); }
+.fp-art { width: 40px; height: 40px; border-radius: 6px; overflow: hidden; }
+.fp-art img, .fp-art .mosaic, .fp-art .liked-art { width: 100%; height: 100%; object-fit: cover; display: block; }
+.fp-t { min-width: 0; }
+.fp-t b { display: block; font-weight: 600; font-size: .9rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fp-t span { display: block; font-size: .78rem; color: var(--muted); }
+.fp-empty { margin: 0; padding: 4px 8px 8px; font-size: .85rem; color: var(--muted); }
 .folder-art { width: 100%; height: 100%; display: grid; place-items: center; background: var(--chip); color: var(--muted); }
 .folder-art .ic { width: 46%; height: 46%; stroke-width: 1.5; }
 .folder-head { display: flex; align-items: center; gap: 10px; margin-top: 6px; }
@@ -999,7 +1009,6 @@ body.touch-input .has-pen::after { display: none; }
         <label class="field">Artist<input id="se-artist" maxlength="200" autocomplete="off"></label>
         <label class="field">Album<input id="se-album" maxlength="200" autocomplete="off"></label>
         <label class="field">Release Date<input id="se-date" maxlength="20" autocomplete="off" placeholder="e.g. Oct 24, 2024"></label>
-        <div class="se-pair"><label class="field">BPM<input id="se-bpm" inputmode="decimal" maxlength="6" autocomplete="off" placeholder="e.g. 128"></label><label class="field">Key<input id="se-key" maxlength="12" autocomplete="off" placeholder="e.g. A minor"></label></div>
       </div>
     </div>
     <div class="se-find"><button type="button" class="pill-btn" id="se-search"><i data-ic="search"></i>Find Info Online</button><span class="se-status" id="se-status" role="status"></span></div>
@@ -1771,19 +1780,17 @@ function trackRow(t, i, opt) {
   if (c.has('title') || c.has('artist')) cells += `<span class="c-title">${cover}<span class="tt${c.has('title') ? '' : ' tt-artist-only'}">${c.has('title') ? `<span class="t-name">${esc(t.title)}</span>` : ''}${c.has('artist') ? artistLink : ''}</span></span>`;
   if (c.has('album')) cells += `<span class="c-album"><button class="link" data-go-album="${esc(t.albumKey)}">${esc(t.album)}</button></span>`;
   if (c.has('date')) cells += `<span class="c-added">${opt.played ? playedWhen(opt.played[i]) : t.released ? longDate(t.released) : (t.year || '–')}</span>`;
-  if (c.has('bpm')) cells += `<span class="c-bpm">${t.bpm ? Math.round(t.bpm) : '–'}</span>`;
-  if (c.has('key')) cells += `<span class="c-key" title="${esc(t.key || '')}">${t.key ? esc(t.key) : '–'}</span>`;
   cells += `<span class="c-like"><button class="like${liked ? ' on' : ''}" data-like="${esc(t.id)}" aria-pressed="${liked}" aria-label="${liked ? 'Remove from' : 'Save to'} Liked Songs">${ic(liked ? 'heartFill' : 'heart')}</button></span>`;
   if (c.has('duration')) cells += `<span class="c-dur">${fmt(t.duration)}</span>`;
   cells += `<span class="c-more"><button class="more" data-more="${esc(t.id)}" aria-label="More options for ${esc(t.title)}">${ic('more')}</button></span>`;
   return `<div class="tr" data-id="${esc(t.id)}" data-i="${i}" tabindex="0">${cells}</div>`;
 }
 /* Columns: each list remembers which ones you picked (saved online, so every device matches). */
-const COLS = [['title', 'Title'], ['artist', 'Artist'], ['album', 'Album'], ['date', 'Date Released'], ['duration', 'Duration'], ['bpm', 'BPM'], ['key', 'Key']];
+const COLS = [['title', 'Title'], ['artist', 'Artist'], ['album', 'Album'], ['date', 'Date Released'], ['duration', 'Duration']];
 const DEFAULT_COLS = ['title', 'artist', 'album', 'date', 'duration'];
 function colsFor(key) {
   const e = key && S.listCols.find(x => x.key === key);
-  if (e) return new Set(e.cols);
+  if (e) return new Set(e.cols.filter(c => COLS.some(x => x[0] === c)));
   return new Set(key && key.startsWith('album:') ? ['title', 'artist', 'date', 'duration'] : DEFAULT_COLS);
 }
 function colTemplate(cols, nW, narrow) {
@@ -1791,8 +1798,6 @@ function colTemplate(cols, nW, narrow) {
   if (cols.has('title') || cols.has('artist')) t.push('minmax(0, 4fr)');
   if (cols.has('album')) t.push('minmax(0, 3fr)');
   if (cols.has('date') && !narrow) t.push('minmax(0, 2fr)');
-  if (cols.has('bpm')) t.push('48px');
-  if (cols.has('key')) t.push('minmax(44px, 70px)');
   t.push('34px');
   if (cols.has('duration')) t.push('50px');
   t.push('34px');
@@ -1810,7 +1815,6 @@ function trackList(ids, ctx, opt = {}) {
   LISTS[lid] = { ids, ctx, playlist: opt.playlist, opt };
   if (!ids.length) return opt.empty || '';
   const cols = opt.noHead ? new Set(DEFAULT_COLS) : colsFor(ctx.key), o = { ...opt, cols };
-  if (cols.has('bpm') || cols.has('key')) queueTagReads(ids);
   const nW = opt.noHead ? '28px' : '44px';
   let head = '';
   if (!opt.noHead) {
@@ -1818,8 +1822,6 @@ function trackList(ids, ctx, opt = {}) {
     if (cols.has('title') || cols.has('artist')) head += `<span aria-hidden="true">${cols.has('title') ? 'Title' : 'Artist'}</span>`;
     if (cols.has('album')) head += `<span class="c-album" aria-hidden="true">Album</span>`;
     if (cols.has('date')) head += `<span class="c-added" aria-hidden="true">${opt.played ? 'Played' : 'Date Released'}</span>`;
-    if (cols.has('bpm')) head += `<span class="c-bpm" aria-hidden="true">BPM</span>`;
-    if (cols.has('key')) head += `<span class="c-key" aria-hidden="true">Key</span>`;
     head += `<span></span>${cols.has('duration') ? `<span class="c-dur" aria-hidden="true">${ic('clock')}</span>` : ''}<span></span></div>`;
   }
   const style = `--cols:${colTemplate(cols, nW, false)};--cols-narrow:${colTemplate(cols, nW, true)}`;
@@ -1833,13 +1835,13 @@ function trackList(ids, ctx, opt = {}) {
     const o2 = { ...o, nums };
     ti = 0; body = '';
     for (const x of seq) {
-      if (isBrk(x)) { const bid = x.slice(4); body += `<div class="pl-break" data-break="${esc(bid)}"><h3>${esc(breakName(pl, bid))}</h3><button class="more" data-break-more="${esc(bid)}" aria-label="Page break options">${ic('more')}</button></div>${head}`; continue; }
+      if (isBrk(x)) { const bid = x.slice(4); body += `<div class="pl-break" data-break="${esc(bid)}"><h3>${esc(breakName(pl, bid))}</h3><button class="more" data-break-more="${esc(bid)}" aria-label="Page break options">${ic('more')}</button></div>`; continue; }
       body += trackRow(tk(x), ti, o2); ti++;
     }
   } else body = ids.map((id, i) => trackRow(tk(id), i, o)).join('');
   return `<div class="tl${opt.cover === false ? ' no-cover' : ''}${opt.playlist ? ' reorder' : ''}" data-list="${lid}" style="${style}">${head}${body}</div>`;
 }
-// Redraws one list in place (after changing its columns, or when BPM/Key arrive) without rebuilding the page.
+// Redraws one list in place (after changing its columns) without rebuilding the page.
 function redrawList(el) {
   const L = el && LISTS[el.dataset.list]; if (!L) return null;
   const tmp = document.createElement('div'); tmp.innerHTML = trackList(L.ids, L.ctx, L.opt);
@@ -1870,29 +1872,6 @@ function toggleCol(key, col) {
   $$('#view .tl[data-list]').forEach(el => { const L = LISTS[el.dataset.list]; if (L && L.ctx.key === key) { const f = redrawList(el); if (f && !btn) btn = f.querySelector('[data-cols]'); } });
   drawColMenu(key);
   if (btn) { menuAnchor = btn; btn.setAttribute('aria-expanded', 'true'); }
-}
-// BPM and Key come from the song file's own tags. Songs uploaded before this was added get read once, in the background.
-const tagQueue = [], tagSeen = new Set();
-let tagBusy = false;
-function queueTagReads(ids) {
-  if (!cloud.canWrite) return;
-  for (const id of ids) { const t = tk(id); if (t && t.kind === 'cloud' && !(t.meta && t.meta.tagsRead) && !tagSeen.has(id)) { tagSeen.add(id); tagQueue.push(id); } }
-  if (!tagBusy && tagQueue.length) setTimeout(runTagReads, 50);
-}
-async function runTagReads() {
-  if (tagBusy) return; tagBusy = true;
-  let changed = 0;
-  while (tagQueue.length) {
-    const id = tagQueue.shift(), t = tk(id); if (!t || t.kind !== 'cloud') continue;
-    const url = audioUrl(id);
-    const remote = { size: 0, slice: (a, b) => ({ arrayBuffer: () => fetch(url, { headers: { range: `bytes=${a}-${b - 1}` }, credentials: 'same-origin' }).then(r => { if (!r.ok) throw new Error(); return r.arrayBuffer(); }) }) };
-    let tags = {};
-    try { tags = await readTags(remote); } catch (e) { continue; }
-    const bpm = parseFloat(tags.TBPM) || 0, key = (tags.TKEY || '').trim().slice(0, 12);
-    try { await saveSongMeta(id, { bpm: t.meta.bpm || bpm, key: t.meta.key || key, tagsRead: true }); if (bpm || key) changed++; } catch (e) {}
-  }
-  tagBusy = false;
-  if (changed) { rebuild(); $$('#view .tl[data-list]').forEach(el => { const L = LISTS[el.dataset.list]; if (L && L.opt && !L.opt.noHead) { const c = colsFor(L.ctx.key); if (c.has('bpm') || c.has('key')) redrawList(el); } }); }
 }
 function card(key, title, sub, cover, round) {
   return `<div class="card" data-open="${esc(key)}" tabindex="0" role="link" aria-label="${esc(title)}"><div class="card-art${round ? ' round' : ''}">${cover}<button class="card-play" data-card-play="${esc(key)}" aria-label="Play ${esc(title)}">${ic('play')}</button></div><div class="card-t">${esc(title)}</div><div class="card-s">${esc(sub)}</div></div>`;
@@ -2123,7 +2102,29 @@ function render(scrollTop) {
   }
   markPlaying(); syncPlayIcons(); renderSide(); syncShelves();
   if (S.renaming) { const inp = $('#rename-input'); if (inp) { inp.focus(); inp.select(); } }
+  if (scrollTop) placeTop = null;   // you went somewhere new, so don't jump back to the old scroll spot
+  savePlace();
 }
+// Reloading keeps you where you were: the page you had open and how far down you'd scrolled.
+const PLACE_KEY = 'allegro.place.v1';
+let placeTop = null, placeTimer = 0;
+function savePlace() {
+  if (placeTop !== null) return;   // still waiting to put you back
+  try { localStorage.setItem(PLACE_KEY, JSON.stringify({ view: S.view, top: Math.round($('#main').scrollTop) })); } catch (e) {}
+}
+function restorePlace() {
+  try {
+    const p = JSON.parse(localStorage.getItem(PLACE_KEY) || 'null');
+    if (p && p.view && typeof p.view.name === 'string' && VIEWS[p.view.name]) { S.view = p.view; placeTop = p.top > 0 ? p.top : null; }
+  } catch (e) {}
+}
+function applyPlaceTop(final) {
+  if (placeTop === null) return;
+  const m = $('#main');
+  if (m.scrollHeight - m.clientHeight >= placeTop - 4 || final) { m.scrollTop = placeTop; placeTop = null; savePlace(); }
+}
+window.addEventListener('pagehide', () => { placeTop = null; savePlace(); });
+document.addEventListener('visibilitychange', () => { if (document.hidden) { placeTop = null; savePlace(); } });
 const SORTS = [['custom', 'Custom Sort'], ['recents', 'Recents'], ['added', 'Recently Added'], ['alpha', 'Alphabetical']];
 const VIEWS_AS = [['list', 'List', 'viewList'], ['grid', 'Grid', 'viewGrid']];
 function libItems(all = false) {
@@ -2252,7 +2253,9 @@ function openMenu(anchor, items, title) {
   const f = m.querySelector('.mi'); if (f && !sheet) f.focus({ preventScroll: true });
 }
 let menuPlace = null;
+let menuMainTop = 0;
 function placeMenu(keep = false) {
+  menuMainTop = $('#main').scrollTop;
   const m = $('#menu'); if (m.classList.contains('as-sheet') || !menuAnchor) return;
   const r = menuAnchor.getBoundingClientRect(), w = m.offsetWidth, h = m.offsetHeight;
   m.style.bottom = 'auto'; m.style.maxHeight = '';
@@ -2569,6 +2572,42 @@ $('#sp-list').addEventListener('click', e => {
   b.textContent = 'Added'; b.disabled = true;
 });
 
+/* ---- hover a folder in the sidebar to peek at its playlists ---- */
+const fpop = Object.assign(document.createElement('div'), { id: 'folder-pop', className: 'folder-pop', hidden: true });
+fpop.setAttribute('role', 'menu');
+document.body.appendChild(fpop);
+const fp = { timer: 0, hide: 0, key: null };
+function showFolderPop(li) {
+  const f = S.folders.find(x => 'folder:' + x.id === li.dataset.open); if (!f || sd || cd || drag) return;
+  const pls = folderPlaylists(f);
+  fpop.innerHTML = `<div class="fp-head"><b>${esc(f.name)}</b><span>${plural(pls.length, 'playlist')}</span></div>`
+    + (pls.length ? pls.map(p => `<button class="fp-row" data-open="playlist:${esc(p.id)}" role="menuitem"><span class="fp-art">${plArt(p)}</span><span class="fp-t"><b>${esc(p.name)}</b><span>${plural(live(p.ids).length, 'song')}</span></span></button>`).join('')
+      : `<p class="fp-empty">Nothing here yet. Drag a playlist onto this folder to add it.</p>`);
+  fp.key = li.dataset.open;
+  fpop.hidden = false;
+  const r = li.getBoundingClientRect(), side = $('.side').getBoundingClientRect(), h = fpop.offsetHeight;
+  fpop.style.left = (side.right + 8) + 'px';
+  fpop.style.top = Math.max(8, Math.min(r.top - 8, innerHeight - h - 8)) + 'px';
+}
+function hideFolderPop() { clearTimeout(fp.timer); clearTimeout(fp.hide); fpop.hidden = true; fp.key = null; }
+const fpHideSoon = () => { clearTimeout(fp.hide); fp.hide = setTimeout(hideFolderPop, 200); };
+$('#side-list').addEventListener('pointerover', e => {
+  if (e.pointerType !== 'mouse' || sd || cd || drag) return;
+  const li = e.target.closest('.li[data-open^="folder:"]'); if (!li) return;
+  clearTimeout(fp.hide);
+  if (fp.key === li.dataset.open && !fpop.hidden) return;
+  clearTimeout(fp.timer); fp.timer = setTimeout(() => showFolderPop(li), fpop.hidden ? 260 : 60);
+});
+$('#side-list').addEventListener('pointerout', e => {
+  const li = e.target.closest('.li[data-open^="folder:"]'); if (!li || li.contains(e.relatedTarget)) return;
+  clearTimeout(fp.timer); fpHideSoon();
+});
+fpop.addEventListener('pointerenter', () => clearTimeout(fp.hide));
+fpop.addEventListener('pointerleave', fpHideSoon);
+$('#side-list').addEventListener('scroll', hideFolderPop, { passive: true });
+document.addEventListener('pointerdown', e => { if (!fpop.hidden && !fpop.contains(e.target) && !e.target.closest('.li[data-open^="folder:"]')) hideFolderPop(); }, true);
+fpop.addEventListener('click', () => setTimeout(hideFolderPop, 0));
+
 /* ---- drag playlists around inside a folder page ---- */
 let cd = null;
 document.addEventListener('pointerdown', e => {
@@ -2607,6 +2646,28 @@ function cdStart() {
 }
 function cdMove(x, y) {
   cd.ghost.style.transform = `translate(${x + 14}px, ${y - 20}px)`;
+  // Over the sidebar: drop on another folder to move it there, or anywhere else in My Playlists to take it out of the folder.
+  const SL = $('#side-list').getBoundingClientRect(), overSide = x >= SL.left && x <= SL.right && y >= SL.top && y <= SL.bottom;
+  const here = cd.grid.dataset.folder;
+  let into = null, side = null;
+  if (overSide) {
+    const lis = [...$('#side-list').querySelectorAll('.li[data-drag]')];
+    into = lis.find(el => { if (!el.dataset.open.startsWith('folder:') || el.dataset.open === 'folder:' + here) return false; const r = el.getBoundingClientRect(), m = r.height * .22; return y >= r.top + m && y <= r.bottom - m; }) || null;
+    if (!into) {
+      let to = lis.length;
+      for (let i = 0; i < lis.length; i++) { const r = lis[i].getBoundingClientRect(); if (y < r.top + r.height / 2) { to = i; break; } }
+      const edge = lis.length ? (to < lis.length ? lis[to].getBoundingClientRect().top : lis[lis.length - 1].getBoundingClientRect().bottom) : SL.top + 8;
+      side = { before: to < lis.length ? lis[to].dataset.open : null };
+      Object.assign(cd.line.style, { left: (SL.left + 8) + 'px', top: (edge - 1) + 'px', width: (SL.width - 16) + 'px', height: '2px' });
+    }
+    if (y < SL.top + 40) $('#side-list').scrollBy(0, -10); else if (y > SL.bottom - 40) $('#side-list').scrollBy(0, 10);
+  }
+  if (cd.into !== into) { if (cd.into) cd.into.classList.remove('drop-into'); cd.into = into; if (into) into.classList.add('drop-into'); }
+  cd.side = side;
+  $('#side-list').classList.toggle('drop-out', !!side);
+  cd.line.style.display = into ? 'none' : '';
+  if (overSide) return;
+  cd.line.style.width = '';
   const rects = cd.cards.map(el => el.getBoundingClientRect());
   let best = 0, bd = Infinity;
   rects.forEach((r, i) => { const d = Math.hypot(x - (r.left + r.width / 2), y - (r.top + r.height / 2)); if (d < bd) { bd = d; best = i; } });
@@ -2622,8 +2683,22 @@ function cdEnd(commit) {
   if (!d.active) return;
   suppressClick = true; setTimeout(() => { suppressClick = false; }, 80);
   d.ghost.remove(); d.line.remove(); d.card.classList.remove('drag-src');
+  if (d.into) d.into.classList.remove('drop-into');
+  $('#side-list').classList.remove('drop-out');
   document.body.classList.remove('dragging-row');
   if (!commit) return;
+  const plId = d.card.dataset.open.slice(9);
+  if (d.into) { moveToFolder(plId, d.into.dataset.open.slice(7)); return; }
+  if (d.side) {
+    // Out of the folder, into My Playlists at the spot it was dropped (Custom Sort keeps that spot).
+    const key = 'playlist:' + plId;
+    const order = libItems(true).filter(it => !it.pinned).map(it => it.key).filter(k => k !== key);
+    const at = d.side.before ? order.indexOf(d.side.before) : -1;
+    order.splice(at < 0 ? order.length : at, 0, key);
+    S.libOrder = order; S.libSort = 'custom';
+    moveToFolder(plId, null);
+    return;
+  }
   let to = d.to; if (to > d.from) to--;
   if (to === d.from) return;
   const f = S.folders.find(x => x.id === d.grid.dataset.folder); if (!f) return;
@@ -3079,7 +3154,6 @@ function editSong(id) {
   closeMenu();
   se = { id, file: null, artUrl: null, remove: false, preview: null, extra: {}, back: document.activeElement, seq: 0 };
   $('#se-name').value = t.title; $('#se-artist').value = t.artist === 'Unknown artist' ? '' : t.artist; $('#se-album').value = t.album === 'Unknown album' ? '' : t.album; $('#se-date').value = showDate((t.meta && t.meta.released) || t.year);
-  $('#se-bpm').value = t.bpm ? String(Math.round(t.bpm * 10) / 10) : ''; $('#se-key').value = t.key || '';
   $('#se-err').textContent = ''; $('#se-status').textContent = ''; $('#se-results').hidden = true; $('#se-results').innerHTML = '';
   $('#se-save').disabled = false; $('#se-save').textContent = 'Save';
   drawSeArt();
@@ -3172,10 +3246,8 @@ $('#song-edit-form').addEventListener('submit', async e => {
   if (!title) { $('#se-err').textContent = 'Give the song a name.'; $('#se-name').focus(); return; }
   const released = parseReleaseDate($('#se-date').value);
   if (released === null) { $('#se-err').textContent = 'Write the release date like Oct 24, 2024, 10/24/2024, or just 2024.'; $('#se-date').focus(); return; }
-  const bpmIn = $('#se-bpm').value.trim(), bpm = bpmIn ? parseFloat(bpmIn) : 0;
-  if (bpmIn && !(bpm > 0 && bpm < 1000 && /^\d+(\.\d+)?$/.test(bpmIn))) { $('#se-err').textContent = 'BPM should be a number, like 128.'; $('#se-bpm').focus(); return; }
   $('#se-save').disabled = true; $('#se-err').textContent = ''; $('#se-save').textContent = 'Saving…';
-  const ch = { title, artist: artist || 'Unknown artist', album: album || 'Unknown album', ...se.extra, released, year: released.slice(0, 4), bpm, key: $('#se-key').value.trim(), tagsRead: true };
+  const ch = { title, artist: artist || 'Unknown artist', album: album || 'Unknown album', ...se.extra, released, year: released.slice(0, 4) };
   // Keep the album together: if the album artist was just the old artist, it follows the new one.
   if (!('albumArtist' in se.extra) && t.albumArtist && t.albumArtist === t.artist) ch.albumArtist = '';
   try {
@@ -3582,6 +3654,7 @@ async function loadLibrary(first) {
   rebuild();
   if (!cloud.songsLoaded) { cloud.songsLoaded = true; tryRestoreLast(); }
   if (!S.renaming && $('#menu').hidden) render(); else renderSide();
+  applyPlaceTop(true);
   updateMeta(); renderQueue(); renderSide(); syncLikes();
 }
 async function pushState() {
@@ -3770,7 +3843,12 @@ $('#s-like').addEventListener('click', () => { if (S.current) toggleLike(S.curre
 $('#s-artist').addEventListener('click', () => { const t = tk(S.current); if (t) go({ name: 'artist', key: t.artist }); });
 $('#s-ctx').addEventListener('click', () => { if (S.context && ctxInfo(S.context.key)) openKey(S.context.key); });
 $('#s-qtoggle').addEventListener('click', e => { const s = $('#sheet'), on = !s.classList.contains('show-queue'); s.classList.toggle('show-queue', on); e.currentTarget.classList.toggle('on', on); e.currentTarget.setAttribute('aria-pressed', on); $('#s-queue').innerHTML = queueHTML(); });
-$('#main').addEventListener('scroll', e => { e.currentTarget.classList.toggle('scrolled', e.currentTarget.scrollTop > 10); closeMenu(); }, { passive: true });
+$('#main').addEventListener('scroll', e => {
+  const m = e.currentTarget; m.classList.toggle('scrolled', m.scrollTop > 10);
+  clearTimeout(placeTimer); placeTimer = setTimeout(savePlace, 300);
+  // close menus when you scroll, but not for the tiny shifts a page makes on its own while pictures load
+  if (!$('#menu').hidden && Math.abs(m.scrollTop - menuMainTop) > 12) closeMenu();
+}, { passive: true });
 window.addEventListener('resize', () => closeMenu());
 $('#file-input').addEventListener('change', e => { const f = [...e.target.files]; e.target.value = ''; if (f.length) importFiles(f); });
 $('#folder-input').addEventListener('change', e => { const f = [...e.target.files]; e.target.value = ''; if (f.length) importFiles(f); });
@@ -3838,7 +3916,8 @@ async function boot() {
   }
   rebuild();
   applyVolume(); syncVolIcon(); syncToggles();
-  render(); renderQueue();
+  restorePlace();
+  render(); renderQueue(); applyPlaceTop();
   tryRestoreLast();
   if (!S.current) {
     const a = IDX.albums.get('Juniper Lane · Rain Day Sketches') || albumsSorted()[0];

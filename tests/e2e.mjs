@@ -223,6 +223,7 @@ try {
   const at = plx.ids.indexOf(plRows[2]), marker = plx.ids[at + 1] || '';
   const nums = await A.$$eval('#view .tl .tr .num', x => x.map(e => e.textContent));
   const bkHead = await A.$$eval('#view .pl-break h3', x => x.map(e => e.textContent));
+  check((await A.$$eval('#view .tl-head', x => x.length)) === 1, 'with page breaks, the column header row shows only once, at the top');
   check(addOpts.join('|') === 'Add a Song|Add a Page Break' && bkDefault === 'Volume 2' && marker.startsWith('brk:') && bkHead.join() === 'Volume 2' && nums[2] === '3' && nums[3] === '1', 'a page break goes after the chosen song, is named, and numbering starts over', JSON.stringify({ addOpts, bkDefault, marker, bkHead, nums }));
   await A.hover('#view .pl-break'); await A.click('#view .pl-break [data-break-more]'); await A.waitForTimeout(250);
   await A.click('#menu .mi:has-text("Rename or Move")'); await A.waitForTimeout(400);
@@ -290,6 +291,12 @@ try {
   await A.click('#menu .mi:has-text("Move to Folder")'); await A.waitForTimeout(250);
   await A.click('#menu .mi:has-text("华语")'); await A.waitForTimeout(600);
   await A.click(`#side-list [data-open="folder:${fd.id}"]`); await A.waitForTimeout(600);
+  await A.mouse.move(5, 5); await A.hover(`#side-list [data-open="folder:${fd.id}"]`); await A.waitForTimeout(600);
+  const peek = await A.evaluate(() => { const p = document.getElementById('folder-pop'); return p && !p.hidden ? [p.querySelector('.fp-head b').textContent, [...p.querySelectorAll('.fp-row .fp-t b')].map(e => e.textContent)] : null; });
+  await shot(A, 'folder-peek');
+  await A.mouse.move(700, 400); await A.waitForTimeout(500);
+  const peekGone = await A.evaluate(() => document.getElementById('folder-pop').hidden);
+  check(!!peek && peek[0] === '华语' && peek[1].includes('Made In Test') && peek[1].includes('Renamed In Test') && peekGone, 'hovering a folder shows the playlists inside it', JSON.stringify(peek));
   const cardsPerRow = await A.$$eval('#view .folder-cards .card', x => { const t = x[0].getBoundingClientRect().top; return x.filter(e => Math.abs(e.getBoundingClientRect().top - t) < 2).length; });
   const fdOrder0 = await A.$$eval('#view .folder-cards .card', x => x.map(e => e.dataset.open));
   {
@@ -302,6 +309,36 @@ try {
   data = await lib(A);
   const savedOrder = (data.state.folders.find(f => f.id === fd.id) || {}).ids || [];
   check(fdOrder0.length === 2 && fdOrder1[0] === fdOrder0[1] && fdOrder1[1] === fdOrder0[0] && savedOrder[0] === fdOrder0[1].slice(9) && (await A.textContent('#view h1')) === '华语', 'dragging playlists on a folder page rearranges them and saves', JSON.stringify({ fdOrder0, fdOrder1, savedOrder }));
+  // drag a card from the folder page to another folder in the sidebar, then back out into My Playlists
+  const dragCard = async (sel, tx, ty) => {
+    const c = await (await A.$(sel)).boundingBox();
+    await A.mouse.move(c.x + c.width / 2, c.y + 60); await A.mouse.down();
+    await A.mouse.move(c.x + c.width / 2 - 20, c.y + 60, { steps: 4 });
+    await A.mouse.move(tx, ty, { steps: 12 }); await A.waitForTimeout(150);
+    await A.mouse.up(); await A.waitForTimeout(800);
+  };
+  await A.click('#side-list .li-create'); await A.waitForTimeout(300);
+  await A.click('#menu .mi:has-text("Folder")'); await A.waitForTimeout(400);
+  await A.fill('#fd-name', 'Other Folder'); await A.keyboard.press('Enter'); await A.waitForTimeout(800);
+  const other = (await lib(A)).state.folders.find(f => f.name === 'Other Folder');
+  await A.click(`#side-list [data-open="folder:${fd.id}"]`); await A.waitForTimeout(600);
+  {
+    const t = await (await A.$(`#side-list [data-open="folder:${other.id}"]`)).boundingBox();
+    await dragCard('#view .folder-cards .card[data-open="playlist:pl-example"]', t.x + 80, t.y + t.height / 2);
+  }
+  data = await lib(A);
+  const movedOver = data.state.folders.find(f => f.id === other.id).ids.includes('pl-example') && !data.state.folders.find(f => f.id === fd.id).ids.includes('pl-example');
+  {
+    const last = await (await A.$('#side-list .li[data-drag] >> nth=-1')).boundingBox();
+    await dragCard(`#view .folder-cards .card[data-open="playlist:${madeId}"]`, last.x + 80, last.y + last.height + 6);
+  }
+  data = await lib(A);
+  const outNow = !data.state.folders.some(f => f.ids.includes(madeId)) && !!(await A.$(`#side-list [data-open="playlist:${madeId}"]`));
+  check(movedOver && outNow, 'folder cards drag onto another folder, or back out into My Playlists', JSON.stringify({ movedOver, outNow }));
+  await A.click(`#side-list [data-open="folder:${other.id}"]`); await A.waitForTimeout(500);
+  await A.click('.folder-head [data-folder-more]'); await A.waitForTimeout(250);
+  await A.click('#menu .mi:has-text("Delete Folder")'); await A.waitForTimeout(600);
+  await A.click(`#side-list [data-open="folder:${fd.id}"]`); await A.waitForTimeout(500);
   await A.click('.folder-head [data-folder-more]'); await A.waitForTimeout(250);
   await A.click('#menu .mi:has-text("Delete Folder")'); await A.waitForTimeout(600);
   await A.click('#side-list [data-open="playlist:pl-example"]'); await A.waitForTimeout(500);
@@ -323,6 +360,7 @@ try {
   for (const pos of ['first', 'last']) {
     const row = pos === 'first' ? '#view .tl .tr >> nth=0' : '#view .tl .tr >> nth=-1';
     await A.click(`${row} >> .more`, { force: true }); await A.waitForTimeout(250);
+    await shot(A, 'submenu-' + pos);
     const m1 = await A.$eval('#menu', m => m.getBoundingClientRect().toJSON());
     await A.click('#menu .mi:has-text("Add to Playlist")'); await A.waitForTimeout(250);
     const m2 = await A.$eval('#menu', m => m.getBoundingClientRect().toJSON());
@@ -471,7 +509,7 @@ try {
   await A.fill('#se-name', 'Sunny Day'); await A.fill('#se-artist', 'Edited Artist'); await A.fill('#se-album', 'Edited Album');
   await A.fill('#se-date', 'someday'); await A.click('#se-save'); await A.waitForTimeout(300);
   const dateErr = (await A.textContent('#se-err')).includes('release date') && await A.isVisible('#song-edit');
-  await A.fill('#se-date', '4/11/2024'); await A.fill('#se-bpm', '128'); await A.fill('#se-key', 'A minor');
+  await A.fill('#se-date', '4/11/2024');
   const artChooser = A.waitForEvent('filechooser');
   await A.click('#se-cover');
   await (await artChooser).setFiles(join(fixtures, 'wide.png')); await A.waitForTimeout(600);
@@ -482,7 +520,7 @@ try {
   const ed = data.songs.find(s => s.id === tagged.id);
   const edImg = await A.$eval(`#view [data-edit-song="${tagged.id}"] img`, i => i.getAttribute('src')).catch(() => '');
   const edDims = await A.evaluate(src => new Promise(r => { const i = new Image(); i.onload = () => r([i.naturalWidth, i.naturalHeight]); i.onerror = () => r(null); i.src = src; }), edImg);
-  check(ed.bpm === 128 && ed.key === 'A minor', 'BPM and Key can be typed in the song editor', JSON.stringify([ed.bpm, ed.key]));
+  check(!(await A.$('#se-bpm')) && !(await A.$('#se-key')), 'the song editor has no BPM or Key boxes');
   check(dateErr && ed.released === '2024-04-11' && ed.year === '2024', 'release date is checked and saved from 4/11/2024 as 2024-04-11', JSON.stringify([dateErr, ed.released, ed.year]));
   check(seOpen && ed.title === 'Sunny Day' && ed.artist === 'Edited Artist' && ed.album === 'Edited Album' && ed.coverV > 0 && edImg.includes('?v=') && !!edDims && edDims[0] === edDims[1], 'editing a song saves its name, artist, album and new square art', JSON.stringify({ ed, edImg, edDims }));
   // Find Info Online in the editor fills everything in from the pick
@@ -553,32 +591,36 @@ try {
   await A.click('.nav-btn[data-nav="uploads"]'); await A.waitForTimeout(400);
   await A.click('#view [data-cols]'); await A.waitForTimeout(250);
   const colOpts = await A.$$eval('#menu [data-col-opt]', x => x.map(e => e.textContent.trim()));
-  for (const c of ['album', 'bpm', 'key']) { await A.click(`#menu [data-col-opt="${c}"]`); await A.waitForTimeout(250); }
-  const stillOpen = await A.isVisible('#menu') && (await A.$$eval('#menu [data-col-opt][aria-checked="true"]', x => x.map(e => e.dataset.colOpt))).join() === 'title,artist,date,duration,bpm,key';
+  for (const c of ['album', 'duration']) { await A.click(`#menu [data-col-opt="${c}"]`); await A.waitForTimeout(250); }
+  const stillOpen = await A.isVisible('#menu') && (await A.$$eval('#menu [data-col-opt][aria-checked="true"]', x => x.map(e => e.dataset.colOpt))).join() === 'title,artist,date';
   await shot(A, 'columns-menu');
   const menuInPanel = await A.evaluate(() => document.getElementById('menu').getBoundingClientRect().left >= document.getElementById('main').getBoundingClientRect().left);
   await A.keyboard.press('Escape'); await A.waitForTimeout(200);
   const upHead = await A.$$eval('#view .tl-head > span', x => x.map(e => e.textContent.trim()).filter(Boolean));
   const relCells = await A.$$eval('#view .tr .c-added', x => x.map(e => e.textContent));
   const relHead = upHead.includes('Date Released') && !upHead.includes('Date Added');
-  const bpmCell = await A.$eval(`#view .tr[data-id="${tagged.id}"] .c-bpm`, e => e.textContent).catch(() => '');
-  const keyCell = await A.$eval(`#view .tr[data-id="${tagged.id}"] .c-key`, e => e.textContent).catch(() => '');
+  const durCells = await A.$$eval('#view .tr .c-dur', x => x.length);
   const upAlbums = await A.$$eval('#view .tr .c-album', x => x.length);
   const colsLeft = await A.evaluate(() => { const b = document.querySelector('#view .col-btn').getBoundingClientRect(), n = [...document.querySelectorAll('#view .tl-head .c-n span')].pop().getBoundingClientRect(); return b.right <= n.left; });
-  check(colOpts.join('|') === 'Title|Artist|Album|Date Released|Duration|BPM|Key' && stillOpen && colsLeft && menuInPanel, 'column menu sits left of # and lists Title, Artist, Album, Date Released, Duration, BPM and Key', JSON.stringify(colOpts));
-  check(upAlbums === 0 && !upHead.includes('Album') && upHead.includes('BPM') && upHead.includes('Key') && bpmCell === '128' && keyCell === 'A minor', 'checked columns show and unchecked ones hide', JSON.stringify({ upHead, bpmCell, keyCell, upAlbums }));
+  check(colOpts.join('|') === 'Title|Artist|Album|Date Released|Duration' && stillOpen && colsLeft && menuInPanel, 'column menu sits left of # and lists Title, Artist, Album, Date Released and Duration (no BPM or Key)', JSON.stringify(colOpts));
+  check(upAlbums === 0 && !upHead.includes('Album') && durCells === 0 && !(await A.$('#view .tl-head .c-dur')), 'checked columns show and unchecked ones hide', JSON.stringify({ upHead, durCells, upAlbums }));
   check(relHead && relCells.includes('Feb. 2, 2021') && relCells.includes('Jan. 1, 2019'), 'the date column shows when each song was released', JSON.stringify(relCells));
   await A.click('.nav-btn[data-nav="library"]'); await A.waitForTimeout(400); await A.click('[data-chip="songs"]'); await A.waitForTimeout(300);
-  const libCols = [await A.$$eval('#view .tr .c-album', x => x.length), !!(await A.$('#view .tr .c-bpm'))];
+  const libCols = [await A.$$eval('#view .tr .c-album', x => x.length), !!(await A.$('#view .tr .c-dur'))];
   data = await lib(A);
   const savedCols = (data.state.listCols || []).find(x => x.key === 'uploads');
   await A.reload(); await A.waitForTimeout(2000);
   await A.click('.nav-btn[data-nav="uploads"]'); await A.waitForTimeout(500);
-  const afterReload = [!!(await A.$('#view .tr .c-album')), !!(await A.$('#view .tr .c-bpm')), !!(await A.$('#view .tr .c-key'))];
+  const afterReload = [!!(await A.$('#view .tr .c-album')), !!(await A.$('#view .tr .c-dur')), !!(await A.$('#view .tr .c-added'))];
   await B.reload(); await B.waitForTimeout(2000);
   const onB = await B.evaluate(() => JSON.stringify((JSON.parse(localStorage.getItem('waxwing.state.v1') || '{}').listCols || []).find(x => x.key === 'uploads') || null));
-  check(afterReload.join() === 'false,true,true' && onB && onB.includes('bpm'), 'column choices stay after reloading, and on other devices', JSON.stringify({ afterReload, onB }));
-  check(libCols[0] > 0 && !libCols[1] && !!savedCols && savedCols.cols.join() === 'title,artist,date,duration,bpm,key', 'each list keeps its own columns, saved online', JSON.stringify({ libCols, savedCols }));
+  check(afterReload.join() === 'false,false,true' && onB && !onB.includes('duration') && onB.includes('date'), 'column choices stay after reloading, and on other devices', JSON.stringify({ afterReload, onB }));
+  await A.click('#side-list [data-open="playlist:pl-example"]'); await A.waitForTimeout(600);
+  const wantTop = await A.evaluate(() => { const m = document.getElementById('main'); m.scrollTop = 120; return m.scrollTop; }); await A.waitForTimeout(500);
+  await A.reload(); await A.waitForTimeout(2500);
+  const stayed = [await A.textContent('#view h1').catch(() => ''), await A.evaluate(() => document.getElementById('main').scrollTop)];
+  check(stayed[0] === 'Renamed In Test' && wantTop > 20 && Math.abs(stayed[1] - wantTop) <= 4, 'reloading keeps you on the same page and scroll spot', JSON.stringify([...stayed, wantTop]));
+  check(libCols[0] > 0 && libCols[1] && !!savedCols && savedCols.cols.join() === 'title,artist,date', 'each list keeps its own columns, saved online', JSON.stringify({ libCols, savedCols }));
   // Find Missing Info repairs older uploads
   await A.evaluate(async id => {
     const s = (await (await fetch('/api/library')).json()).songs.find(x => x.id === id);
