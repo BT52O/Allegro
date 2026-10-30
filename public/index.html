@@ -202,7 +202,10 @@ body.is-playing .li.grid.playing .spk { display: grid; }
 .btn .ic { width: 18px; height: 18px; }
 
 /* cards */
-.cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 168px), 1fr)); gap: 4px 8px; margin: 0 -10px; }
+.cards { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 4px 8px; margin: 0 -10px; }   /* five across */
+@container (max-width: 860px) { .cards { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+@container (max-width: 640px) { .cards { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@container (max-width: 440px) { .cards { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 .cards.one-row { grid-template-rows: auto; grid-auto-rows: 0; row-gap: 0; overflow: hidden; }
 .card { padding: 10px; border-radius: 10px; cursor: pointer; min-width: 0; }
 .card:hover { background: var(--hover); }
@@ -510,7 +513,6 @@ img { -webkit-user-drag: none; user-select: none; }
   .vhead h1 { font-size: clamp(1.8rem, 8.5vw, 2.6rem); }
   .callout { grid-template-columns: auto minmax(0, 1fr); }
   .callout .btn { grid-column: 1 / -1; }
-  .cards { grid-template-columns: repeat(auto-fill, minmax(min(100%, 136px), 1fr)); }
   .card-play { display: none; }
   .qgrid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .qt { height: 54px; padding-right: 8px; }
@@ -692,6 +694,9 @@ body.dragging-row .tr:hover .c-n .hov { display: none; }
 body.dragging-row .tr:hover .c-n .num { display: inline; }
 body.dragging-row .tr:hover .like:not(.on), body.dragging-row .tr:hover .more { opacity: 0; }
 .tr.drag-src { opacity: .35; }
+.folder-cards .card { -webkit-user-select: none; user-select: none; }
+.folder-cards .card.drag-src { opacity: .35; }
+.drop-line.fixed { position: fixed; width: 3px; border-radius: 2px; z-index: 60; }
 .drop-line { position: absolute; left: 8px; right: 8px; height: 2px; border-radius: 2px; background: var(--ink); pointer-events: none; z-index: 3; }
 .drop-line.vertical::before { left: -3px; top: -4px; }
 .sl-list { position: relative; }
@@ -754,7 +759,7 @@ body.touch-input .has-pen::after { display: none; }
 .shelf-btn { width: 32px; height: 32px; background: color-mix(in srgb, var(--ink) 7%, transparent); color: var(--ink); }
 .shelf-btn:disabled { opacity: .3; cursor: default; background: color-mix(in srgb, var(--ink) 7%, transparent); }
 .shelf-nav .link { margin-left: 8px; }
-.shelf-row { display: grid; grid-auto-flow: column; grid-auto-columns: clamp(140px, 14cqi, 200px); gap: 4px 8px; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; margin: 0 -10px; padding: 0 0 4px; overscroll-behavior-x: contain; }
+.shelf-row { display: grid; grid-auto-flow: column; grid-auto-columns: calc((100% - 4 * 8px) / 5); gap: 4px 8px; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; margin: 0 -10px; padding: 0 0 4px; overscroll-behavior-x: contain; }
 .shelf-row::-webkit-scrollbar { display: none; }
 .shelf-row .card { scroll-snap-align: start; }
 .shelf-empty { margin: 0; color: var(--muted); font-size: .9rem; }
@@ -1946,7 +1951,7 @@ const VIEWS = {
     const pls = folderPlaylists(f);
     const title = S.renaming === f.id ? `<input class="rename folder-rename" id="rename-input" value="${esc(f.name)}" maxlength="80" aria-label="Folder name">` : `<h1 class="page-title">${esc(f.name)}</h1>`;
     return `<div class="folder-head">${title}<button class="act-btn" data-folder-more="${esc(f.id)}" aria-label="Folder options">${ic('more')}</button></div>`
-      + (pls.length ? `<div class="cards">${pls.map(plCard).join('')}</div>`
+      + (pls.length ? `<div class="cards folder-cards" data-folder="${esc(f.id)}">${pls.map(plCard).join('')}</div>`
         : `<div class="empty"><h3>This Folder Is Empty</h3><p>Open a playlist's ⋯ menu and choose Move to Folder.</p></div>`);
   },
   history() {
@@ -2417,6 +2422,70 @@ function deleteFolder(id) {
   if (S.view.name === 'folder' && S.view.key === id) { S.view = { name: 'library', tab: 'playlists' }; render(true); } else render();
   renderSide();
   toast(`Deleted ${f.name}. Its playlists are back in My Playlists.`, { label: 'Undo', fn: () => { S.folders.splice(idx, 0, f); save(); render(); renderSide(); } });
+}
+
+/* ---- drag playlists around inside a folder page ---- */
+let cd = null;
+document.addEventListener('pointerdown', e => {
+  if (e.button !== 0 || cd || sd || drag) return;
+  const card = e.target.closest('#view .folder-cards .card[data-open]'); if (!card || e.target.closest('.card-play')) return;
+  cd = { card, x: e.clientX, y: e.clientY, pid: e.pointerId, active: false, touch: e.pointerType !== 'mouse', timer: 0 };
+  if (cd.touch) cd.timer = setTimeout(() => { if (cd && !cd.active) cdStart(); }, 380);
+});
+document.addEventListener('pointermove', e => {
+  if (!cd || e.pointerId !== cd.pid) return;
+  if (!cd.active) {
+    const moved = Math.hypot(e.clientX - cd.x, e.clientY - cd.y);
+    if (cd.touch) { if (moved > 8) cdEnd(false); return; }
+    if (moved < 6) return;
+    cdStart();
+  }
+  e.preventDefault(); cdMove(e.clientX, e.clientY);
+}, { passive: false });
+document.addEventListener('touchmove', e => { if (cd && cd.active) e.preventDefault(); }, { passive: false });
+document.addEventListener('pointerup', e => { if (cd && e.pointerId === cd.pid) cdEnd(true); });
+document.addEventListener('pointercancel', e => { if (cd && e.pointerId === cd.pid) cdEnd(false); });
+function cdStart() {
+  closeMenu();
+  cd.active = true;
+  cd.grid = cd.card.parentElement; cd.cards = [...cd.grid.querySelectorAll('.card[data-open]')];
+  cd.from = cd.cards.indexOf(cd.card); cd.to = cd.from;
+  cd.card.classList.add('drag-src'); document.body.classList.add('dragging-row');
+  cd.ghost = document.createElement('div'); cd.ghost.className = 'drag-ghost';
+  const img = cd.card.querySelector('.card-art img');
+  cd.ghost.innerHTML = (img ? `<img src="${esc(img.getAttribute('src'))}" alt="">` : '') + `<span>${esc(cd.card.getAttribute('aria-label') || '')}</span>`;
+  document.body.appendChild(cd.ghost);
+  cd.line = document.createElement('div'); cd.line.className = 'drop-line fixed';
+  document.body.appendChild(cd.line);
+  if (cd.touch && navigator.vibrate) { try { navigator.vibrate(12); } catch (e) {} }
+  cdMove(cd.x, cd.y);
+}
+function cdMove(x, y) {
+  cd.ghost.style.transform = `translate(${x + 14}px, ${y - 20}px)`;
+  const rects = cd.cards.map(el => el.getBoundingClientRect());
+  let best = 0, bd = Infinity;
+  rects.forEach((r, i) => { const d = Math.hypot(x - (r.left + r.width / 2), y - (r.top + r.height / 2)); if (d < bd) { bd = d; best = i; } });
+  const r = rects[best], after = x > r.left + r.width / 2;
+  cd.to = best + (after ? 1 : 0);
+  Object.assign(cd.line.style, { left: (after ? r.right + 1 : r.left - 4) + 'px', top: (r.top + 8) + 'px', height: (r.height - 16) + 'px' });
+  const M = $('#main').getBoundingClientRect();
+  if (y < M.top + 60) $('#main').scrollBy(0, -12); else if (y > M.bottom - 60) $('#main').scrollBy(0, 12);
+}
+function cdEnd(commit) {
+  const d = cd; cd = null;
+  clearTimeout(d.timer);
+  if (!d.active) return;
+  suppressClick = true; setTimeout(() => { suppressClick = false; }, 80);
+  d.ghost.remove(); d.line.remove(); d.card.classList.remove('drag-src');
+  document.body.classList.remove('dragging-row');
+  if (!commit) return;
+  let to = d.to; if (to > d.from) to--;
+  if (to === d.from) return;
+  const f = S.folders.find(x => x.id === d.grid.dataset.folder); if (!f) return;
+  const shown = d.cards.map(el => el.dataset.open.slice(9));
+  const [moved] = shown.splice(d.from, 1); shown.splice(to, 0, moved);
+  f.ids = [...shown, ...f.ids.filter(id => !shown.includes(id))];
+  userActed = true; save(); render(); renderSide();
 }
 
 /* ================= edit playlist details ================= */

@@ -246,6 +246,34 @@ try {
   await shot(A, 'folder-page');
   const fdPage = [await A.textContent('#view h1'), await A.$$eval('#view .card .card-t', x => x.map(e => e.textContent)), await A.$$eval('#view input', x => x.length)];
   check(inFolder.includes(madeId) && goneFromSide && fdPage[0] === '华语' && fdPage[1].includes('Made In Test') && fdPage[2] === 0, 'moving a playlist into a folder files it there; the folder page shows its playlists, no search box', JSON.stringify({ inFolder, goneFromSide, fdPage }));
+  // rearrange playlists inside the folder by dragging: put pl-example in too, then drag it in front
+  await A.click('#side-list [data-open="playlist:pl-example"]'); await A.waitForTimeout(500);
+  await A.click('.actions [data-ctx-more]'); await A.waitForTimeout(250);
+  await A.click('#menu .mi:has-text("Move to Folder")'); await A.waitForTimeout(250);
+  await A.click('#menu .mi:has-text("华语")'); await A.waitForTimeout(600);
+  await A.click(`#side-list [data-open="folder:${fd.id}"]`); await A.waitForTimeout(600);
+  const cardsPerRow = await A.$$eval('#view .folder-cards .card', x => { const t = x[0].getBoundingClientRect().top; return x.filter(e => Math.abs(e.getBoundingClientRect().top - t) < 2).length; });
+  const fdOrder0 = await A.$$eval('#view .folder-cards .card', x => x.map(e => e.dataset.open));
+  {
+    const c1 = await (await A.$('#view .folder-cards .card >> nth=1')).boundingBox(), c0 = await (await A.$('#view .folder-cards .card >> nth=0')).boundingBox();
+    await A.mouse.move(c1.x + c1.width / 2, c1.y + 60); await A.mouse.down();
+    await A.mouse.move(c1.x + c1.width / 2 - 20, c1.y + 60, { steps: 4 });
+    await A.mouse.move(c0.x + 20, c0.y + 60, { steps: 10 }); await A.mouse.up(); await A.waitForTimeout(800);
+  }
+  const fdOrder1 = await A.$$eval('#view .folder-cards .card', x => x.map(e => e.dataset.open));
+  data = await lib(A);
+  const savedOrder = (data.state.folders.find(f => f.id === fd.id) || {}).ids || [];
+  check(fdOrder0.length === 2 && fdOrder1[0] === fdOrder0[1] && fdOrder1[1] === fdOrder0[0] && savedOrder[0] === fdOrder0[1].slice(9) && (await A.textContent('#view h1')) === '华语', 'dragging playlists on a folder page rearranges them and saves', JSON.stringify({ fdOrder0, fdOrder1, savedOrder }));
+  await A.click('.folder-head [data-folder-more]'); await A.waitForTimeout(250);
+  await A.click('#menu .mi:has-text("Delete Folder")'); await A.waitForTimeout(600);
+  await A.click('#side-list [data-open="playlist:pl-example"]'); await A.waitForTimeout(500);
+  await A.click('#side-list [data-open="playlist:' + madeId + '"]'); await A.waitForTimeout(500);
+  check(cardsPerRow >= 1, 'folder page shows its playlists as cards', String(cardsPerRow));
+  // a fresh folder for the remove-from-folder check
+  await A.click('.actions [data-ctx-more]'); await A.waitForTimeout(250);
+  await A.click('#menu .mi:has-text("Move to Folder")'); await A.waitForTimeout(250);
+  await A.click('#menu .mi:has-text("New Folder")'); await A.waitForTimeout(400);
+  await A.fill('#fd-name', 'Second Folder'); await A.keyboard.press('Enter'); await A.waitForTimeout(800);
   await A.click(`#view .card[data-open="playlist:${madeId}"]`); await A.waitForTimeout(500);
   await A.click('.actions [data-ctx-more]'); await A.waitForTimeout(250);
   await A.click('#menu .mi:has-text("Move to Folder")'); await A.waitForTimeout(250);
