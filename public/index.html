@@ -554,6 +554,12 @@ input[type="range"]:disabled { opacity: .4; cursor: default; }
 .sp-msg { color: rgba(255, 255, 255, .7); line-height: 1.6; }
 .ly-status { display: flex; align-items: center; gap: 8px; margin: 0 0 14px; font-size: .85rem; color: rgba(255, 255, 255, .72); }
 .ly-status .ic { width: 16px; height: 16px; flex: none; }
+/* three dots that rise and fade one after another while the lyrics are being timed */
+.ly-status { gap: 8px; } .ly-dots { display: inline-flex; margin-left: -8px; }
+.ly-dots i { font-style: normal; animation: ly-dot 1.2s ease-in-out infinite; }
+.ly-dots i:nth-child(2) { animation-delay: .2s; } .ly-dots i:nth-child(3) { animation-delay: .4s; }
+@keyframes ly-dot { 0%, 60%, 100% { opacity: .25; transform: none; } 30% { opacity: 1; transform: translateY(-2px); } }
+@media (prefers-reduced-motion: reduce) { .ly-dots i { animation: none; opacity: .7; } }
 .ly-status.err { color: #ffd0cc; }
 .sp-btn { text-decoration: none; display: inline-flex; align-items: center; gap: 8px; height: 36px; padding: 0 16px; border-radius: 999px; background: rgba(255, 255, 255, .16); color: #fff; font-weight: 700; font-size: .88rem; }
 .sp-btn:hover { background: rgba(255, 255, 255, .26); }
@@ -1443,7 +1449,7 @@ const I18N = [
   ['Open now playing', '打开正在播放', '開啟正在播放'], ['Close now playing', '关闭正在播放', '關閉正在播放'], ['Show queue', '显示播放队列', '顯示播放佇列'], ['Go back', '后退', '上一頁'], ['Go forward', '前进', '下一頁'],
   ['More options', '更多选项', '更多選項'], ['Playlist options', '歌单选项', '歌單選項'], ['Folder options', '文件夹选项', '資料夾選項'], ['Page break options', '分段选项', '分段選項'], ['Add a song or page break', '添加歌曲或分段', '加入歌曲或分段'], ['Add to this folder', '添加到此文件夹', '加入此資料夾'],
   ['Collapse Sidebar', '收起侧边栏', '收合側邊欄'], ['Expand Sidebar', '展开侧边栏', '展開側邊欄'], ['Song position', '播放进度', '播放進度'], ['Zoom', '缩放', '縮放'], ['Start an Empty One', '新建一个空歌单', '新增一個空歌單'], ['Player', '播放器', '播放器'],
-  ['Wiki', '百科', '百科'], ['Lyrics', '歌词', '歌詞'], ['Comments', '评论', '評論'], ['Singer', '歌手', '歌手'], ['Find on Genius', '在 Genius 上查找', '在 Genius 上查找'], ['You can find the words on Genius and paste them in with Add Lyrics. Allegro times them to the song for you.', '你可以在 Genius 上找到歌词，用“添加歌词”粘贴进来，Allegro 会自动把它和歌曲对齐。', '你可以在 Genius 上找到歌詞，用「加入歌詞」貼上，Allegro 會自動把它和歌曲對齊。'], ['Credits', '制作', '製作'], ['Lyricist', '作词', '作詞'], ['Composer', '作曲', '作曲'],
+  ['Wiki', '百科', '百科'], ['Lyrics', '歌词', '歌詞'], ['Comments', '评论', '評論'], ['Singer', '歌手', '歌手'], ['Timing the lyrics to the song', '正在把歌词和歌曲对齐', '正在把歌詞和歌曲對齊'], ['Find on Genius', '在 Genius 上查找', '在 Genius 上查找'], ['You can find the words on Genius and paste them in with Add Lyrics. Allegro times them to the song for you.', '你可以在 Genius 上找到歌词，用“添加歌词”粘贴进来，Allegro 会自动把它和歌曲对齐。', '你可以在 Genius 上找到歌詞，用「加入歌詞」貼上，Allegro 會自動把它和歌曲對齊。'], ['Credits', '制作', '製作'], ['Lyricist', '作词', '作詞'], ['Composer', '作曲', '作曲'],
   ['About This Song', '关于这首歌', '關於這首歌'], ['In Liked Songs', '已在喜欢的歌曲中', '已在喜歡的歌曲中'], ['Looking for lyrics…', '正在查找歌词…', '正在尋找歌詞…'], ['No lyrics found for this song.', '没有找到这首歌的歌词。', '沒有找到這首歌的歌詞。'],
   ['Instrumental', '纯音乐', '純音樂'], ['Add Lyrics', '添加歌词', '加入歌詞'], ['Sync', '同步', '同步'], ['Add Lyrics Myself', '自己添加歌词', '自己加入歌詞'], ['Edit Lyrics', '编辑歌词', '編輯歌詞'], ['Search Online Again', '重新在线查找', '重新線上尋找'], ['Lyrics saved', '歌词已保存', '歌詞已儲存'],
   ["Paste the lyrics. Put a time like [01:23.45] at the start of a line to make it light up with the song. For a duet, start a line with the singer's name and a colon (Name: …), and their lines go on their own side.", '粘贴歌词。在行首加上 [01:23.45] 这样的时间，歌词就会随歌曲高亮。对唱时，在行首写上歌手名字和冒号（名字：…），他们的歌词会显示在各自的一侧。', '貼上歌詞。在行首加上 [01:23.45] 這樣的時間，歌詞就會隨歌曲亮起。對唱時，在行首寫上歌手名字和冒號（名字：…），他們的歌詞會顯示在各自的一側。'],
@@ -3692,7 +3698,7 @@ async function aiSyncLyrics(t) {
     const pcm = (await off.startRendering()).getChannelData(0);
     const CH = 30 * 16000, chunks = [];
     for (let at = 0; at < pcm.length; at += CH) chunks.push(at);
-    L.syncing.total = chunks.length; renderPanel();
+    L.syncing.total = chunks.length;
     const lang = lyLang(texts.join(' ')), heard = [];
     const allToks = texts.map(x => lyToks(x).length), totalToks = allToks.reduce((a, b) => a + b, 0);
     const promptFor = k => {   // the part of the lyrics that probably falls in this stretch, to help Whisper hear it
@@ -3714,7 +3720,7 @@ async function aiSyncLyrics(t) {
             tks.forEach((x, q) => heard.push({ w: x, t: off0 + s0 + (e0 - s0) * q / tks.length }));
           }
         }
-        if (SP.lyr.id === t.id && SP.lyr.syncing) { SP.lyr.syncing.done++; if (tk(S.current) === t && spTab === 'lyrics' && !SP.editLyr) renderPanel(); }
+        if (SP.lyr.id === t.id && SP.lyr.syncing) SP.lyr.syncing.done++;
       }
     };
     await Promise.all([work(), work(), work()]);
@@ -3741,7 +3747,7 @@ function lyricsHTML(t) {
   if (L.err) return `<p class="sp-msg">${esc(L.err)}</p><div class="sp-actions"><button class="sp-btn" data-ly-retry>Try Again</button>${canEdit ? `<button class="sp-btn" data-ly-edit>${ic('edit')}<span>Add Lyrics Myself</span></button>${geniusLink(t)}` : ''}</div>`;
   const aiBtn = canEdit && !L.none && !L.syncing ? `<button class="sp-btn" data-ly-ai>${ic('sparkle')}<span>Sync</span></button>` : '';
   const tools = canEdit ? `<div class="ly-tools"><button class="sp-btn" data-ly-edit>${ic('edit')}<span>${L.none ? 'Add Lyrics' : 'Edit Lyrics'}</span></button>${aiBtn}</div>` : '';
-  const status = L.syncing ? `<p class="ly-status">${ic('sparkle')}<span>${L.syncing.total ? `Timing the lyrics to the song with AI… ${L.syncing.done} of ${L.syncing.total}` : 'Getting the song ready for AI timing…'}</span></p>`
+  const status = L.syncing ? `<p class="ly-status">${ic('sparkle')}<span>Timing the lyrics to the song</span><span class="ly-dots" aria-hidden="true"><i>.</i><i>.</i><i>.</i></span></p>`
     : L.syncErr ? `<p class="ly-status err">${esc(L.syncErr)}</p>` : L.aiTimed ? '<p class="ly-status">Timed by AI. If a line is off, try Sync again or adjust the time with Edit Lyrics.</p>' : '';
   if (L.none) return `<p class="sp-msg">${L.instrumental ? 'Instrumental' : 'No lyrics found for this song.'}</p>${canEdit && !L.instrumental ? '<p class="sp-hint">You can find the words on Genius and paste them in with Add Lyrics. Allegro times them to the song for you.</p>' : ''}${tools.replace('ly-tools', 'sp-actions').replace('</div>', geniusLink(t) + '</div>')}`;
   const singerTag = l => l.singer ? `<span class="ly-singer" data-nt>${esc(l.singer)}</span>` : '';
