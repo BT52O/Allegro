@@ -1559,10 +1559,32 @@ function localBanner() {
   return `<div class="callout"><div class="callout-ic">${ic('upload')}</div><div><h3>${plural(n, 'song')} ${n === 1 ? 'is' : 'are'} only on this device</h3><p>You added ${n === 1 ? 'it' : 'them'} before online saving was on. Upload ${n === 1 ? 'it' : 'them'} so ${n === 1 ? 'it plays' : 'they play'} on your other devices too.</p></div><button class="btn" data-action="upload-local">${ic('upload')}Upload</button></div>`;
 }
 
+/* Home greeting: a music-minded line that fits the time of day. It stays the same for the whole hour, so it
+   doesn't change every time you go back to Home. */
+const GREETINGS = {
+  late: ['Up Past the Last Track', 'Night Owls Get the Best B-Sides', 'Quiet Hours, Loud Headphones', 'The Moon Requested an Encore', 'Still Up? So Is the Bass', 'One More Song Before Bed?'],
+  morning: ['Good Morning, Maestro', 'Coffee First, Then the Chorus', 'A Fresh Day Deserves a Fresh Track', 'Tune Up Before the Day Does', 'Rise and Shine, It’s Allegro Time', 'Morning Calls for a Major Key'],
+  afternoon: ['Good Afternoon, Maestro', 'Every Afternoon Needs a Bridge', 'Turn the Afternoon Up a Notch', 'Keep the Tempo Going', 'Halfway Through the Setlist', 'Time for an Upbeat Interlude'],
+  evening: ['Good Evening, Maestro', 'Golden Hour Needs a Soundtrack', 'Dim the Lights, Raise the Volume', 'The Evening Calls for an Encore', 'Slow the Tempo, Turn It Up', 'Unwind in Three-Four Time']
+};
+const SMALL_WORDS = new Set(['a', 'an', 'and', 'as', 'at', 'but', 'by', 'for', 'if', 'in', 'nor', 'of', 'on', 'or', 'so', 'the', 'to', 'via', 'yet']);
+function titleCase(str) {
+  const words = str.split(' ');
+  return words.map((w, i) => {
+    const lower = w.toLowerCase(), bare = lower.replace(/[^a-z’'-]/g, '');
+    if (i > 0 && i < words.length - 1 && SMALL_WORDS.has(bare) && !/[.?!,]$/.test(words[i - 1])) return lower;
+    return w.split('-').map(part => part.charAt(0).toUpperCase() + part.slice(1)).join('-');
+  }).join(' ');
+}
+function greeting(h) {
+  const pool = h < 5 || h >= 23 ? GREETINGS.late : h < 12 ? GREETINGS.morning : h < 18 ? GREETINGS.afternoon : GREETINGS.evening;
+  const d = new Date(), seed = d.getFullYear() * 10000 + (d.getMonth() + 1) * 100 + d.getDate() + h * 7;
+  return titleCase(pool[seed % pool.length]);
+}
 const VIEWS = {
   home() {
     const h = new Date().getHours();
-    const greet = h < 5 ? 'Up late?' : h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening';
+    const greet = greeting(h);
     const keys = ['liked'];
     const add = k => { if (keys.length < 8 && !keys.includes(k) && ctxInfo(k)) keys.push(k); };
     S.recent.forEach(add); S.playlists.forEach(p => add('playlist:' + p.id)); albumsSorted().forEach(a => add('album:' + a.key));
