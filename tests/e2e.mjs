@@ -131,6 +131,12 @@ try {
   await B.click(`.tr[data-id="${tagged.id}"]`); await B.waitForTimeout(2000);
   check(await B.evaluate(() => document.body.classList.contains('is-playing')), 'an uploaded song plays on the second device');
   check(await B.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'phone layout has no sideways scroll');
+  // phone Now Playing: cover across the top, fading into a deep color from the art, white text
+  await B.click('#p-cover'); await B.waitForTimeout(1200);
+  const npv = await B.evaluate(() => { const sh = document.getElementById('sheet'), art = document.querySelector('.s-art').getBoundingClientRect(); return [getComputedStyle(sh).backgroundImage, getComputedStyle(document.getElementById('s-title')).color, Math.round(art.width), innerWidth, Math.round(art.top), sh.style.getPropertyValue('--deep')]; });
+  await shot(B, 'phone-now-playing');
+  await B.click('.sheet-top [data-act="sheet"]'); await B.waitForTimeout(400);
+  check(npv[1] === 'rgb(255, 255, 255)' && npv[2] === npv[3] && npv[4] === 0 && !!npv[5] && npv[0].includes(`rgb(${npv[5].trim().split(' ').join(', ')})`), 'phone Now Playing: cover edge to edge on top, deep color from the art, white text', JSON.stringify(npv));
   await B.click('.tab[data-nav=home]'); await B.waitForTimeout(600);
   check((await B.$$eval('#shelf-history .card-t', x => x.map(e => e.textContent))).includes('Test Album'), 'Track History shows the album you just played');
   await B.click('#shelf-history [data-open="history"]'); await B.waitForTimeout(600);

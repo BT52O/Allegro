@@ -540,6 +540,37 @@ img { -webkit-user-drag: none; user-select: none; }
   .sheet.show-queue .s-queue { display: block; }
   .sheet.show-queue .s-main { display: none; }
   .s-art { max-width: min(100%, 46vh); }
+  /* Phone now playing: the cover fills the top and melts into a deep color taken from the art; white text on it. */
+  .sheet { padding: 0; background: rgb(var(--deep, 52 52 58)); background: linear-gradient(to bottom, rgb(var(--deep, 52 52 58)) 50%, rgb(var(--deep2, 36 36 40)) 100%); color: #fff; }
+  .sheet-tint { display: none; }
+  .sheet > .sheet-top { position: absolute; top: 0; left: 0; right: 0; z-index: 2; padding: calc(env(safe-area-inset-top, 0px) + 8px) 10px 0; }
+  .sheet-top .circ { color: #fff; background: transparent; filter: drop-shadow(0 1px 4px rgba(0, 0, 0, .45)); }
+  .sheet-top .circ.on { color: #fff; background: rgba(255, 255, 255, .18); }
+  .s-from .eyebrow, .s-from .link { color: #fff; text-shadow: 0 1px 6px rgba(0, 0, 0, .5); }
+  .s-from .eyebrow { opacity: .85; }
+  .sheet-body { padding-top: 0; }
+  .s-main { justify-content: flex-start; gap: 16px; max-width: none; height: 100%; padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 18px); }
+  .s-art { position: relative; width: 100%; max-width: none; height: min(max(100vw, 55vh), 62vh); aspect-ratio: auto; border-radius: 0; box-shadow: none; flex: none; }
+  .s-art img { -webkit-mask-image: linear-gradient(to bottom, #000 42%, rgb(0 0 0 / .65) 66%, rgb(0 0 0 / .2) 86%, transparent 100%); mask-image: linear-gradient(to bottom, #000 42%, rgb(0 0 0 / .65) 66%, rgb(0 0 0 / .2) 86%, transparent 100%); }
+  .s-art::after { content: ""; position: absolute; inset: 0; pointer-events: none; background: linear-gradient(to bottom, rgba(0, 0, 0, .3), rgba(0, 0, 0, 0) 20%); }
+  .s-info h2, .s-info .link, .s-times { text-shadow: 0 1px 8px rgb(0 0 0 / .18); }
+  .s-info, .s-prog, .s-ctrls { padding: 0 24px; }
+  .s-info { margin-top: auto; }
+  .s-info h2 { color: #fff; font-size: clamp(1.6rem, 7.5vw, 2.1rem); }
+  .s-info .link { color: rgba(255, 255, 255, .82); font-size: 1.05rem; }
+  .s-info .like { color: rgba(255, 255, 255, .85); }
+  .s-info .like.on { color: #fff; }
+  .s-times { color: rgba(255, 255, 255, .72); }
+  .sheet input[type="range"]::-webkit-slider-runnable-track { background: linear-gradient(to right, #fff var(--pct), rgba(255, 255, 255, .25) var(--pct)); }
+  .sheet input[type="range"]::-webkit-slider-thumb { background: #fff; }
+  .sheet input[type="range"]::-moz-range-track { background: rgba(255, 255, 255, .25); }
+  .sheet input[type="range"]::-moz-range-progress { background: #fff; }
+  .s-ctrls .cbtn { color: rgba(255, 255, 255, .62); }
+  .s-ctrls .cbtn.main-skip, .s-ctrls .cbtn.on { color: #fff; }
+  .s-ctrls .cbtn.on::after { background: #fff; }
+  .s-ctrls .pbtn { background: transparent; color: #fff; width: 76px; height: 76px; }
+  .s-ctrls .pbtn .ic { width: 46px; height: 46px; }
+  .sheet.show-queue .sheet-body { padding: calc(env(safe-area-inset-top, 0px) + 64px) 12px calc(env(safe-area-inset-bottom, 0px) + 16px); }
 }
 @media (min-width: 760px) and (max-width: 1080px) {
   .shell { grid-template-columns: 64px minmax(0, 1fr); }
@@ -1266,6 +1297,42 @@ function genCover(key, style, hue) {
   return url;
 }
 const tintCache = new Map();
+// A deep version of a cover's color, dark enough for white text on top (the phone Now Playing background).
+function deepTint(rgb, k = 1) {
+  let [r, g, b] = rgb.split(' ').map(n => +n / 255);
+  const mx = Math.max(r, g, b), mn = Math.min(r, g, b), l0 = (mx + mn) / 2, d = mx - mn;
+  let h = 0, sat = d ? d / (1 - Math.abs(2 * l0 - 1)) : 0;
+  if (d) h = mx === r ? ((g - b) / d) % 6 : mx === g ? (b - r) / d + 2 : (r - g) / d + 4;
+  h = (h * 60 + 360) % 360;
+  const l = Math.min(.58, Math.max(.16, l0 * .9)) * k; sat = Math.min(.5, sat);
+  const c = (1 - Math.abs(2 * l - 1)) * sat, x = c * (1 - Math.abs((h / 60) % 2 - 1)), m = l - c / 2;
+  const [r1, g1, b1] = h < 60 ? [c, x, 0] : h < 120 ? [x, c, 0] : h < 180 ? [0, c, x] : h < 240 ? [0, x, c] : h < 300 ? [x, 0, c] : [c, 0, x];
+  return [r1, g1, b1].map(v => Math.round((v + m) * 255)).join(' ');
+}
+// The color along the bottom edge of a picture, where it fades into the background.
+const edgeCache = new Map();
+function edgeTintOf(url) {
+  if (!url) return Promise.resolve(null);
+  if (edgeCache.has(url)) return edgeCache.get(url);
+  const p = new Promise(res => {
+    const img = new Image();
+    img.onload = () => {
+      try {
+        const c = document.createElement('canvas'); c.width = c.height = 16;
+        const g = c.getContext('2d'); g.drawImage(img, 0, 0, 16, 16);
+        const d = g.getImageData(0, 12, 16, 4).data;
+        let r = 0, gg = 0, b = 0;
+        for (let i = 0; i < d.length; i += 4) { r += d[i]; gg += d[i + 1]; b += d[i + 2]; }
+        const n = d.length / 4;
+        res(`${Math.round(r / n)} ${Math.round(gg / n)} ${Math.round(b / n)}`);
+      } catch (e) { res(null); }
+    };
+    img.onerror = () => res(null);
+    img.src = url;
+  });
+  edgeCache.set(url, p);
+  return p;
+}
 function tintOf(url) {
   if (!url) return Promise.resolve(null);
   if (tintCache.has(url)) return tintCache.get(url);
@@ -2291,7 +2358,7 @@ function updateMeta() {
   if (t) {
     $('#s-cover').src = t.cover; $('#s-title').textContent = t.title; $('#s-artist').textContent = t.artist;
     $('#s-ctx').textContent = S.context ? S.context.name : t.album;
-    tintOf(t.cover).then(rgb => { if (rgb && tk(S.current) === t) { $('#sheet').style.setProperty('--tint', rgb); $('#player').style.setProperty('--ptint', rgb); } });
+    tintOf(t.cover).then(rgb => { if (rgb && tk(S.current) === t) { $('#sheet').style.setProperty('--tint', rgb); edgeTintOf(t.cover).then(e => { if (e && tk(S.current) === t) { $('#sheet').style.setProperty('--deep', deepTint(e)); $('#sheet').style.setProperty('--deep2', deepTint(e, .72)); } }); $('#player').style.setProperty('--ptint', rgb); } });
   }
   syncLikes();
 }
