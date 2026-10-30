@@ -91,10 +91,11 @@ img { display: block; }
 .circ .ic { width: 20px; height: 20px; }
 
 /* nav box: sizes follow the template (70px rows, 28px type at 1920 wide) */
-.nav-box {
-  --row: 38px; --nf: 15px; --icn: 19px; --pl: 12px; --ig: 12px;
-  padding: 8px; flex: none;
-}
+.side { --row: 38px; --nf: 15px; --icn: 19px; --pl: 12px; --ig: 12px; }
+.nav-box { padding: 8px; flex: none; }
+/* the Allegro mark sits on its own above the menu, on the page background, like Tidal's */
+.side > .logo { flex: none; height: 40px; margin: 2px 0 -2px; padding-left: calc(8px + var(--pl)); font-weight: 700; font-size: calc(var(--nf) + 2px); }
+.side > .logo .clef { font-size: calc(var(--icn) * .8); }
 .nav-inner { padding: calc(var(--row) * .12) 0; }
 .logo, .nav-btn {
   display: flex; align-items: center; gap: var(--ig); width: 100%; height: var(--row); padding: 0 16px 0 var(--pl);
@@ -549,6 +550,9 @@ input[type="range"]:disabled { opacity: .4; cursor: default; }
 .sp-body { flex: 1; min-height: 0; overflow-y: auto; padding: 20px 28px 28px; overscroll-behavior: contain; }
 .sp-body.lyr { -webkit-mask-image: linear-gradient(to bottom, transparent, #000 10%, #000 82%, transparent); mask-image: linear-gradient(to bottom, transparent, #000 10%, #000 82%, transparent); padding-top: 0; padding-bottom: 0; }
 .sp-msg { color: rgba(255, 255, 255, .7); line-height: 1.6; }
+.ly-status { display: flex; align-items: center; gap: 8px; margin: 0 0 14px; font-size: .85rem; color: rgba(255, 255, 255, .72); }
+.ly-status .ic { width: 16px; height: 16px; flex: none; }
+.ly-status.err { color: #ffd0cc; }
 .sp-btn { display: inline-flex; align-items: center; gap: 8px; height: 36px; padding: 0 16px; border-radius: 999px; background: rgba(255, 255, 255, .16); color: #fff; font-weight: 700; font-size: .88rem; }
 .sp-btn:hover { background: rgba(255, 255, 255, .26); }
 .sp-btn.solid { background: #fff; color: #111; }
@@ -772,8 +776,8 @@ img { -webkit-user-drag: none; user-select: none; }
 }
 @media (min-width: 760px) and (max-width: 1080px) {
   .shell { grid-template-columns: 64px minmax(0, 1fr); }
-  .nav-box { --pl: 0px; padding: 8px; }
-  .logo, .nav-btn { justify-content: center; padding: 0; }
+  .side { --pl: 0px; } .nav-box { padding: 8px; }
+  .logo, .nav-btn, .side > .logo { justify-content: center; padding: 0; }
   .logo > span:not(.clef), .nav-btn span { display: none; }
   .nav-btn .ic { display: block; }
   .sl-head, .sl-chips, .sl-tools, .li-text, .li .spk { display: none !important; }
@@ -879,7 +883,7 @@ img { -webkit-user-drag: none; user-select: none; }
 .side-edge:focus-visible { outline: none; }
 body.resizing-side, body.resizing-side * { cursor: col-resize !important; -webkit-user-select: none !important; user-select: none !important; }
 /* same positions in both states (icon/cover centred in the 64px rail) */
-.nav-box { --pl: 14.5px; }
+.side { --pl: 14.5px; }
 .logo, .nav-btn, .sl-head h2, .li-name, .li-sub span { white-space: nowrap; }
 .li { padding-left: 4px; }
 /* words: fade out quickly when collapsing, fade in after the panel has opened */
@@ -1133,9 +1137,9 @@ body.touch-input .has-pen::after { display: none; }
 <div class="shell" id="shell">
   <aside class="side">
     <div class="side-edge" id="side-toggle" role="button" aria-label="Collapse Sidebar" aria-expanded="true" tabindex="0"></div>
+    <button class="logo" data-nav="home" aria-label="Allegro home"><span class="clef" aria-hidden="true">&#x1D11E;</span><span>Allegro</span></button>
     <div class="box nav-box">
       <div class="nav-inner">
-        <button class="logo" data-nav="home" aria-label="Allegro home"><span class="clef" aria-hidden="true">&#x1D11E;</span><span>Allegro</span></button>
         <nav aria-label="Main">
           <button class="nav-btn" data-nav="home"><i data-ic="home"></i><span>Home</span></button>
           <button class="nav-btn" data-nav="search"><i data-ic="compass"></i><span>Explore</span></button>
@@ -1542,6 +1546,7 @@ const STROKE = {
   file: '<path d="M7 3.5h7l4 4v13H7z"/><path d="M14 3.5v4h4"/>',
   trash: '<path d="M5 7h14M10 7V4.8h4V7M7 7l1 13h8l1-13"/>',
   edit: '<path d="M4 20h4L19 9l-4-4L4 16z"/>',
+  sparkle: '<path d="M12 3.5l1.9 5.1 5.1 1.9-5.1 1.9L12 17.5l-1.9-5.1L5 10.5l5.1-1.9z"/><path d="M18.5 15.5l.8 2.2 2.2.8-2.2.8-.8 2.2-.8-2.2-2.2-.8 2.2-.8z"/>',
   album: '<circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="2"/>',
   user: '<circle cx="12" cy="8.5" r="3.5"/><path d="M5 20c.8-3.6 3.6-5.5 7-5.5s6.2 1.9 7 5.5"/>',
   playnext: '<path d="M4 6h10M4 11h10M4 16h6M17 13v8M13 17h8"/>',
@@ -2484,8 +2489,6 @@ const VIEWS = {
     return `<h1 class="greet">${greet}</h1>
       <div id="home-rows" class="home-rows">${homeRows()}</div>
       ${callout}
-      <section class="sec"><div class="sec-head"><h2>Albums</h2><button class="link sm" data-open="library:albums">Show All</button></div><div class="cards one-row">${albumsSorted().map(albumCard).join('')}</div></section>
-      <section class="sec"><div class="sec-head"><h2>Artists</h2><button class="link sm" data-open="library:artists">Show All</button></div><div class="cards one-row">${artistsSorted().map(artistCard).join('')}</div></section>
       <section class="sec"><div class="sec-head"><h2>Recently Added</h2><button class="link sm" data-open="library:songs">Show All</button></div>${trackList(recentIds, { key: 'library', name: 'Recently Added' }, { noHead: true })}</section>`;
   },
   plhistory(v) {
@@ -3444,7 +3447,7 @@ function parseLyrics(d, t) {
   lines.sort((a, b) => a.t - b.t);
   const plain = !lines.length && d.plain ? d.plain.split(/\r?\n/).map(text => ({ text: text.trim() })) : null;
   assignSingers(lines.length ? lines : (plain || []), t.artist);
-  return { lines, plain, raw: d.synced || d.plain || '', saved: d.source === 'saved' };
+  return { lines, plain, raw: d.synced || d.plain || '', saved: d.source === 'saved', needsSync: !!d.needsSync };
 }
 async function loadLyrics(t) {
   SP.lyr = { id: t.id, loading: true };
@@ -3454,6 +3457,150 @@ async function loadLyrics(t) {
   if (SP.lyr.id !== t.id) return;
   SP.lyr = res;
   if (tk(S.current) === t && spTab === 'lyrics') renderPanel();
+  // words without timings (or timings from a different-length version): time them to this recording with AI, once
+  if (!res.err && !res.none && !(res.lines && res.lines.length) && res.plain && res.plain.some(l => l.text) && canAiSync(t) && !AIS.tried.has(t.id)) aiSyncLyrics(t);
+}
+
+/* ================= AI lyric timing =================
+   The song is decoded in the browser, turned into 16 kHz mono and sent to Whisper (on Cloudflare Workers AI) about
+   30 seconds at a time. Whisper says which words it heard and when. Those words are lined up against the lyrics with
+   a sequence alignment (like a diff that tolerates mishearings), and each line starts where its first matched word was
+   sung. Lines Whisper missed are placed in between their neighbors. The result is saved as ordinary timed lyrics. */
+const AIS = { tried: new Set() };
+const canAiSync = t => t && t.kind === 'cloud' && cloud.canWrite;
+const LY_TOK = /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}]|[\p{L}\p{N}]+(?:['’][\p{L}]+)*/gu;
+const lyToks = s => (String(s || '').normalize('NFKC').toLowerCase().match(LY_TOK) || []).map(x => x.replace(/’/g, "'"));
+function lyLang(text) {
+  const n = (re) => (text.match(re) || []).length, all = Math.max(1, n(/[\p{L}]/gu));
+  if (n(/\p{Script=Hangul}/gu) / all > .05) return 'ko';
+  if (n(/[\p{Script=Hiragana}\p{Script=Katakana}]/gu) / all > .03) return 'ja';
+  if (n(/\p{Script=Han}/gu) / all > .3) return 'zh';
+  return '';
+}
+function wavBase64(pcm) {
+  const b = new ArrayBuffer(44 + pcm.length * 2), v = new DataView(b), w = (o, str) => { for (let i = 0; i < str.length; i++) v.setUint8(o + i, str.charCodeAt(i)); };
+  w(0, 'RIFF'); v.setUint32(4, 36 + pcm.length * 2, true); w(8, 'WAVE'); w(12, 'fmt '); v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
+  v.setUint32(24, 16000, true); v.setUint32(28, 32000, true); v.setUint16(32, 2, true); v.setUint16(34, 16, true); w(36, 'data'); v.setUint32(40, pcm.length * 2, true);
+  for (let i = 0; i < pcm.length; i++) v.setInt16(44 + i * 2, Math.max(-1, Math.min(1, pcm[i])) * 32767, true);
+  return new Promise((res, rej) => { const fr = new FileReader(); fr.onload = () => res(String(fr.result).split(',')[1]); fr.onerror = rej; fr.readAsDataURL(new Blob([b], { type: 'audio/wav' })); });
+}
+const lev1 = (a, b) => {   // true when a and b differ by at most one letter
+  if (Math.abs(a.length - b.length) > 1) return false;
+  let i = 0, j = 0, d = 0;
+  while (i < a.length && j < b.length) { if (a[i] === b[j]) { i++; j++; continue; } if (++d > 1) return false; if (a.length > b.length) i++; else if (b.length > a.length) j++; else { i++; j++; } }
+  return d + (a.length - i) + (b.length - j) <= 1;
+};
+// Line up lyric tokens A with heard tokens B (each {w, t}). Gaps at either end of B are free. Returns the time heard for each A token, or -1.
+function alignTokens(A, B) {
+  const n = A.length, m = B.length, W = m + 1, dir = new Uint8Array((n + 1) * W);
+  let prev = new Float64Array(W), cur = new Float64Array(W);
+  for (let i = 1; i <= n; i++) {
+    cur[0] = -i; dir[i * W] = 1;
+    for (let j = 1; j <= m; j++) {
+      const a = A[i - 1], b = B[j - 1].w;
+      const sc = a === b ? 3 : (a.length > 2 && b.length > 2 && (lev1(a, b) || a.startsWith(b) || b.startsWith(a))) ? 1 : -2;
+      const diag = prev[j - 1] + sc, up = prev[j] - 1, left = cur[j - 1] - (i === n ? 0 : 1);
+      if (diag >= up && diag >= left) { cur[j] = diag; dir[i * W + j] = 0; } else if (up >= left) { cur[j] = up; dir[i * W + j] = 1; } else { cur[j] = left; dir[i * W + j] = 2; }
+    }
+    [prev, cur] = [cur, prev];
+  }
+  const out = new Array(n).fill(-1);
+  let i = n, j = m;
+  while (i > 0 && j > 0) {
+    const d = dir[i * W + j];
+    if (d === 0) { const a = A[i - 1], b = B[j - 1].w; if (a === b || (a.length > 2 && b.length > 2 && (lev1(a, b) || a.startsWith(b) || b.startsWith(a)))) out[i - 1] = B[j - 1].t; i--; j--; }
+    else if (d === 1) i--; else j--;
+  }
+  return out;
+}
+function timeLines(texts, heard, duration) {
+  const A = [], owner = [];
+  texts.forEach((x, li) => lyToks(x).forEach(w => { A.push(w); owner.push(li); }));
+  if (!A.length || !heard.length) return null;
+  const hit = alignTokens(A.slice(0, 4000), heard.slice(0, 4000));
+  const matched = hit.filter(x => x >= 0).length;
+  if (matched / A.length < .12) return null;
+  const L = texts.map(() => ({ n: 0, start: -1, last: -1 }));
+  owner.forEach((li, k) => {
+    const ln = L[li], at = ln.n++;
+    if (k < hit.length && hit[k] >= 0) { if (ln.start < 0) ln.start = Math.max(0, hit[k] - .15 - at * .22); ln.last = Math.max(ln.last, hit[k]); }
+  });
+  // keep times moving forward; a line whose match jumps backward is treated as unknown
+  let prevT = -1;
+  for (const ln of L) if (ln.n && ln.start >= 0) { if (ln.start <= prevT) ln.start = -1; else prevT = ln.start; }
+  const idx = L.map((ln, i) => i).filter(i => L[i].n);
+  for (let k = 0; k < idx.length; k++) {
+    const ln = L[idx[k]]; if (ln.start >= 0) continue;
+    let a = k - 1; while (a >= 0 && L[idx[a]].start < 0) a--;
+    let b = k + 1; while (b < idx.length && L[idx[b]].start < 0) b++;
+    const ta = a >= 0 ? L[idx[a]].start : null, tb = b < idx.length ? L[idx[b]].start : null;
+    if (ta != null && tb != null) ln.start = ta + (tb - ta) * (k - a) / (b - a);
+    else if (ta != null) ln.start = Math.min(duration - .5, ta + 3 * (k - a));
+    else if (tb != null) ln.start = Math.max(0, tb - 3 * (b - k));
+    else ln.start = 0;
+  }
+  return L.map((ln, i) => {
+    if (ln.n) return ln.start;
+    // an empty line (a break) starts a moment after the line before it ends, if there's room before the next line
+    const p = L.slice(0, i).reverse().find(x => x.n), nx = L.slice(i + 1).find(x => x.n);
+    if (!p) return -1;
+    const t = (p.last >= 0 ? p.last : p.start) + 1.2;
+    return nx && t >= nx.start - .3 ? -1 : t;
+  });
+}
+const lrcTime = t => { const m = Math.floor(t / 60), s = t - m * 60; return `[${String(m).padStart(2, '0')}:${s.toFixed(2).padStart(5, '0')}]`; };
+async function aiSyncLyrics(t) {
+  const L = SP.lyr; if (!L || L.id !== t.id || L.syncing) return;
+  AIS.tried.add(t.id);
+  const raw = String(L.raw || '').split(/\r?\n/).map(x => x.replace(/\[\d+:\d+(?:[.:]\d+)?\]/g, '').trim());
+  while (raw.length && !raw[raw.length - 1]) raw.pop();
+  const clean = raw.map(text => ({ text })); assignSingers(clean, t.artist);
+  const texts = clean.map(x => x.text);
+  if (!texts.some(x => lyToks(x).length)) return;
+  const done = msg => { if (SP.lyr.id === t.id) { SP.lyr.syncing = null; if (msg) SP.lyr.syncErr = msg; if (tk(S.current) === t && spTab === 'lyrics') renderPanel(); } };
+  L.syncing = { done: 0, total: 0 }; L.syncErr = null; renderPanel();
+  try {
+    const buf = await (await fetch(t.url, { credentials: 'same-origin' })).arrayBuffer();
+    const AC = window.AudioContext || window.webkitAudioContext, ac = new AC();
+    const dec = await ac.decodeAudioData(buf); ac.close && ac.close();
+    const off = new OfflineAudioContext(1, Math.max(1, Math.ceil(dec.duration * 16000)), 16000);
+    const src = off.createBufferSource(); src.buffer = dec; src.connect(off.destination); src.start();
+    const pcm = (await off.startRendering()).getChannelData(0);
+    const CH = 30 * 16000, chunks = [];
+    for (let at = 0; at < pcm.length; at += CH) chunks.push(at);
+    L.syncing.total = chunks.length; renderPanel();
+    const lang = lyLang(texts.join(' ')), heard = [];
+    const allToks = texts.map(x => lyToks(x).length), totalToks = allToks.reduce((a, b) => a + b, 0);
+    const promptFor = k => {   // the part of the lyrics that probably falls in this stretch, to help Whisper hear it
+      const from = (k / chunks.length - .12) * totalToks, to = ((k + 1) / chunks.length + .15) * totalToks;
+      let c = 0, out = '';
+      for (let i = 0; i < texts.length; i++) { if (c >= from && c <= to && texts[i]) out += texts[i] + ' '; c += allToks[i]; }
+      return out.slice(0, 380);
+    };
+    let next = 0;
+    const work = async () => {
+      while (next < chunks.length) {
+        const k = next++, at = chunks[k], off0 = at / 16000;
+        const audio = await wavBase64(pcm.subarray(at, Math.min(pcm.length, at + CH)));
+        const r = await api('transcribe', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ audio, language: lang, prompt: promptFor(k) }) });
+        for (const sg of r.segments || []) {
+          const words = sg.words && sg.words.length ? sg.words : [{ word: sg.text, start: sg.start, end: sg.end }];
+          for (const w of words) {
+            const tks = lyToks(w.word), s0 = +w.start || 0, e0 = Math.max(s0, +w.end || s0);
+            tks.forEach((x, q) => heard.push({ w: x, t: off0 + s0 + (e0 - s0) * q / tks.length }));
+          }
+        }
+        if (SP.lyr.id === t.id && SP.lyr.syncing) { SP.lyr.syncing.done++; if (tk(S.current) === t && spTab === 'lyrics' && !SP.editLyr) renderPanel(); }
+      }
+    };
+    await Promise.all([work(), work(), work()]);
+    heard.sort((a, b) => a.t - b.t);
+    const times = timeLines(texts, heard, dec.duration);
+    if (!times) { done("Couldn't line the lyrics up with this song. You can add the times yourself with Edit Lyrics."); return; }
+    const lrc = raw.map((x, i) => times[i] >= 0 ? lrcTime(times[i]) + x : null).filter(x => x != null).join('\n');
+    await api('lyrics/' + encodeURIComponent(t.id), { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ synced: lrc, plain: '' }) });
+    if (SP.lyr.id === t.id) { SP.lyr = { id: t.id, ...parseLyrics({ synced: lrc, source: 'saved' }, t), aiTimed: true }; if (tk(S.current) === t && spTab === 'lyrics') { renderPanel(); lyrSync(true); lyrLoop(); } }
+  } catch (e) { done(`Couldn't time the lyrics: ${e.message || 'something went wrong'}`); }
 }
 function lyricsHTML(t) {
   const L = SP.lyr, canEdit = t.kind === 'cloud' && cloud.canWrite;
@@ -3462,12 +3609,15 @@ function lyricsHTML(t) {
     <div class="sp-actions"><button class="sp-btn solid" data-ly-save>Save</button><button class="sp-btn" data-ly-cancel>Cancel</button>${L.saved ? '<button class="sp-btn" data-ly-reset>Search Online Again</button>' : ''}</div>`;
   if (L.loading || L.id !== t.id) return '<p class="sp-msg">Looking for lyrics…</p>';
   if (L.err) return `<p class="sp-msg">${esc(L.err)}</p><div class="sp-actions"><button class="sp-btn" data-ly-retry>Try Again</button></div>`;
-  const tools = canEdit ? `<div class="ly-tools"><button class="sp-btn" data-ly-edit>${ic('edit')}<span>${L.none ? 'Add Lyrics' : 'Edit Lyrics'}</span></button></div>` : '';
+  const aiBtn = canEdit && !L.none && !L.syncing ? `<button class="sp-btn" data-ly-ai>${ic('sparkle')}<span>Sync with AI</span></button>` : '';
+  const tools = canEdit ? `<div class="ly-tools"><button class="sp-btn" data-ly-edit>${ic('edit')}<span>${L.none ? 'Add Lyrics' : 'Edit Lyrics'}</span></button>${aiBtn}</div>` : '';
+  const status = L.syncing ? `<p class="ly-status">${ic('sparkle')}<span>${L.syncing.total ? `Timing the lyrics to the song with AI… ${L.syncing.done} of ${L.syncing.total}` : 'Getting the song ready for AI timing…'}</span></p>`
+    : L.syncErr ? `<p class="ly-status err">${esc(L.syncErr)}</p>` : L.aiTimed ? '<p class="ly-status">Timed by AI. If a line is off, try Sync with AI again or adjust the time with Edit Lyrics.</p>' : '';
   if (L.none) return `<p class="sp-msg">${L.instrumental ? 'Instrumental' : 'No lyrics found for this song.'}</p>${tools.replace('ly-tools', 'sp-actions')}`;
   const singerTag = l => l.singer ? `<span class="ly-singer" data-nt>${esc(l.singer)}</span>` : '';
   const sideCls = l => l.side === 1 ? ' side-1' : l.side === 'c' ? ' side-c' : '';
-  if (L.lines.length) return `<div class="ly" id="ly" data-nt>${L.lines.map((l, i) => `<p class="ly-line${sideCls(l)}${l.text ? '' : ' gap'}" data-ly-i="${i}">${singerTag(l)}<span class="ly-t" data-text="${esc(l.text || '♪')}">${l.text ? esc(l.text) : '♪'}</span></p>`).join('')}</div>${tools}`;
-  return `<div class="ly plain" data-nt>${L.plain.map(l => `<p class="ly-line${sideCls(l)}">${singerTag(l)}${esc(l.text) || '&nbsp;'}</p>`).join('')}</div>${tools}`;
+  if (L.lines.length) return `${status}<div class="ly" id="ly" data-nt>${L.lines.map((l, i) => `<p class="ly-line${sideCls(l)}${l.text ? '' : ' gap'}" data-ly-i="${i}">${singerTag(l)}<span class="ly-t" data-text="${esc(l.text || '♪')}">${l.text ? esc(l.text) : '♪'}</span></p>`).join('')}</div>${tools}`;
+  return `${status}<div class="ly plain" data-nt>${L.plain.map(l => `<p class="ly-line${sideCls(l)}">${singerTag(l)}${esc(l.text) || '&nbsp;'}</p>`).join('')}</div>${tools}`;
 }
 function lyrSync(force) {
   const L = SP.lyr; if (!L.lines || !L.lines.length || spTab !== 'lyrics' || SP.editLyr) return;
@@ -3526,6 +3676,7 @@ document.addEventListener('click', async e => {
   const line = e.target.closest('[data-ly-i]');
   if (line && SP.lyr.lines) { const l = SP.lyr.lines[+line.dataset.lyI]; if (l && audio.duration) { audio.currentTime = l.t; SP.userScroll = 0; lyrSync(true); } return; }
   if (e.target.closest('[data-ly-edit]')) { SP.editLyr = true; renderPanel(); return; }
+  if (e.target.closest('[data-ly-ai]')) { SP.lyr.syncErr = null; aiSyncLyrics(t); return; }
   if (e.target.closest('[data-ly-cancel]')) { SP.editLyr = false; renderPanel(); return; }
   if (e.target.closest('[data-ly-retry]')) { SP.lyr = { id: null }; renderPanel(); return; }
   if (e.target.closest('[data-ly-reset]')) { try { await api('lyrics/' + encodeURIComponent(t.id), { method: 'DELETE' }); } catch (ex) {} SP.editLyr = false; SP.lyr = { id: null }; renderPanel(); return; }
@@ -3535,6 +3686,7 @@ document.addEventListener('click', async e => {
       await api('lyrics/' + encodeURIComponent(t.id), { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify(text.trim() ? { synced: timed ? text : '', plain: timed ? '' : text } : { none: true }) });
       SP.editLyr = false; SP.lyr = { id: t.id, ...parseLyrics(text.trim() ? { synced: timed ? text : '', plain: timed ? '' : text, source: 'saved' } : { none: true, source: 'saved' }, t) };
       renderPanel(); toast('Lyrics saved');
+      if (text.trim() && !timed && canAiSync(t)) aiSyncLyrics(t);
     } catch (ex) { toast(`Couldn't save: ${ex.message}`); }
     return;
   }

@@ -322,17 +322,24 @@ async function api(request, env, path) {
     if (!title) return json({ none: true });
     const base = env.LYRICS_URL || 'https://lrclib.net/api', headers = { 'user-agent': 'Allegro/1.0 (https://github.com/BT52O/Allegro)', accept: 'application/json' };
     const get = async u => { const r = await fetch(u, { headers }); if (r.status === 404) return null; if (!r.ok) throw new Error('LRCLIB ' + r.status); return r.json(); };
-    let hit = null;
+    let hit = null, loose = false;
     try {
       if (artist && dur) hit = await get(`${base}/get?` + new URLSearchParams({ track_name: title, artist_name: artist, album_name: album, duration: String(dur) }));
       if (!hit || (!hit.syncedLyrics && !hit.plainLyrics)) {
-        const list = (await get(`${base}/search?` + new URLSearchParams(artist ? { track_name: title, artist_name: artist } : { track_name: title }))) || [];
-        const ok = list.filter(x => x && (x.syncedLyrics || x.plainLyrics) && (!dur || !x.duration || Math.abs(x.duration - dur) <= 6));
+        const list = ((await get(`${base}/search?` + new URLSearchParams(artist ? { track_name: title, artist_name: artist } : { track_name: title }))) || []).filter(x => x && (x.syncedLyrics || x.plainLyrics));
+        const ok = list.filter(x => !dur || !x.duration || Math.abs(x.duration - dur) <= 6);
         ok.sort((a, b) => (!!b.syncedLyrics - !!a.syncedLyrics) || (Math.abs((a.duration || dur) - dur) - Math.abs((b.duration || dur) - dur)));
         hit = ok[0] || null;
+        // A sped-up or slowed version (Nightcore, say) is a different length, so the published timings won't fit.
+        // Take the words anyway and leave the timing to the AI sync in the app.
+        if (!hit && list.length && !list.every(x => x.instrumental)) { hit = list.find(x => !x.instrumental); loose = true; }
       }
     } catch (e) { return fail(502, "Couldn't reach the lyrics library. Try again in a minute."); }
     if (!hit || hit.instrumental || (!hit.syncedLyrics && !hit.plainLyrics)) return json({ none: true, instrumental: !!(hit && hit.instrumental) });
+    if (loose) {
+      const words = str(hit.plainLyrics || String(hit.syncedLyrics || '').replace(/^\s*\[[^\]]*\]\s*/gm, ''), 200000);
+      return json({ source: 'lrclib', synced: '', plain: words, needsSync: true });
+    }
     const out = { synced: str(hit.syncedLyrics, 200000), plain: str(hit.plainLyrics, 200000) };
     if (ID_RE.test(id) && !id.startsWith('demo-')) await env.BUCKET.put('lyrics/' + id, JSON.stringify(out), { httpMetadata: { contentType: 'application/json' } });
     return json({ source: 'lrclib', ...out });
@@ -348,6 +355,32 @@ async function api(request, env, path) {
     }
     if (method === 'DELETE') { await env.BUCKET.delete('lyrics/' + m0[1]); return json({ ok: true }); }
   }
+  // AI timing for lyrics: the app sends about 30 seconds of the song at a time (16 kHz mono WAV, base64) and gets back
+  // what Whisper heard, with the time of each word. The app lines those words up with the lyrics itself.
+  if (path === 'transcribe' && method === 'POST') {
+    const text = await request.text();
+    if (text.length > 4 * 1024 * 1024) return fail(413, 'That piece of audio is too long.');
+    let b; try { b = JSON.parse(text); } catch (e) { return fail(400, 'Bad data.'); }
+    if (typeof b.audio !== 'string' || !b.audio) return fail(400, 'No audio.');
+    const opts = { audio: b.audio, condition_on_previous_text: false };
+    if (/^[a-z]{2}$/.test(b.language || '')) opts.language = b.language;
+    if (typeof b.prompt === 'string' && b.prompt.trim()) opts.initial_prompt = b.prompt.slice(0, 400);
+    let out;
+    try {
+      if (env.TRANSCRIBE_URL) {   // tests use a stand-in
+        const r = await fetch(env.TRANSCRIBE_URL, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(opts) });
+        if (!r.ok) throw new Error('stand-in ' + r.status);
+        out = await r.json();
+      } else if (env.AI) out = await env.AI.run('@cf/openai/whisper-large-v3-turbo', opts);
+      else return fail(501, "AI timing isn't set up on this server.");
+    } catch (e) { return fail(502, "Couldn't reach the AI. Try again in a minute."); }
+    const segs = (Array.isArray(out && out.segments) ? out.segments : []).slice(0, 400).map(sg => ({
+      start: +sg.start || 0, end: +sg.end || 0, text: str(sg.text, 2000),
+      words: (Array.isArray(sg.words) ? sg.words : []).slice(0, 600).map(w => ({ word: str(w.word, 100), start: +w.start || 0, end: +w.end || 0 }))
+    }));
+    return json({ segments: segs, text: str(out && out.transcription_info && out.transcription_info.text || out && out.text, 20000), vtt: segs.length ? '' : str(out && out.vtt, 60000) });
+  }
+
   // Comments: your own notes on a song, kept online.
   m0 = path.match(/^comments\/([^/]+)(?:\/(\d+))?$/);
   if (m0 && ID_RE.test(m0[1])) {

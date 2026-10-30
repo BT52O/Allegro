@@ -32,7 +32,7 @@ const SONGS = [
   { trackName: 'Swapped Song', artistName: 'Mock Band', collectionName: 'Swap Album', releaseDate: '2019-01-01T07:00:00Z', primaryGenreName: 'Rock', trackNumber: 1 },
   { trackName: 'Mock Hit', artistName: 'Mock Artist', collectionName: 'Mock Hit Album', releaseDate: '2021-02-02T07:00:00Z', primaryGenreName: 'Pop', trackNumber: 7 }
 ];
-const lookups = [];
+const lookups = [], transcribed = [];
 const mock = createServer((req, res) => {
   const u = new globalThis.URL(req.url, MOCK);
   if (u.pathname === '/search' && (u.searchParams.get('term') || '').toLowerCase().includes('deezer')) {
@@ -43,6 +43,17 @@ const mock = createServer((req, res) => {
       syncedLyrics: '[00:00.20]Mock Artist: First line\n[00:01.60]Second line\n[00:03.00]Guest Singer: Third line by the guest\n[00:04.40]Guest Singer: Fourth line\n[00:05.80]Together: Both sing' } : null;
     res.writeHead(hit || u.pathname.endsWith('/search') ? 200 : 404, { 'content-type': 'application/json' });
     res.end(JSON.stringify(u.pathname.endsWith('/search') ? (hit ? [hit] : []) : (hit || { message: 'not found' })));
+  } else if (u.pathname === '/transcribe') {
+    // a stand-in for Whisper: it "hears" three lines at set times
+    let body = ''; req.on('data', d => { body += d; }); req.on('end', () => {
+      try { const b = JSON.parse(body); transcribed.push({ lang: b.language || '', prompt: b.initial_prompt || '', bytes: (b.audio || '').length }); } catch (e) {}
+      const w = (word, start) => ({ word, start, end: start + .3 });
+      res.writeHead(200, { 'content-type': 'application/json' });
+      res.end(JSON.stringify({ transcription_info: { text: 'hello there second line third line' }, segments: [
+        { start: .5, end: 1.2, text: ' Hello there', words: [w(' Hello', .5), w(' there', .9)] },
+        { start: 2, end: 2.7, text: ' Second line', words: [w(' Second', 2), w(' line', 2.4)] },
+        { start: 3.6, end: 4.3, text: ' Third line', words: [w(' Third', 3.6), w(' line', 4)] }] }));
+    });
   } else if (u.pathname === '/deezer') {
     const q = (u.searchParams.get('q') || '').toLowerCase();
     const data = q.includes('deezer song') ? [{ title: 'Deezer Song', artist: { name: 'Deezer Band' }, album: { title: 'Deezer Album', cover_xl: `${MOCK}/art/deezer.jpg` }, duration: 6 }] : [];
@@ -57,8 +68,11 @@ const mock = createServer((req, res) => {
 });
 await new Promise(r => mock.listen(MOCK_PORT, '127.0.0.1', r));
 
-execFileSync(process.execPath, [wrangler, 'd1', 'migrations', 'apply', 'allegro', '--local', '--persist-to', state], { cwd: root, env, stdio: 'inherit' });
-const server = spawn(process.execPath, [wrangler, 'dev', '--port', String(PORT), '--ip', '127.0.0.1', '--persist-to', state, '--var', `MUSIC_SEARCH_URL:${MOCK}/search`, '--var', `DEEZER_SEARCH_URL:${MOCK}/deezer`, '--var', 'HISTORY_MERGE_MS:0', '--var', `LYRICS_URL:${MOCK}/lrclib`], { cwd: root, env, stdio: ['ignore', 'pipe', 'pipe'] });
+// Workers AI only runs on Cloudflare, so tests use a copy of the config without it and a stand-in for Whisper.
+const testConfig = join(root, '.wrangler-test.jsonc');
+writeFileSync(testConfig, readFileSync(join(root, 'wrangler.jsonc'), 'utf8').replace(/^\s*"ai":.*\n/m, ''));
+execFileSync(process.execPath, [wrangler, 'd1', 'migrations', 'apply', 'allegro', '--local', '--config', testConfig, '--persist-to', state], { cwd: root, env, stdio: 'inherit' });
+const server = spawn(process.execPath, [wrangler, 'dev', '--config', testConfig, '--port', String(PORT), '--ip', '127.0.0.1', '--persist-to', state, '--var', `TRANSCRIBE_URL:${MOCK}/transcribe`, '--var', `MUSIC_SEARCH_URL:${MOCK}/search`, '--var', `DEEZER_SEARCH_URL:${MOCK}/deezer`, '--var', 'HISTORY_MERGE_MS:0', '--var', `LYRICS_URL:${MOCK}/lrclib`], { cwd: root, env, stdio: ['ignore', 'pipe', 'pipe'] });
 let serverLog = '';
 server.stdout.on('data', d => { serverLog += d; });
 server.stderr.on('data', d => { serverLog += d; });
@@ -858,6 +872,23 @@ try {
   check(closingNp.join() === 'false,true' && closedNp && reopened, 'clicking the bar cover closes Now Playing smoothly and opens it again', JSON.stringify([closingNp, closedNp, reopened]));
   await A.keyboard.press('Escape'); await A.waitForTimeout(450);
 
+  // --- lyrics with no times get timed to the song by AI
+  await A.click('.nav-btn[data-nav="uploads"]'); await A.waitForTimeout(500);
+  const swId = await A.evaluate(() => [...document.querySelectorAll('#view .tr')].find(r => r.querySelector('.t-name').textContent === 'Swapped Song').dataset.id);
+  await A.click(`#view .tr[data-id="${swId}"] .t-name`); await A.waitForTimeout(800);
+  await A.click('#p-cover'); await A.waitForTimeout(700);
+  await A.click('[data-sp-tab="lyrics"]'); await A.waitForSelector('[data-ly-edit]', { timeout: 8000 }).catch(() => {});
+  await A.click('[data-ly-edit]'); await A.waitForTimeout(200);
+  await A.fill('#ly-edit', 'Hello there\nSecond line\nThird line'); await A.click('[data-ly-save]');
+  await A.waitForSelector('#ly .ly-line', { timeout: 15000 }).catch(() => {});
+  await A.waitForTimeout(400);
+  const aiLines = await A.evaluate(() => [...document.querySelectorAll('#ly .ly-line')].map(e => e.textContent));
+  const aiSaved = await A.evaluate(async id => (await (await fetch('/api/lyrics?id=' + id)).json()).synced, swId);
+  await shot(A, 'lyrics-ai-timed');
+  check(aiLines.length === 3 && /^\[00:00\.3\d\]Hello there\n\[00:01\.[78]\d\]Second line\n\[00:03\.[34]\d\]Third line$/.test(aiSaved || '') && transcribed.length >= 1 && transcribed[0].prompt.includes('Hello there') && transcribed[0].bytes > 1000,
+    'plain lyrics get timed to the song with AI and saved', JSON.stringify({ aiSaved, aiLines, transcribed: transcribed.map(x => ({ ...x, prompt: x.prompt.slice(0, 40) })) }));
+  await A.keyboard.press('Escape'); await A.waitForTimeout(450);
+
   // --- the play queue floats under the search bar, lined up with it, and fades in and out
   await A.locator('#view .tr').first().locator('.t-name').click(); await A.waitForTimeout(800);
   const mainW = await A.evaluate(() => document.getElementById('main').getBoundingClientRect().width);
@@ -897,6 +928,7 @@ try {
 } finally {
   await browser.close();
   server.kill(); mock.close();
+  rmSync(testConfig, { force: true });
   if (madeDevVars) rmSync(devVars, { force: true });
   rmSync(state, { recursive: true, force: true });
 }

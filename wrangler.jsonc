@@ -11,5 +11,6 @@
     "database_id": "3f46bf51-561f-4d18-99b5-2008049334e9",
     "migrations_dir": "migrations"
   }],
+  "ai": { "binding": "AI" },
   "observability": { "enabled": true }
 }
