@@ -86,7 +86,6 @@ img { display: block; }
 .logo .clef, .nav-btn .ic { width: var(--icn); height: var(--icn); flex: none; }
 .logo .clef { font: 400 calc(var(--icn) * .64)/1 var(--f-clef); display: grid; place-items: center; overflow: visible; }
 .nav-btn .ic { stroke-width: 1.6; }
-.logo > span:not(.clef) { font-weight: 700; font-size: 16px; }
 .nav-btn:hover, .logo:hover { background: var(--hover); }
 .nav-btn.active .ic { stroke-width: 2.2; }
 
@@ -121,14 +120,13 @@ img { display: block; }
 .li-sub .ic { width: 12px; height: 12px; color: var(--ink); }
 .li .spk { display: none; color: var(--ink); }
 .li .spk .ic { width: 16px; height: 16px; }
-.li.playing .spk { display: block; }
-.li.playing .li-name { text-decoration: underline; text-underline-offset: 3px; }
+body.is-playing .li.playing .spk { display: block; }
 .sl-list.grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 2px; align-content: start; }
 .li.grid { grid-template-columns: minmax(0, 1fr); gap: 8px; padding: 8px 8px 10px; align-content: start; }
 .li.grid .li-art { width: 100%; height: auto; aspect-ratio: 1; max-width: 100%; border-radius: 8px; }
 .li.grid .li-art.round { border-radius: 50%; }
 .li.grid .spk { position: absolute; top: 14px; right: 14px; width: 30px; height: 30px; border-radius: 50%; background: var(--panel); place-items: center; }
-.li.grid.playing .spk { display: grid; }
+body.is-playing .li.grid.playing .spk { display: grid; }
 .li.grid .li-name { font-size: .82rem; }
 .li.grid .li-sub { font-size: .72rem; }
 .sl-empty { padding: 16px 10px; color: var(--muted); font-size: .88rem; }
@@ -665,7 +663,7 @@ body.dragging-row .tr:hover .like:not(.on), body.dragging-row .tr:hover .more { 
 .card-art.has-pen::after { border-radius: 8px; }
 .vhead .has-pen .pl-pen { top: 12px; right: 12px; width: 36px; height: 36px; }
 .vhead .has-pen .pl-pen .ic { width: 18px; height: 18px; }
-@media (hover: none) { .pl-pen { opacity: 1; transform: none; } .has-pen::after { display: none; } }
+@media (hover: none) and (pointer: coarse) { .pl-pen { opacity: 1; transform: none; } .has-pen::after { display: none; } }
 
 /* ---------- home shelves ---------- */
 .home-rows { display: flex; flex-direction: column; gap: 28px; }
@@ -1851,7 +1849,7 @@ function renderSide() {
   const create = S.libQ.trim() ? '' : `<button class="li li-create${cls}" data-action="new-pl" title="Create Playlist"><div class="li-art create-art">${ic('plus')}</div><div class="li-text"><div class="li-name">Create Playlist</div></div></button>`;
   $('#side-list').innerHTML = create + (items.length ? items.map(it =>
     `<button class="li${cls}${it.key === key ? ' active' : ''}${it.key === pctx ? ' playing' : ''}" data-open="${esc(it.key)}" title="${esc(it.name)}"${it.pinned ? '' : ' data-drag="1"'}>`
-    + `<div class="li-art${it.round ? ' round' : ''}${it.key.startsWith('playlist:') ? ' has-pen' : ''}">${it.art}${it.key.startsWith('playlist:') ? penFor(it.key.slice(9)) : ''}</div>`
+    + `<div class="li-art${it.round ? ' round' : ''}">${it.art}</div>`
     + `<div class="li-text"><div class="li-name">${esc(it.name)}</div><div class="li-sub">${it.pinned ? ic('pin') : ''}<span>${esc(it.sub)}</span></div></div>`
     + `<span class="spk" aria-label="Playing">${ic('speaker')}</span></button>`).join('')
     : `<p class="sl-empty">${S.libQ.trim() ? `None of your playlists match “${esc(S.libQ.trim())}”.` : 'Nothing here yet.'}</p>`);
@@ -1967,7 +1965,7 @@ function closeMenu() {
 }
 function playlistSub(ids) {
   return () => [
-    { label: 'New playlist', icon: 'plus', fn: () => { const p = newPlaylist(false); p.ids.push(...ids); save(); renderSide(); toast(`Added to ${p.name}`, { label: 'Open', fn: () => openKey('playlist:' + p.id) }); } },
+    { label: 'New playlist', icon: 'plus', fn: () => newPlaylist(ids, p => toast(`Added to ${p.name}`, { label: 'Open', fn: () => openKey('playlist:' + p.id) })) },
     ...(S.playlists.length ? [{ sep: true }] : []),
     ...S.playlists.map(p => ({ label: p.name, icon: 'list', fn: () => {
       const fresh = ids.filter(id => !p.ids.includes(id));
@@ -2022,12 +2020,10 @@ function addMenu(anchor) {
 }
 
 /* ================= playlists ================= */
-function newPlaylist(open = true) {
+function newPlaylist(ids = [], onCreate = null) {
   let n = S.playlists.length + 1; while (S.playlists.some(p => p.name === `My Playlist #${n}`)) n++;
-  const p = { id: uid('pl'), name: `My Playlist #${n}`, ids: [], created: Date.now() };
-  S.playlists.push(p); save(); renderSide();
-  if (open) { go({ name: 'playlist', key: p.id }); editPlaylist(p.id); }
-  return p;
+  const draft = { id: uid('pl'), name: `My Playlist #${n}`, ids: ids.slice(), created: Date.now() };
+  editPlaylist(draft.id, draft, onCreate);
 }
 function commitRename() {
   const inp = $('#rename-input'); if (!inp || !S.renaming) return;
@@ -2049,10 +2045,13 @@ function deletePlaylist(id) {
 /* ================= edit playlist details ================= */
 let pe = null;
 const MAX_PL_COVER = 10 * 1024 * 1024;
-function editPlaylist(id) {
-  const p = S.playlists.find(x => x.id === id); if (!p) return;
+const peList = () => pe && (pe.draft || S.playlists.find(x => x.id === pe.id));
+function editPlaylist(id, draft = null, onCreate = null) {
+  const p = draft || S.playlists.find(x => x.id === id); if (!p) return;
   closeMenu();
-  pe = { id, file: null, remove: false, preview: null, back: document.activeElement };
+  pe = { id, draft, onCreate, file: null, remove: false, preview: null, back: document.activeElement };
+  $('#pe-title').textContent = draft ? 'Create playlist' : 'Edit details';
+  $('#pe-save').textContent = draft ? 'Create' : 'Save';
   $('#pe-name').value = p.name; $('#pe-desc').value = p.desc || '';
   $('#pe-err').textContent = ''; $('#pe-save').disabled = false;
   drawPeArt();
@@ -2060,7 +2059,7 @@ function editPlaylist(id) {
   setTimeout(() => $('#pe-name').focus(), 30);
 }
 function drawPeArt() {
-  const p = S.playlists.find(x => x.id === pe.id);
+  const p = peList();
   $('#pe-art').innerHTML = pe.preview ? `<img src="${pe.preview}" alt="">` : plArt(pe.remove ? { ...p, cover: null } : p);
   const hasPhoto = !!(pe.preview || (p.cover && !pe.remove));
   $('#pe-actions').hidden = !hasPhoto;
@@ -2084,7 +2083,7 @@ $('#pe-file').addEventListener('change', e => {
 });
 $('#pe-view').addEventListener('click', () => {
   if (!pe) return;
-  const p = S.playlists.find(x => x.id === pe.id);
+  const p = peList();
   const src = pe.preview || (p && p.cover ? plCoverUrl(p) : null);
   if (src) openLightbox(src, p ? p.name : '');
 });
@@ -2101,7 +2100,8 @@ $('#pe-close').addEventListener('click', closePe);
 $('#pl-edit').addEventListener('mousedown', e => { if (e.target.id === 'pl-edit') closePe(); });
 $('#pl-edit-form').addEventListener('submit', async e => {
   e.preventDefault();
-  const p = S.playlists.find(x => x.id === pe.id); if (!p) { closePe(); return; }
+  const p = peList(); if (!p) { closePe(); return; }
+  const creating = !!pe.draft, label = creating ? 'Create' : 'Save';
   const name = $('#pe-name').value.trim();
   if (!name) { $('#pe-err').textContent = 'Give the playlist a name.'; $('#pe-name').focus(); return; }
   $('#pe-save').disabled = true; $('#pe-err').textContent = '';
@@ -2116,17 +2116,22 @@ $('#pl-edit-form').addEventListener('submit', async e => {
       delete p.cover;
     }
   } catch (ex) {
-    $('#pe-save').disabled = false; $('#pe-save').textContent = 'Save';
+    $('#pe-save').disabled = false; $('#pe-save').textContent = label;
     $('#pe-err').textContent = `Couldn't save the photo: ${ex.message}`; return;
   }
-  $('#pe-save').textContent = 'Save';
+  $('#pe-save').textContent = label;
   p.name = name;
   const desc = $('#pe-desc').value.trim();
   if (desc) p.desc = desc; else delete p.desc;
   if (S.context && S.context.key === 'playlist:' + p.id) { S.context.name = p.name; updateMeta(); }
+  const onCreate = pe.onCreate;
+  if (creating) S.playlists.push(p);
   userActed = true; save();
-  closePe(); render(); renderSide();
-  toast('Playlist updated');
+  closePe();
+  if (creating) {
+    if (onCreate) { render(); renderSide(); onCreate(p); }
+    else { go({ name: 'playlist', key: p.id }); renderSide(); toast(`Created ${p.name}`); }
+  } else { render(); renderSide(); toast('Playlist updated'); }
 });
 
 /* ================= collapsible left column ================= */
@@ -2477,16 +2482,22 @@ async function uploadLocal(btn) {
   toast(fail ? `Uploaded ${ok} · ${fail} couldn't upload (${why})` : `Uploaded ${plural(ok, 'song')}. They now play on any device.`);
 }
 function refreshUsage() { loadLibrary(); }
-const syncJSON = () => JSON.stringify({ playlists: S.playlists, liked: S.liked, libOrder: S.libOrder, history: S.history, recent: S.recent });
+// Each part of the library syncs on its own: a device only sends the parts it changed, so playing a song on
+// your phone (which updates history) can never overwrite a playlist you just made on your laptop.
+const SYNC_KEYS = ['playlists', 'liked', 'libOrder', 'history', 'recent'];
+const syncJSON = () => JSON.stringify(Object.fromEntries(SYNC_KEYS.map(k => [k, S[k]])));
+cloud.synced = {};
 function applyState(st) {
-  if (st) {
-    const json = JSON.stringify({ playlists: Array.isArray(st.playlists) ? st.playlists : [], liked: Array.isArray(st.liked) ? st.liked : [], libOrder: Array.isArray(st.libOrder) ? st.libOrder : S.libOrder, history: Array.isArray(st.history) ? st.history : S.history, recent: Array.isArray(st.recent) ? st.recent : S.recent });
-    cloud.lastJSON = json;
-    if (json !== syncJSON() && !cloud.writing) {
-      const v = JSON.parse(json); S.playlists = v.playlists; S.liked = v.liked; S.libOrder = v.libOrder; S.history = v.history; S.recent = v.recent;
-      try { const p = JSON.parse(localStorage.getItem(STORE_KEY) || '{}'); Object.assign(p, { playlists: S.playlists, liked: S.liked, libOrder: S.libOrder, history: S.history, recent: S.recent }); localStorage.setItem(STORE_KEY, JSON.stringify(p)); } catch (e) {}
-    }
-  } else cloud.lastJSON = null;
+  st = st || {};
+  let changed = false;
+  for (const k of SYNC_KEYS) {
+    if (!Array.isArray(st[k])) continue;
+    const remote = JSON.stringify(st[k]), local = JSON.stringify(S[k]);
+    const unsynced = cloud.synced[k] !== undefined && local !== cloud.synced[k];   // edited here, not sent yet
+    if (!unsynced && !cloud.writing && remote !== local) { S[k] = JSON.parse(remote); changed = true; }
+    if (!unsynced) cloud.synced[k] = remote;
+  }
+  if (changed) { try { const p = JSON.parse(localStorage.getItem(STORE_KEY) || '{}'); for (const k of SYNC_KEYS) p[k] = S[k]; localStorage.setItem(STORE_KEY, JSON.stringify(p)); } catch (e) {} }
   cloud.stateLoaded = true;
 }
 let loadingLib = false;
@@ -2511,12 +2522,15 @@ async function loadLibrary(first) {
 }
 async function pushState() {
   if (!cloud.canWrite || !cloud.stateLoaded || !userActed) return;
-  const json = syncJSON();
-  if (json === cloud.lastJSON) return;
+  const patch = {};
+  for (const k of SYNC_KEYS) { const v = JSON.stringify(S[k]); if (v !== cloud.synced[k]) patch[k] = v; }
+  if (!Object.keys(patch).length) return;
   if (cloud.writing) { cloud.again = true; return; }
   cloud.writing = true;
-  try { await api('state', { method: 'PUT', headers: { 'content-type': 'application/json' }, body: json }); cloud.lastJSON = json; }
-  catch (e) { if (e.status !== 401) toast("Couldn't save your playlists online. They'll save on your next change."); }
+  try {
+    await api('state', { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: '{' + Object.entries(patch).map(([k, v]) => JSON.stringify(k) + ':' + v).join(',') + '}' });
+    Object.assign(cloud.synced, patch);
+  } catch (e) { if (e.status !== 401) toast("Couldn't save your playlists online. They'll save on your next change."); }
   cloud.writing = false;
   if (cloud.again) { cloud.again = false; pushState(); }
 }

@@ -118,14 +118,22 @@ try {
   const firstSide = await A.$eval('#side-list .li', e => e.textContent.trim());
   const plCount = (await lib(A)).state.playlists.length;
   await A.click('#side-list .li-create'); await A.waitForTimeout(500);
-  const createdOk = firstSide === 'Create Playlist' && await A.isVisible('#pl-edit');
+  const dlg = firstSide === 'Create Playlist' && await A.isVisible('#pl-edit') && (await A.textContent('#pe-title')) === 'Create playlist' && (await A.textContent('#pe-save')) === 'Create';
+  await A.keyboard.press('Escape'); await A.waitForTimeout(800);
+  const notYet = (await lib(A)).state.playlists.length === plCount && (await A.$$('#side-list .li[data-open^="playlist:"]')).length === plCount;
+  check(dlg && notYet, 'Create Playlist asks first, and closing it creates nothing');
+  await A.click('#side-list .li-create'); await A.waitForTimeout(500);
+  await A.fill('#pe-name', 'Made In Test');
   await A.click('#pe-save'); await A.waitForTimeout(1200);
-  check(createdOk && (await lib(A)).state.playlists.length === plCount + 1, 'Create Playlist sits at the top and makes a new playlist');
-  await A.hover('#side-list [data-open="playlist:pl-example"]'); await A.waitForTimeout(300);
-  const penVisible = await A.$eval('#side-list [data-open="playlist:pl-example"] .pl-pen', e => getComputedStyle(e).opacity === '1');
-  check(penVisible && !(await A.$('#side-list [data-open="liked"] .pl-pen')), 'pen appears on hover for your playlists, not Liked Songs');
+  const made = (await lib(A)).state.playlists.some(p => p.name === 'Made In Test'), h1 = await A.textContent('#view h1');
+  check(made && h1 === 'Made In Test', 'pressing Create makes the playlist and opens it', JSON.stringify({ made, h1, err: await A.textContent('#pe-err'), open: await A.isVisible('#pl-edit') }));
+  await A.evaluate(() => document.querySelector('.nav-btn[data-nav=library]').click()); await A.waitForTimeout(400);
+  await A.click('[data-chip="playlists"]'); await A.waitForTimeout(300);
+  await A.hover('#view .card[data-open="playlist:pl-example"]'); await A.waitForTimeout(300);
+  const penVisible = await A.$eval('#view .card[data-open="playlist:pl-example"] .pl-pen', e => getComputedStyle(e).opacity === '1');
+  check(penVisible && !(await A.$('#view .card[data-open="liked"] .pl-pen')) && !(await A.$('#side-list .pl-pen')), 'pen appears on hover for your playlist covers, not Liked Songs or the sidebar');
   const chooser = A.waitForEvent('filechooser');
-  await A.click('#side-list [data-open="playlist:pl-example"] .pl-pen');
+  await A.click('#view .card[data-open="playlist:pl-example"] .pl-pen');
   await (await chooser).setFiles(join(fixtures, 'cover.png')); await A.waitForTimeout(1500);
   data = await lib(A);
   const cv = data.state.playlists.find(p => p.id === 'pl-example').cover;
@@ -175,7 +183,7 @@ try {
     await A.evaluate(() => document.querySelector('.nav-btn[data-nav=library]').click()); await A.waitForTimeout(400);
     await A.click('[data-chip="playlists"]'); await A.waitForTimeout(300);
     await A.click('[data-action="new-pl"]'); await A.waitForTimeout(400);
-    await A.keyboard.press('Escape'); await A.waitForTimeout(300);
+    await A.click('#pe-save'); await A.waitForTimeout(600);
   }
   const sideBefore = await A.$$eval('#side-list .li[data-drag]', x => x.map(e => e.dataset.open));
   const s0 = await (await A.$('#side-list .li[data-drag] >> nth=0')).boundingBox(), s2 = await (await A.$('#side-list .li[data-drag] >> nth=2')).boundingBox();
@@ -213,7 +221,7 @@ try {
   check(pageErrors.length === 0, 'no JavaScript errors', pageErrors.join(' | '));
 } catch (e) {
   failures++;
-  console.error('FAIL  test crashed:', e);
+  console.error('FAIL  test crashed:', e && e.stack);
   gh(`test crashed: ${e && e.message}`);
 } finally {
   await browser.close();

@@ -170,13 +170,32 @@ async function api(request, env, path) {
     });
   }
 
-  if (path === 'state' && method === 'PUT') {
+  if (path === 'state' && (method === 'PUT' || method === 'PATCH')) {
     const text = await request.text();
     if (text.length > 512 * 1024) return fail(413, 'Library data is too large.');
     let body; try { body = JSON.parse(text); } catch (e) { return fail(400, 'Bad data.'); }
-    const state = { playlists: Array.isArray(body.playlists) ? body.playlists : [], liked: Array.isArray(body.liked) ? body.liked : [], libOrder: Array.isArray(body.libOrder) ? body.libOrder.filter(k => typeof k === 'string').slice(0, 5000) : [],
-      history: Array.isArray(body.history) ? body.history.filter(h => h && typeof h.id === 'string' && typeof h.at === 'number').slice(0, 100) : [],
-      recent: Array.isArray(body.recent) ? body.recent.filter(k => typeof k === 'string').slice(0, 50) : [], updatedAt: Date.now() };
+    if (!body || typeof body !== 'object' || Array.isArray(body)) return fail(400, 'Bad data.');
+    const clean = {
+      playlists: v => v,
+      liked: v => v.filter(x => typeof x === 'string'),
+      libOrder: v => v.filter(k => typeof k === 'string').slice(0, 5000),
+      history: v => v.filter(h => h && typeof h.id === 'string' && typeof h.at === 'number').slice(0, 100),
+      recent: v => v.filter(k => typeof k === 'string').slice(0, 50)
+    };
+    // PATCH changes only the parts it sends; PUT (older pages) replaces everything.
+    const state = method === 'PATCH' ? ((await kvGet(env, 'state')) || {}) : {};
+    for (const [k, fn] of Object.entries(clean)) {
+      if (Array.isArray(body[k])) state[k] = fn(body[k]);
+      else if (method === 'PUT') state[k] = [];
+    }
+    if (method === 'PATCH' && Array.isArray(body.history)) {
+      // Plays from different devices are combined rather than replaced.
+      const prev = (await kvGet(env, 'state') || {}).history || [];
+      const seen = new Set(), merged = [];
+      for (const h of [...state.history, ...prev].sort((a, b) => b.at - a.at)) { const key = h.id + '@' + h.at; if (!seen.has(key)) { seen.add(key); merged.push(h); } }
+      state.history = merged.slice(0, 100);
+    }
+    state.updatedAt = Date.now();
     await kvSet(env, 'state', state);
     return json({ ok: true });
   }
