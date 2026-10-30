@@ -479,11 +479,7 @@ input[type="range"]:disabled { opacity: .4; cursor: default; }
 .menu.as-sheet .mi { padding: 14px 12px; font-size: 1rem; }
 .menu-scrim.dim { background: var(--scrim); }
 
-.drop { position: fixed; inset: 0; z-index: 50; background: var(--scrim); display: grid; place-items: center; padding: 24px; pointer-events: none; }
-.drop-box { border: 2px dashed #fff; border-radius: 20px; padding: 40px 48px; color: #fff; text-align: center; max-width: 420px; }
-.drop-box .ic { width: 44px; height: 44px; margin: 0 auto 12px; }
-.drop-box h2 { margin: 0; font: 800 1.6rem var(--f-display); }
-.drop-box p { margin: 6px 0 0; opacity: .85; }
+img { -webkit-user-drag: none; user-select: none; }
 
 .toast {
   position: fixed; left: 50%; bottom: calc(104px + env(safe-area-inset-bottom, 0px)); transform: translate(-50%, 16px); z-index: 45;
@@ -712,6 +708,11 @@ body.dragging-row .tr:hover .like:not(.on), body.dragging-row .tr:hover .more { 
 .drag-ghost span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 /* ---------- create playlist item ---------- */
+.folder-art { width: 100%; height: 100%; display: grid; place-items: center; background: var(--chip); color: var(--muted); }
+.folder-art .ic { width: 46%; height: 46%; stroke-width: 1.5; }
+.folder-head { display: flex; align-items: center; gap: 10px; margin-top: 6px; }
+.folder-head .page-title { margin: 0; }
+.folder-rename { font: 800 clamp(1.6rem, 4cqi, 2.2rem) var(--f-display); letter-spacing: -.03em; max-width: 100%; }
 .create-art { display: grid; place-items: center; background: var(--chip); color: var(--ink); transition: background-color .18s; }
 .create-art .ic { width: 45%; height: 45%; stroke-width: 1.8; }
 .li-create:hover .create-art { background: color-mix(in srgb, var(--ink) 14%, var(--chip)); }
@@ -973,7 +974,6 @@ body.touch-input .has-pen::after { display: none; }
 </div>
 <div class="menu-scrim" id="menu-scrim" hidden></div>
 <div class="menu" id="menu" hidden role="menu"></div>
-<div class="drop" id="drop" hidden><div class="drop-box"><i data-ic="upload"></i><h2>Drop to Add</h2><p>MP3, M4A, WAV, FLAC and OGG files go straight into your library.</p></div></div>
 <div class="toast" id="toast" role="status" aria-live="polite"><span id="toast-msg"></span><button id="toast-act" hidden></button></div>
 <input type="file" id="file-input" class="sr-only" accept="audio/*,.mp3,.m4a,.aac,.wav,.flac,.ogg,.opus" multiple tabindex="-1" aria-hidden="true">
 <input type="file" id="folder-input" class="sr-only" webkitdirectory multiple tabindex="-1" aria-hidden="true">
@@ -1080,7 +1080,7 @@ const S = {
   view: { name: 'home' }, back: [], fwd: [],
   q: '', libTab: 'playlists', sort: 'added', queueOpen: false,
   demoAdded: Date.parse('2026-10-01T12:00:00Z'), last: null, renaming: null,
-  libSort: 'custom', libOrder: [], history: [], artistPics: [], listCols: [], libView: 'list', libFilter: null, libQ: '', sideCollapsed: false
+  libSort: 'custom', libOrder: [], history: [], artistPics: [], listCols: [], folders: [], libView: 'list', libFilter: null, libQ: '', sideCollapsed: false
 };
 let IDX = { albums: new Map(), artists: new Map(), genres: new Map() };
 const STORE_KEY = 'waxwing.state.v1';
@@ -1103,6 +1103,7 @@ try {
     if (Array.isArray(p.libOrder)) S.libOrder = p.libOrder;
     if (Array.isArray(p.artistPics)) S.artistPics = p.artistPics;
     if (Array.isArray(p.listCols)) S.listCols = p.listCols;
+    if (Array.isArray(p.folders)) S.folders = p.folders;
     if (['list', 'grid'].includes(p.libView)) S.libView = p.libView;
     S.sideCollapsed = !!p.sideCollapsed;
     S.last = p.last || null;
@@ -1114,7 +1115,7 @@ function save() {
   saveTimer = setTimeout(() => {
     try {
       localStorage.setItem(STORE_KEY, JSON.stringify({
-        playlists: S.playlists, liked: S.liked, libOrder: S.libOrder, recent: S.recent, history: S.history, artistPics: S.artistPics, listCols: S.listCols, volume: S.volume, shuffle: S.shuffle, repeat: S.repeat,
+        playlists: S.playlists, liked: S.liked, libOrder: S.libOrder, recent: S.recent, history: S.history, artistPics: S.artistPics, listCols: S.listCols, folders: S.folders, volume: S.volume, shuffle: S.shuffle, repeat: S.repeat,
         demoAdded: S.demoAdded, libTab: S.libTab, sort: S.sort, queueOpen: S.queueOpen, libSort: S.libSort, libView: S.libView, sideCollapsed: S.sideCollapsed,
         last: S.current ? { ctx: S.context && S.context.key, id: S.current } : null
       }));
@@ -1703,6 +1704,7 @@ function openKey(key) {
   else if (type === 'genre') go({ name: 'genre', key: id });
   else if (type === 'library') go({ name: 'library', tab: id || S.libTab });
   else if (type === 'history') go({ name: 'history' });
+  else if (type === 'folder') go({ name: 'folder', key: id });
 }
 
 /* ================= rendering ================= */
@@ -1916,7 +1918,7 @@ const VIEWS = {
     S.recent.forEach(add); S.playlists.forEach(p => add('playlist:' + p.id)); albumsSorted().forEach(a => add('album:' + a.key));
     const recentIds = [...S.tracks.keys()].sort((a, b) => tk(b).added - tk(a).added).slice(0, 5);
     const where = cloud.canWrite ? 'Songs you add are saved to your Allegro library online, so they play on any device where you sign in.' : 'Songs you add are saved in this browser.';
-    const callout = (fileCount() ? '' : `<div class="callout"><div class="callout-ic">${ic('music')}</div><div><h3>Bring Your Own Music</h3><p>Everything here now is a generated demo. Drop MP3s anywhere on this page, or upload them from My Library under Uploads. ${where}</p></div><button class="btn" data-action="add">${ic('upload')}Add Music</button></div>`) + localBanner();
+    const callout = (fileCount() ? '' : `<div class="callout"><div class="callout-ic">${ic('music')}</div><div><h3>Bring Your Own Music</h3><p>Everything here now is a generated demo. Upload your MP3s from Uploads in the menu. ${where}</p></div><button class="btn" data-action="add">${ic('upload')}Add Music</button></div>`) + localBanner();
     return `<h1 class="greet">${greet}</h1>
       <div id="home-rows" class="home-rows">${homeRows()}</div>
       ${callout}
@@ -1926,6 +1928,15 @@ const VIEWS = {
   },
   uploads() {
     return `<h1 class="page-title">Uploads</h1>` + uploadsTab();
+  },
+  folder(v) {
+    const f = S.folders.find(x => x.id === v.key);
+    if (!f) return notFound('That folder was deleted.');
+    const pls = folderPlaylists(f);
+    const title = S.renaming === f.id ? `<input class="rename folder-rename" id="rename-input" value="${esc(f.name)}" maxlength="80" aria-label="Folder name">` : `<h1 class="page-title">${esc(f.name)}</h1>`;
+    return `<div class="folder-head">${title}<button class="act-btn" data-folder-more="${esc(f.id)}" aria-label="Folder options">${ic('more')}</button></div>`
+      + (pls.length ? `<div class="cards">${pls.map(plCard).join('')}</div>`
+        : `<div class="empty"><h3>This Folder Is Empty</h3><p>Open a playlist's ⋯ menu and choose Move to Folder.</p></div>`);
   },
   history() {
     const hist = S.history.filter(h => S.tracks.has(h.id)).slice(0, HISTORY_MAX);
@@ -2051,7 +2062,10 @@ function libItems(all = false) {
   const items = [];
   const img = u => `<img src="${esc(u)}" alt="" loading="lazy">`;
   items.push({ key: 'liked', name: 'Liked Songs', type: 'Playlist', sub: `Playlist • ${plural(live(S.liked).length, 'song')}`, art: likedArt(), pinned: true, added: Infinity, creator: 'You' });
-  S.playlists.forEach(p => items.push({ key: 'playlist:' + p.id, name: p.name, type: 'Playlist', sub: `Playlist • ${plural(live(p.ids).length, 'song')}`, art: plArt(p), added: p.created || 0, creator: 'You' }));
+  const q0 = all ? '' : S.libQ.trim();
+  const filed = new Set(S.folders.flatMap(f => f.ids));
+  S.folders.forEach(f => items.push({ key: 'folder:' + f.id, name: f.name, type: 'Folder', sub: `Folder • ${plural(folderPlaylists(f).length, 'playlist')}`, art: folderArt(), added: f.created || 0, creator: 'You' }));
+  S.playlists.filter(p => q0 || all || !filed.has(p.id)).forEach(p => items.push({ key: 'playlist:' + p.id, name: p.name, type: 'Playlist', sub: `Playlist • ${plural(live(p.ids).length, 'song')}`, art: plArt(p), added: p.created || 0, creator: 'You' }));
   let out = all ? items : items.filter(it => !S.libFilter || it.type === S.libFilter);
   const q = all ? '' : S.libQ.trim().toLowerCase();
   if (q) out = out.filter(it => it.name.toLowerCase().includes(q) || it.sub.toLowerCase().includes(q));
@@ -2066,7 +2080,7 @@ function libItems(all = false) {
   return out.sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0) || cmp(a, b));
 }
 function renderSide() {
-  const key = S.view.name === 'playlist' ? 'playlist:' + S.view.key : S.view.name === 'liked' ? 'liked' : S.view.name === 'album' ? 'album:' + S.view.key : S.view.name === 'artist' ? 'artist:' + S.view.key : '';
+  const key = S.view.name === 'folder' ? 'folder:' + S.view.key : S.view.name === 'playlist' ? 'playlist:' + S.view.key : S.view.name === 'liked' ? 'liked' : S.view.name === 'album' ? 'album:' + S.view.key : S.view.name === 'artist' ? 'artist:' + S.view.key : '';
   const pctx = S.context && S.context.key;
   $('#sl-sort-label').textContent = SORTS.find(x => x[0] === S.libSort)[1];
   $('#sl-view-ic').innerHTML = ic(VIEWS_AS.find(x => x[0] === S.libView)[2]);
@@ -2074,7 +2088,7 @@ function renderSide() {
   const items = libItems();
   const cls = S.libView === 'grid' ? ' grid' : '';
   $('#side-list').classList.toggle('grid', S.libView === 'grid');
-  const create = S.libQ.trim() ? '' : `<button class="li li-create${cls}" data-action="new-pl" title="Create Playlist"><div class="li-art create-art">${ic('plus')}</div><div class="li-text"><div class="li-name">Create Playlist</div></div></button>`;
+  const create = S.libQ.trim() ? '' : `<button class="li li-create${cls}" data-action="create" title="Create a Playlist or Folder" aria-haspopup="menu"><div class="li-art create-art">${ic('plus')}</div><div class="li-text"><div class="li-name">Create</div></div></button>`;
   $('#side-list').innerHTML = create + (items.length ? items.map(it =>
     `<button class="li${cls}${it.key === key ? ' active' : ''}${it.key === pctx ? ' playing' : ''}" data-open="${esc(it.key)}" title="${esc(it.name)}"${it.pinned ? '' : ' data-drag="1"'}>`
     + `<div class="li-art${it.round ? ' round' : ''}">${it.art}</div>`
@@ -2186,6 +2200,16 @@ function placeMenu(keep = false) {
     if (left < 8) left = Math.min(r.left, innerWidth - w - 8);
     menuPlace = { dir: h <= below || below >= above ? 'down' : 'up', left: Math.max(8, left) };
   }
+  // The column menu, when it opens upward over a page's cover, lines up with the cover and covers all of it.
+  const art = menuAnchor.classList.contains('col-btn') && menuPlace.dir === 'up' && $('#view .vhead .art');
+  if (art) {
+    const a = art.getBoundingClientRect();
+    if (a.top >= 8 && a.bottom > 0 && a.top < r.top) {
+      m.style.left = a.left + 'px'; m.style.width = Math.max(a.width, w) + 'px'; m.style.minHeight = a.height + 'px';
+      m.style.top = a.top + 'px'; m.style.bottom = 'auto'; m.style.maxHeight = (r.top - 6 - a.top) + 'px';
+      return;
+    }
+  }
   const left = Math.max(8, Math.min(menuPlace.left, innerWidth - w - 8));
   m.style.left = left + 'px';
   if (menuPlace.dir === 'down') { m.style.top = (r.bottom + 6) + 'px'; m.style.bottom = 'auto'; m.style.maxHeight = below + 'px'; }
@@ -2255,6 +2279,7 @@ function ctxMenu(anchor, key) {
     const p = S.playlists.find(x => x.id === key.slice(9));
     items.push({ sep: true },
       { label: 'Edit Details', icon: 'edit', fn: () => editPlaylist(p.id) },
+      { label: 'Move to Folder', icon: 'folder', sub: folderSub(p.id) },
       { label: 'Delete Playlist', icon: 'trash', danger: true, fn: () => deletePlaylist(p.id) });
   }
   openMenu(anchor, items, c.name);
@@ -2273,8 +2298,9 @@ function newPlaylist(ids = [], onCreate = null) {
 }
 function commitRename() {
   const inp = $('#rename-input'); if (!inp || !S.renaming) return;
-  const p = S.playlists.find(x => x.id === S.renaming);
+  const p = S.playlists.find(x => x.id === S.renaming), fd = S.folders.find(x => x.id === S.renaming);
   S.renaming = null;
+  if (fd) { const v = inp.value.trim(); if (v) fd.name = v; userActed = true; save(); renderSide(); }
   if (p) { const v = inp.value.trim(); if (v) p.name = v; save(); if (S.context && S.context.key === 'playlist:' + p.id) S.context.name = p.name; }
   render();
 }
@@ -2286,6 +2312,68 @@ function deletePlaylist(id) {
   let undone = false;
   if (p.cover) setTimeout(() => { if (!undone && cloud.canWrite) fetch('/api/playlist-cover/' + encodeURIComponent(p.id), { method: 'DELETE', credentials: 'same-origin' }).catch(() => {}); }, 8000);
   toast(`Deleted ${p.name}`, { label: 'Undo', fn: () => { undone = true; S.playlists.splice(idx, 0, p); save(); render(); renderSide(); } });
+}
+
+/* ================= folders: a place to group playlists ================= */
+const folderArt = () => `<div class="folder-art" aria-hidden="true">${ic('folder')}</div>`;
+const folderPlaylists = f => f.ids.map(id => S.playlists.find(p => p.id === id)).filter(Boolean);
+// New playlists and folders go to the top of My Playlists, right under Liked Songs (in Custom Sort too).
+function toTopOfLibrary(key) {
+  const keys = libItems(true).filter(it => !it.pinned).map(it => it.key);
+  S.libOrder = [key, ...(S.libOrder.length ? S.libOrder : keys).filter(k => k !== key)];
+}
+const folderOf = plId => S.folders.find(f => f.ids.includes(plId));
+function createMenu(anchor) {
+  openMenu(anchor, [
+    { label: 'Playlist', icon: 'list', fn: () => newPlaylist() },
+    { label: 'Folder', icon: 'folder', fn: () => newFolder() }
+  ], 'Create');
+}
+function newFolder(withPlaylist = null) {
+  let n = 1; const nm = i => i === 1 ? 'New Folder' : `New Folder #${i}`;
+  while (S.folders.some(f => f.name === nm(n))) n++;
+  const f = { id: uid('fd'), name: nm(n), created: Date.now(), ids: [] };
+  if (withPlaylist) { S.folders.forEach(x => { x.ids = x.ids.filter(i => i !== withPlaylist); }); f.ids.push(withPlaylist); }
+  S.folders.push(f); toTopOfLibrary('folder:' + f.id);
+  userActed = true; save();
+  go({ name: 'folder', key: f.id });
+  S.renaming = f.id; render(); renderSide();
+  const inp = $('#rename-input'); if (inp) { inp.focus(); inp.select(); }
+}
+function moveToFolder(plId, folderId) {
+  S.folders.forEach(f => { f.ids = f.ids.filter(i => i !== plId); });
+  const f = folderId && S.folders.find(x => x.id === folderId);
+  if (f) f.ids.push(plId);
+  userActed = true; save(); render(); renderSide();
+  const p = S.playlists.find(x => x.id === plId);
+  toast(f ? `Moved ${p ? p.name : 'playlist'} to ${f.name}` : `Moved ${p ? p.name : 'playlist'} out of its folder`, f ? { label: 'Open', fn: () => openKey('folder:' + f.id) } : null);
+}
+function folderSub(plId) {
+  return () => {
+    const cur = folderOf(plId);
+    return [
+      { label: 'New Folder', icon: 'plus', fn: () => newFolder(plId) },
+      ...(S.folders.length ? [{ sep: true }] : []),
+      ...S.folders.map(f => ({ label: f.name, icon: f === cur ? 'check' : 'folder', fn: () => { if (f !== cur) moveToFolder(plId, f.id); } })),
+      ...(cur ? [{ sep: true }, { label: 'Remove from Folder', icon: 'close', fn: () => moveToFolder(plId, null) }] : [])
+    ];
+  };
+}
+function folderMenu(anchor, id) {
+  const f = S.folders.find(x => x.id === id); if (!f) return;
+  openMenu(anchor, [
+    { label: 'Rename', icon: 'edit', fn: () => { S.renaming = f.id; render(); const inp = $('#rename-input'); if (inp) { inp.focus(); inp.select(); } } },
+    { sep: true },
+    { label: 'Delete Folder', icon: 'trash', danger: true, fn: () => deleteFolder(f.id) }
+  ], f.name);
+}
+function deleteFolder(id) {
+  const idx = S.folders.findIndex(f => f.id === id); if (idx < 0) return;
+  const [f] = S.folders.splice(idx, 1);
+  userActed = true; save();
+  if (S.view.name === 'folder' && S.view.key === id) { S.view = { name: 'library', tab: 'playlists' }; render(true); } else render();
+  renderSide();
+  toast(`Deleted ${f.name}. Its playlists are back in My Playlists.`, { label: 'Undo', fn: () => { S.folders.splice(idx, 0, f); save(); render(); renderSide(); } });
 }
 
 /* ================= edit playlist details ================= */
@@ -2373,7 +2461,7 @@ $('#pl-edit-form').addEventListener('submit', async e => {
   if (desc) p.desc = desc; else delete p.desc;
   if (S.context && S.context.key === 'playlist:' + p.id) { S.context.name = p.name; updateMeta(); }
   const onCreate = pe.onCreate;
-  if (creating) S.playlists.push(p);
+  if (creating) { S.playlists.push(p); toTopOfLibrary('playlist:' + p.id); }
   userActed = true; save();
   closePe();
   if (creating) {
@@ -2556,7 +2644,7 @@ function uploadsTab() {
   const tools = `<div class="up-tools"><span class="sm">${plural(ids.length, 'song')}${ids.length ? ' · ' + fmtLong(totalDur(ids)) : ''}${ids.length && cloud.canWrite ? ' · Click a cover to edit a song' : ''}</span>`
     + (missing && cloud.canWrite ? `<button class="btn ghost-sm" data-action="fill-info" title="Look up missing artists, albums and art">${ic('search')}Find Missing Info</button>` : '')
     + `<button class="btn" data-action="add">${ic('upload')}Upload Songs</button></div>`;
-  const empty = `<div class="empty"><h3>No Uploads Yet</h3><p>Choose Upload Songs, or drop MP3s anywhere on this page.</p></div>`;
+  const empty = `<div class="empty"><h3>No Uploads Yet</h3><p>Choose Upload Songs to add your MP3s.</p></div>`;
   return storageNote() + localBanner() + tools + trackList(ids, { key: 'uploads', name: 'Uploads' }, { edit: true, empty });
 }
 
@@ -3192,7 +3280,7 @@ async function uploadLocal(btn) {
 function refreshUsage() { loadLibrary(); }
 // Each part of the library syncs on its own: a device only sends the parts it changed, so playing a song on
 // your phone (which updates history) can never overwrite a playlist you just made on your laptop.
-const SYNC_KEYS = ['playlists', 'liked', 'libOrder', 'history', 'recent', 'artistPics', 'listCols'];
+const SYNC_KEYS = ['playlists', 'liked', 'libOrder', 'history', 'recent', 'artistPics', 'listCols', 'folders'];
 const syncJSON = () => JSON.stringify(Object.fromEntries(SYNC_KEYS.map(k => [k, S[k]])));
 cloud.synced = {};
 function applyState(st) {
@@ -3352,6 +3440,7 @@ document.addEventListener('click', e => {
   const like = T.closest('[data-like]'); if (like) { toggleLike(like.dataset.like); return; }
   const more = T.closest('[data-more]');
   if (more) { const tl = more.closest('[data-list]'); trackMenu(more, more.dataset.more, tl && LISTS[tl.dataset.list]); return; }
+  const fm = T.closest('[data-folder-more]'); if (fm) { folderMenu(fm, fm.dataset.folderMore); return; }
   const cm = T.closest('[data-ctx-more]'); if (cm) { ctxMenu(cm, cm.dataset.ctxMore); return; }
   const ga = T.closest('[data-go-artist]'); if (ga) { go({ name: 'artist', key: ga.dataset.goArtist }); return; }
   const gal = T.closest('[data-go-album]'); if (gal) { go({ name: 'album', key: gal.dataset.goAlbum }); return; }
@@ -3370,7 +3459,7 @@ document.addEventListener('click', e => {
   }
   const chip = T.closest('[data-chip]'); if (chip) { S.libTab = chip.dataset.chip; save(); S.view = { name: 'library', tab: S.libTab }; render(); return; }
   const ac = T.closest('[data-action]');
-  if (ac) { if (ac.dataset.action === 'add') addMenu(ac); else if (ac.dataset.action === 'new-pl') newPlaylist(); else if (ac.dataset.action === 'upload-local') uploadLocal(ac); else if (ac.dataset.action === 'fill-info') fillMissingInfo(ac); return; }
+  if (ac) { if (ac.dataset.action === 'add') addMenu(ac); else if (ac.dataset.action === 'create') createMenu(ac); else if (ac.dataset.action === 'new-pl') newPlaylist(); else if (ac.dataset.action === 'upload-local') uploadLocal(ac); else if (ac.dataset.action === 'fill-info') fillMissingInfo(ac); return; }
   if (S.view.name === 'playlist' && T.closest('.vhead .art')) { editPlaylist(S.view.key); return; }
   const op = T.closest('[data-open]'); if (op) { openKey(op.dataset.open); return; }
 });
@@ -3416,12 +3505,11 @@ window.addEventListener('resize', () => closeMenu());
 $('#file-input').addEventListener('change', e => { const f = [...e.target.files]; e.target.value = ''; if (f.length) importFiles(f); });
 $('#folder-input').addEventListener('change', e => { const f = [...e.target.files]; e.target.value = ''; if (f.length) importFiles(f); });
 
-let dragDepth = 0;
-const hasFiles = e => e.dataTransfer && [...(e.dataTransfer.types || [])].includes('Files');
-window.addEventListener('dragenter', e => { if (!hasFiles(e)) return; e.preventDefault(); dragDepth++; $('#drop').hidden = false; });
-window.addEventListener('dragover', e => { if (hasFiles(e)) e.preventDefault(); });
-window.addEventListener('dragleave', e => { if (!hasFiles(e)) return; dragDepth = Math.max(0, dragDepth - 1); if (!dragDepth) $('#drop').hidden = true; });
-window.addEventListener('drop', e => { if (!hasFiles(e)) return; e.preventDefault(); dragDepth = 0; $('#drop').hidden = true; importFiles(e.dataTransfer.files); });
+// No drag-and-drop uploading: pictures can't be dragged, and a file dropped on the page is simply ignored
+// (instead of the browser opening it and leaving Allegro). Upload with the Upload Songs button.
+document.addEventListener('dragstart', e => { if (e.target && e.target.tagName === 'IMG') e.preventDefault(); });
+window.addEventListener('dragover', e => e.preventDefault());
+window.addEventListener('drop', e => e.preventDefault());
 
 /* seek + volume */
 let seeking = false;

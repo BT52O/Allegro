@@ -151,12 +151,15 @@ try {
   check(pl && pl.name === 'Renamed In Test' && pl.desc === 'From the e2e test', 'playlist name and description save online');
   const firstSide = await A.$eval('#side-list .li', e => e.textContent.trim());
   const plCount = (await lib(A)).state.playlists.length;
-  await A.click('#side-list .li-create'); await A.waitForTimeout(500);
-  const dlg = firstSide === 'Create Playlist' && await A.isVisible('#pl-edit') && (await A.textContent('#pe-title')) === 'Create Playlist' && (await A.textContent('#pe-save')) === 'Create';
+  await A.click('#side-list .li-create'); await A.waitForTimeout(300);
+  const createOpts = await A.$$eval('#menu .mi', x => x.map(e => e.textContent.trim()));
+  await A.click('#menu .mi:has-text("Playlist")'); await A.waitForTimeout(500);
+  const dlg = firstSide === 'Create' && createOpts.join('|') === 'Playlist|Folder' && await A.isVisible('#pl-edit') && (await A.textContent('#pe-title')) === 'Create Playlist' && (await A.textContent('#pe-save')) === 'Create';
   await A.keyboard.press('Escape'); await A.waitForTimeout(800);
   const notYet = (await lib(A)).state.playlists.length === plCount && (await A.$$('#side-list .li[data-open^="playlist:"]')).length === plCount;
   check(dlg && notYet, 'Create Playlist asks first, and closing it creates nothing');
-  await A.click('#side-list .li-create'); await A.waitForTimeout(500);
+  await A.click('#side-list .li-create'); await A.waitForTimeout(300);
+  await A.click('#menu .mi:has-text("Playlist")'); await A.waitForTimeout(500);
   await A.fill('#pe-name', 'Made In Test');
   await A.click('#pe-save'); await A.waitForTimeout(1200);
   const made = (await lib(A)).state.playlists.some(p => p.name === 'Made In Test'), h1 = await A.textContent('#view h1');
@@ -205,6 +208,36 @@ try {
   data = await lib(A);
   const order = data.state.playlists.find(p => p.id === 'pl-example').ids;
   check(order[2] === before[0] && order[0] === before[1], 'dragging a song reorders the playlist and saves', JSON.stringify(order.slice(0, 3)));
+
+  // --- folders: Create > Folder, name it, move a playlist in, and the folder page shows its playlists
+  await A.click('#side-list .li-create'); await A.waitForTimeout(300);
+  await A.click('#menu .mi:has-text("Folder")'); await A.waitForTimeout(600);
+  const renaming = await A.evaluate(() => document.activeElement && document.activeElement.id === 'rename-input');
+  await A.keyboard.type('华语'); await A.keyboard.press('Enter'); await A.waitForTimeout(500);
+  data = await lib(A);
+  const fd = (data.state.folders || []).find(f => f.name === '华语');
+  const fdSide = fd && await A.$eval(`#side-list .li[data-open="folder:${fd.id}"]`, e => [!!e.querySelector('.folder-art .ic'), e.textContent.includes('华语')]).catch(() => null);
+  const sideNow = await A.$$eval('#side-list .li[data-open]', x => x.map(e => e.dataset.open));
+  check(sideNow[0] === 'liked' && sideNow[1] === 'folder:' + (fd && fd.id), 'a new folder goes right under Liked Songs', JSON.stringify(sideNow.slice(0, 3)));
+  check(renaming && !!fd && fdSide && fdSide[0] && fdSide[1], 'Create > Folder makes a named folder with a plain folder icon', JSON.stringify({ renaming, fd, fdSide }));
+  const madeId = data.state.playlists.find(p => p.name === 'Made In Test').id;
+  await A.click(`#side-list [data-open="playlist:${madeId}"]`); await A.waitForTimeout(500);
+  await A.click('.actions [data-ctx-more]'); await A.waitForTimeout(250);
+  await A.click('#menu .mi:has-text("Move to Folder")'); await A.waitForTimeout(250);
+  await A.click('#menu .mi:has-text("华语")'); await A.waitForTimeout(600);
+  data = await lib(A);
+  const inFolder = (data.state.folders.find(f => f.id === fd.id) || {}).ids || [];
+  const goneFromSide = !(await A.$(`#side-list [data-open="playlist:${madeId}"]`));
+  await A.click(`#side-list [data-open="folder:${fd.id}"]`); await A.waitForTimeout(600);
+  await shot(A, 'folder-page');
+  const fdPage = [await A.textContent('#view h1'), await A.$$eval('#view .card .card-t', x => x.map(e => e.textContent)), await A.$$eval('#view input', x => x.length)];
+  check(inFolder.includes(madeId) && goneFromSide && fdPage[0] === '华语' && fdPage[1].includes('Made In Test') && fdPage[2] === 0, 'moving a playlist into a folder files it there; the folder page shows its playlists, no search box', JSON.stringify({ inFolder, goneFromSide, fdPage }));
+  await A.click(`#view .card[data-open="playlist:${madeId}"]`); await A.waitForTimeout(500);
+  await A.click('.actions [data-ctx-more]'); await A.waitForTimeout(250);
+  await A.click('#menu .mi:has-text("Move to Folder")'); await A.waitForTimeout(250);
+  await A.click('#menu .mi:has-text("Remove from Folder")'); await A.waitForTimeout(600);
+  check(!!(await A.$(`#side-list [data-open="playlist:${madeId}"]`)), 'a playlist can be taken back out of its folder');
+  await A.click(`#side-list [data-open="playlist:pl-example"]`); await A.waitForTimeout(600);
 
   // --- the Add to Playlist submenu stays where the menu opened
   for (const pos of ['first', 'last']) {
@@ -264,7 +297,7 @@ try {
   check(sorts[0] === 'Custom Sort' && !sorts.includes('Creator'), 'sort menu starts with Custom Sort, no Creator', JSON.stringify(sorts));
   await A.keyboard.press('Escape');
   const sideKinds = await A.$$eval('#side-list .li[data-open]', x => x.map(e => e.dataset.open.split(':')[0]));
-  check(sideKinds.every(k => k === 'liked' || k === 'playlist') && (await A.textContent('.sl-head h2')) === 'My Playlists' && !(await A.$('[data-sl-chip]')), 'My Playlists shows only Liked Songs and playlists, no filters');
+  check(sideKinds.every(k => k === 'liked' || k === 'playlist' || k === 'folder') && (await A.textContent('.sl-head h2')) === 'My Playlists' && !(await A.$('[data-sl-chip]')), 'My Playlists shows only Liked Songs, playlists and folders, no filters');
   for (let n = 0; n < 2; n++) {
     await A.evaluate(() => document.querySelector('.nav-btn[data-nav=library]').click()); await A.waitForTimeout(400);
     await A.click('[data-chip="playlists"]'); await A.waitForTimeout(300);
@@ -281,6 +314,20 @@ try {
   data = await lib(A);
   check(Array.isArray(data.state.libOrder) && data.state.libOrder.indexOf(sideBefore[0]) > data.state.libOrder.indexOf(sideBefore[2]), 'custom library order saves online');
   check(await A.textContent('#sl-sort-label') === 'Custom Sort', 'library is on Custom Sort after dragging');
+  await A.click('#side-list .li-create'); await A.waitForTimeout(300);
+  await A.click('#menu .mi:has-text("Playlist")'); await A.waitForTimeout(400);
+  await A.fill('#pe-name', 'Newest In Test'); await A.click('#pe-save'); await A.waitForTimeout(800);
+  const newestId = (await lib(A)).state.playlists.find(p => p.name === 'Newest In Test').id;
+  const sideTop = await A.$$eval('#side-list .li[data-open]', x => x.map(e => e.dataset.open));
+  // the column menu covers the whole cover when it opens upward over it
+  await A.click('#side-list [data-open="playlist:pl-example"]'); await A.waitForTimeout(600);
+  await A.setViewportSize({ width: 1440, height: 640 }); await A.waitForTimeout(300);
+  await A.click('#view [data-cols]'); await A.waitForTimeout(300);
+  const covered = await A.evaluate(() => { const m = document.getElementById('menu').getBoundingClientRect(), a = document.querySelector('#view .vhead .art').getBoundingClientRect(); return [Math.round(m.left - a.left), Math.round(m.top - a.top), m.right >= a.right - 1, m.bottom >= a.bottom - 1]; });
+  await shot(A, 'cols-over-cover');
+  await A.keyboard.press('Escape'); await A.setViewportSize({ width: 1440, height: 900 }); await A.waitForTimeout(300);
+  check(covered[0] === 0 && covered[1] === 0 && covered[2] && covered[3], 'the column menu covers the whole cover when it opens over it', JSON.stringify(covered));
+  check(sideTop[0] === 'liked' && sideTop[1] === 'playlist:' + newestId, 'a new playlist goes right under Liked Songs, even in Custom Sort', JSON.stringify(sideTop.slice(0, 3)));
 
   // --- clicking the page you are already on refreshes it
   await A.click('.nav-btn[data-nav="home"]'); await A.waitForTimeout(500);
@@ -445,6 +492,12 @@ try {
   const libCols = [await A.$$eval('#view .tr .c-album', x => x.length), !!(await A.$('#view .tr .c-bpm'))];
   data = await lib(A);
   const savedCols = (data.state.listCols || []).find(x => x.key === 'uploads');
+  await A.reload(); await A.waitForTimeout(2000);
+  await A.click('.nav-btn[data-nav="uploads"]'); await A.waitForTimeout(500);
+  const afterReload = [!!(await A.$('#view .tr .c-album')), !!(await A.$('#view .tr .c-bpm')), !!(await A.$('#view .tr .c-key'))];
+  await B.reload(); await B.waitForTimeout(2000);
+  const onB = await B.evaluate(() => JSON.stringify((JSON.parse(localStorage.getItem('waxwing.state.v1') || '{}').listCols || []).find(x => x.key === 'uploads') || null));
+  check(afterReload.join() === 'false,true,true' && onB && onB.includes('bpm'), 'column choices stay after reloading, and on other devices', JSON.stringify({ afterReload, onB }));
   check(libCols[0] > 0 && !libCols[1] && !!savedCols && savedCols.cols.join() === 'title,artist,date,duration,bpm,key', 'each list keeps its own columns, saved online', JSON.stringify({ libCols, savedCols }));
   // Find Missing Info repairs older uploads
   await A.evaluate(async id => {
@@ -471,6 +524,14 @@ try {
   await B.click(`.tr[data-id="${victim}"] .more`, { force: true }); await B.waitForTimeout(300);
   await B.click('.mi.danger'); await B.waitForTimeout(9500);
   check(!(await lib(B)).songs.some(s => s.id === victim), 'removing a song deletes it online');
+
+  // --- no drag-and-drop uploading: dropping a file on the page does nothing
+  const songsBefore = (await lib(A)).songs.length;
+  const dropped = await A.evaluate(() => { const dt = new DataTransfer(); dt.items.add(new File([new Uint8Array(2000)], 'x.mp3', { type: 'audio/mpeg' }));
+    for (const t of ['dragenter', 'dragover', 'drop']) document.querySelector('#view').dispatchEvent(new DragEvent(t, { dataTransfer: dt, bubbles: true, cancelable: true }));
+    return !document.getElementById('drop') && document.querySelector('img') ? getComputedStyle(document.querySelector('img')).webkitUserDrag : 'overlay'; });
+  await A.waitForTimeout(1500);
+  check(dropped === 'none' && (await lib(A)).songs.length === songsBefore, 'no Drop to Add: dropped files are ignored and pictures cannot be dragged', String(dropped));
 
   // --- nothing is reachable without a session
   const anon = await (await browser.newContext()).newPage();

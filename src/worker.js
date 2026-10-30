@@ -183,6 +183,7 @@ async function api(request, env, path) {
       libOrder: v => v.filter(k => typeof k === 'string').slice(0, 5000),
       history: v => v.filter(h => h && typeof h.id === 'string' && typeof h.at === 'number').slice(0, 100),
       recent: v => v.filter(k => typeof k === 'string').slice(0, 50),
+      folders: v => v.filter(f => f && ID_RE.test(f.id) && typeof f.name === 'string' && Array.isArray(f.ids)).slice(0, 500).map(f => ({ id: f.id, name: f.name.slice(0, 100), created: Number(f.created) || 0, ids: f.ids.filter(x => typeof x === 'string').slice(0, 2000) })),
       listCols: v => v.filter(x => x && typeof x.key === 'string' && Array.isArray(x.cols)).slice(0, 3000).map(x => ({ key: x.key.slice(0, 300), cols: x.cols.filter(c => typeof c === 'string').slice(0, 12) })),
       artistPics: v => v.filter(x => x && typeof x.name === 'string' && ID_RE.test(x.id) && typeof x.v === 'number').slice(0, 5000)
     };
