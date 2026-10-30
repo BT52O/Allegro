@@ -143,9 +143,9 @@ try {
   await A.click('#side-list [data-open="playlist:pl-example"]'); await A.waitForTimeout(600);
   await A.click('.vhead h1'); await A.waitForTimeout(400);
   const bubbles = await A.$$eval('#pe-actions .pill-btn', x => x.filter(e => e.offsetParent).map(e => e.textContent));
-  await A.click('#pe-view'); await A.waitForTimeout(400);
-  const lbOk = await A.isVisible('#lightbox') && await A.$eval('#lightbox-img', i => i.complete && i.naturalWidth > 0);
-  await A.keyboard.press('Escape'); await A.waitForTimeout(200);
+  await A.click('#pe-view');
+  const lbOk = await A.waitForFunction(() => { const i = document.getElementById('lightbox-img'); return !document.getElementById('lightbox').hidden && i.complete && i.naturalWidth > 0; }, null, { timeout: 10000 }).then(() => true, () => false);
+  await A.keyboard.press('Escape'); await A.waitForTimeout(400);
   const lbClosed = !(await A.isVisible('#lightbox')) && await A.isVisible('#pl-edit');
   await A.keyboard.press('Escape'); await A.waitForTimeout(300);
   check(bubbles.join('|') === 'Remove photo|View full image' && lbOk && lbClosed, 'Edit details has Remove photo and View full image buttons', JSON.stringify(bubbles));
