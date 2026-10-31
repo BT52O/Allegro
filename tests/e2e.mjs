@@ -944,18 +944,15 @@ try {
   const segOpen = await A.evaluate(() => document.querySelector('.ly-seg').getBoundingClientRect().width);
   await shot(A, 'lyrics-translate-open');
   await A.click('[data-lyx-mode="rom"]'); await A.waitForSelector('#ly .ly-rom', { timeout: 8000 }).catch(() => {});
-  await A.waitForTimeout(300);
-  const romOnly = await A.evaluate(() => [[...document.querySelectorAll('#ly .ly-rom')].map(e => e.textContent), document.querySelectorAll('#ly .ly-tr').length, !!document.querySelector('#ly .ly-line .ly-rom + .ly-t')]);
-  await A.waitForTimeout(700);
-  const folded = await A.evaluate(() => !document.querySelector('.ly-opts').classList.contains('open'));
-  await A.click('[data-lyx-toggle]'); await A.waitForTimeout(450);
   await A.click('[data-lyx-mode="tr"]'); await A.waitForSelector('#ly .ly-tr', { timeout: 8000 }).catch(() => {});
   await A.waitForTimeout(300);
-  const trOnly = await A.evaluate(() => [[...document.querySelectorAll('#ly .ly-tr')].map(e => e.textContent), document.querySelectorAll('#ly .ly-rom').length]);
+  const both = await A.evaluate(() => { const l = document.querySelector('#ly .ly-line'); return [[...document.querySelectorAll('#ly .ly-rom')].map(e => e.textContent), [...document.querySelectorAll('#ly .ly-tr')].map(e => e.textContent), [...l.children].map(c => c.className.replace('ly-x ', '')).join('>'), [...document.querySelectorAll('[data-lyx-mode].on')].map(b => b.dataset.lyxMode).join(',')]; });
   await shot(A, 'lyrics-extras');
-  check(optNames.join('|') === 'Off|Translation|Romanization' && segOpen > 150 && folded && romOnly[0][0] === 'wǒ ài nǐ' && romOnly[0][1] === 'zān huā yǔ' && romOnly[1] === 0 && romOnly[2] && trOnly[0][0] === 'EN: 我爱你' && trOnly[1] === 0 && llmAsks.some(x => x.startsWith('You translate')),
-    'the translate button opens into Off / Translation / Romanization; pinyin sits above each line, a translation below', JSON.stringify({ optNames, segOpen, folded, romOnly, trOnly, llmAsks }));
-  await A.waitForTimeout(800); await A.click('[data-lyx-toggle]'); await A.waitForTimeout(450); await A.click('[data-lyx-mode="off"]'); await A.waitForTimeout(200);   // off again for the tests that follow
+  await A.waitForTimeout(1900);
+  const folded = await A.evaluate(() => !document.querySelector('.ly-opts').classList.contains('open'));
+  check(optNames.join('|') === 'Off|Translation|Romanization' && segOpen > 150 && folded && both[0][0] === 'wǒ ài nǐ' && both[0][1] === 'zān huā yǔ' && both[1][0] === 'EN: 我爱你' && both[2] === 'ly-rom>ly-t>ly-tr' && both[3] === 'tr,rom' && llmAsks.some(x => x.startsWith('You translate')),
+    'Translation and Romanization can be on together: pinyin above each line, the translation below', JSON.stringify({ optNames, segOpen, folded, both, llmAsks }));
+  await A.click('[data-lyx-toggle]'); await A.waitForTimeout(450); await A.click('[data-lyx-mode="off"]'); await A.waitForTimeout(200);   // off again for the tests that follow
   await A.keyboard.press('Escape'); await A.waitForTimeout(450);
 
   // --- the play queue floats under the search bar, lined up with it, and fades in and out

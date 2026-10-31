@@ -3850,8 +3850,7 @@ const lySegs = text => (String(text).match(LY_SEG) || []).map(x => /^\s+$/.test(
    converter, and anything else (Japanese, say) goes to a language model on the server, as do translations. */
 let LYX = { tr: false, rom: false };
 try { Object.assign(LYX, JSON.parse(localStorage.getItem('allegro.lyx') || '{}')); } catch (e) {}
-const lyxMode = () => LYX.rom ? 'rom' : LYX.tr ? 'tr' : 'off';
-if (LYX.rom && LYX.tr) LYX.tr = false;   // one at a time
+const lyxMode = () => LYX.rom || LYX.tr ? 'on' : 'off';
 const saveLyx = () => { try { localStorage.setItem('allegro.lyx', JSON.stringify({ tr: !!LYX.tr, rom: !!LYX.rom })); } catch (e) {} };
 const lyxTexts = () => { const L = SP.lyr || {}; return (L.lines && L.lines.length ? L.lines : L.plain || []).map(l => l.text || ''); };
 const lyxKey = (t, texts) => t.id + ':' + hash(texts.join('\n'));
@@ -3927,8 +3926,8 @@ function lyricsHTML(t) {
     if (which === 'rom') { const r = LYX.rom && need.rom && X.rom && (X.rom[i] || '').trim(); return r && r !== src ? `<span class="ly-x ly-rom">${esc(r)}</span>` : ''; }
     const tl = LYX.tr && need.tr && X.tr && (X.tr[i] || '').trim(); return tl && tl !== src ? `<span class="ly-x ly-tr">${esc(tl)}</span>` : '';
   };
-  // a translate button that opens into Off / Translation / Romanization (one at a time)
-  const mode = lyxMode(), seg = (k, label) => `<button class="ly-segb${mode === k ? ' on' : ''}" data-lyx-mode="${k}" aria-pressed="${mode === k}">${k !== 'off' && X && X.busy && X.busy[k] ? '<span class="ly-spin" aria-hidden="true"></span>' : ''}<span>${label}</span></button>`;
+  // a translate button that opens into Off / Translation / Romanization; Translation and Romanization can both be on
+  const mode = lyxMode(), isOn = k => k === 'off' ? mode === 'off' : !!LYX[k], seg = (k, label) => `<button class="ly-segb${isOn(k) ? ' on' : ''}" data-lyx-mode="${k}" aria-pressed="${isOn(k)}">${k !== 'off' && X && X.busy && X.busy[k] ? '<span class="ly-spin" aria-hidden="true"></span>' : ''}<span>${label}</span></button>`;
   const opts = need.rom || need.tr ? `<div class="ly-opts${SP.lyxOpen ? ' open' : ''}"><div class="ly-seg" role="group" aria-label="Translation">${seg('off', 'Off')}${need.tr ? seg('tr', 'Translation') : ''}${need.rom ? seg('rom', 'Romanization') : ''}</div><button class="ly-xbtn${mode !== 'off' ? ' on' : ''}" data-lyx-toggle aria-expanded="${!!SP.lyxOpen}" aria-label="Translation and romanization">${ic('translate')}</button></div>` : '';
   const sideCls = l => l.side === 1 ? ' side-1' : l.side === 'c' ? ' side-c' : '';
   if (L.lines.length) return `${status}<div class="ly" id="ly" data-nt>${L.lines.map((l, i) => `<p class="ly-line${sideCls(l)}${l.text ? '' : ' gap'}" data-ly-i="${i}">${singerTag(l)}${extra(i, 'rom')}<span class="ly-t">${lySegs(l.text || '♪')}</span>${extra(i, 'tr')}</p>`).join('')}</div>${tools}${opts}`;
@@ -3995,11 +3994,13 @@ document.addEventListener('click', async e => {
   }
   const lx = e.target.closest('[data-lyx-mode]');
   if (lx) {
-    const m = lx.dataset.lyxMode; LYX.tr = m === 'tr'; LYX.rom = m === 'rom'; saveLyx();
-    if (m !== 'off') lyxFetch(t, m);
+    const m = lx.dataset.lyxMode;
+    if (m === 'off') { LYX.tr = false; LYX.rom = false; } else LYX[m] = !LYX[m];
+    saveLyx();
+    if (m !== 'off' && LYX[m]) lyxFetch(t, m);
     renderLyKeep();
-    // fold back up a moment after choosing
-    clearTimeout(SP.lyxT); SP.lyxT = setTimeout(() => { SP.lyxOpen = false; const o = $('#s-panel > .ly-opts'); if (o) o.classList.remove('open'); }, 650);
+    // fold back up a little after the last choice (long enough to pick both)
+    clearTimeout(SP.lyxT); SP.lyxT = setTimeout(() => { SP.lyxOpen = false; const o = $('#s-panel > .ly-opts'); if (o) o.classList.remove('open'); }, 1600);
     return;
   }
   if (e.target.closest('[data-ly-ai]')) { SP.lyr.syncErr = null; aiSyncLyrics(t); return; }
