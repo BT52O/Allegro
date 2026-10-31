@@ -649,7 +649,7 @@ input[type="range"]:disabled { opacity: .4; cursor: default; }
 .cm-like .ic, .cm-del .ic { width: 18px; height: 18px; }
 @media (min-width: 760px) {
   /* desktop Now Playing: a deep color from the cover, the cover on the left, Wiki / Lyrics / Comments on the right */
-  .sheet { background: linear-gradient(160deg, rgb(var(--deep, 52 52 58)) 0%, rgb(var(--deep2, 36 36 40)) 100%); color: #fff; }
+  .sheet { background: linear-gradient(to bottom, rgb(var(--bg-top, 92 92 100)) 0%, rgb(var(--bg-bot, 30 30 34)) 100%); color: #fff; transition: background-color .6s; }
   .sheet-tint { display: none; }
   .sheet-top { max-width: none; }   /* the close arrow sits in the top-left corner */
   .sheet-top .circ { color: #fff; background: rgba(255, 255, 255, .1); }
@@ -1795,6 +1795,17 @@ function deepTint(rgb, k = 1) {
   const [r1, g1, b1] = h < 60 ? [c, x, 0] : h < 120 ? [x, c, 0] : h < 180 ? [0, c, x] : h < 240 ? [0, x, c] : h < 300 ? [x, 0, c] : [c, 0, x];
   return [r1, g1, b1].map(v => Math.round((v + m) * 255)).join(' ');
 }
+// Now Playing background, after Tidal's: the cover's color, muted, from mid-tone at the top down to nearly black.
+function shade(rgb, l, maxSat = .3) {
+  let [r, g, b] = rgb.split(' ').map(n => +n / 255);
+  const mx = Math.max(r, g, b), mn = Math.min(r, g, b), l0 = (mx + mn) / 2, d = mx - mn;
+  let h = 0; const sat = Math.min(maxSat, d ? d / (1 - Math.abs(2 * l0 - 1)) : 0);
+  if (d) h = mx === r ? ((g - b) / d) % 6 : mx === g ? (b - r) / d + 2 : (r - g) / d + 4;
+  h = (h * 60 + 360) % 360;
+  const c = (1 - Math.abs(2 * l - 1)) * sat, x = c * (1 - Math.abs((h / 60) % 2 - 1)), m = l - c / 2;
+  const [r1, g1, b1] = h < 60 ? [c, x, 0] : h < 120 ? [x, c, 0] : h < 180 ? [0, c, x] : h < 240 ? [0, x, c] : h < 300 ? [x, 0, c] : [c, 0, x];
+  return [r1, g1, b1].map(v => Math.round((v + m) * 255)).join(' ');
+}
 // The color along the bottom edge of a picture, where it fades into the background.
 const edgeCache = new Map();
 function edgeTintOf(url) {
@@ -2900,7 +2911,7 @@ function updateMeta() {
     $('#s-cover').src = t.ownCoverFull || t.cover;   // the full-size file, not the small copy lists use $('#s-title').textContent = t.title; $('#s-artist').textContent = t.artist;
     $('#s-ctx').textContent = S.context ? S.context.name : t.album;
     if (!$('#sheet').hidden && SP.shownId !== t.id) { SP.shownId = t.id; SP.editWiki = SP.editLyr = false; SP.userScroll = 0; renderPanel(); }
-    tintOf(t.cover).then(rgb => { if (rgb && tk(S.current) === t) { $('#sheet').style.setProperty('--tint', rgb); edgeTintOf(t.cover).then(e => { if (e && tk(S.current) === t) { for (const el of [$('#sheet'), $('#player')]) { el.style.setProperty('--deep', deepTint(e)); el.style.setProperty('--deep2', deepTint(e, .72)); } } }); $('#player').style.setProperty('--ptint', rgb); } });
+    tintOf(t.cover).then(rgb => { if (rgb && tk(S.current) === t) { $('#sheet').style.setProperty('--tint', rgb); $('#sheet').style.setProperty('--bg-top', shade(rgb, .46)); $('#sheet').style.setProperty('--bg-bot', shade(rgb, .13, .25)); edgeTintOf(t.cover).then(e => { if (e && tk(S.current) === t) { for (const el of [$('#sheet'), $('#player')]) { el.style.setProperty('--deep', deepTint(e)); el.style.setProperty('--deep2', deepTint(e, .72)); } } }); $('#player').style.setProperty('--ptint', rgb); } });
   }
   syncLikes();
 }
