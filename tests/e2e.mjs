@@ -32,7 +32,7 @@ const SONGS = [
   { trackName: 'Swapped Song', artistName: 'Mock Band', collectionName: 'Swap Album', releaseDate: '2019-01-01T07:00:00Z', primaryGenreName: 'Rock', trackNumber: 1 },
   { trackName: 'Mock Hit', artistName: 'Mock Artist', collectionName: 'Mock Hit Album', releaseDate: '2021-02-02T07:00:00Z', primaryGenreName: 'Pop', trackNumber: 7 }
 ];
-const lookups = [], transcribed = [], lrclibAsks = [];
+const lookups = [], transcribed = [], lrclibAsks = [], llmAsks = [];
 const mock = createServer((req, res) => {
   const u = new globalThis.URL(req.url, MOCK);
   if (u.pathname === '/search' && (u.searchParams.get('term') || '').toLowerCase().includes('deezer')) {
@@ -46,6 +46,15 @@ const mock = createServer((req, res) => {
       syncedLyrics: '[00:00.20]Mock Artist: First line\n[00:01.60]Second line\n[00:03.00]Guest Singer: Third line by the guest\n[00:04.40]Guest Singer: Fourth line\n[00:05.80]Together: Both sing' } : null;
     res.writeHead(hit || u.pathname.endsWith('/search') ? 200 : 404, { 'content-type': 'application/json', 'access-control-allow-origin': '*' });
     res.end(JSON.stringify(u.pathname.endsWith('/search') ? (hit ? [hit] : []) : (hit || { message: 'not found' })));
+  } else if (u.pathname === '/llm') {
+    // a stand-in for the language model: "translates" by tagging each line
+    let body = ''; req.on('data', d => { body += d; }); req.on('end', () => {
+      let lines = []; let sys = '';
+      try { const b = JSON.parse(body); sys = b.messages[0].content; lines = JSON.parse(b.messages[1].content); } catch (e) {}
+      llmAsks.push(sys.slice(0, 40));
+      res.writeHead(200, { 'content-type': 'application/json' });
+      res.end(JSON.stringify({ response: 'Here you go: ' + JSON.stringify(lines.map(l => 'EN: ' + l)) }));
+    });
   } else if (u.pathname === '/transcribe') {
     // a stand-in for Whisper: it "hears" three lines at set times
     let body = ''; req.on('data', d => { body += d; }); req.on('end', () => {
@@ -75,7 +84,7 @@ await new Promise(r => mock.listen(MOCK_PORT, '127.0.0.1', r));
 const testConfig = join(root, '.wrangler-test.jsonc');
 writeFileSync(testConfig, readFileSync(join(root, 'wrangler.jsonc'), 'utf8').replace(/^\s*"ai":.*\n/m, ''));
 execFileSync(process.execPath, [wrangler, 'd1', 'migrations', 'apply', 'allegro', '--local', '--config', testConfig, '--persist-to', state], { cwd: root, env, stdio: 'inherit' });
-const server = spawn(process.execPath, [wrangler, 'dev', '--config', testConfig, '--port', String(PORT), '--ip', '127.0.0.1', '--persist-to', state, '--var', `TRANSCRIBE_URL:${MOCK}/transcribe`, '--var', `MUSIC_SEARCH_URL:${MOCK}/search`, '--var', `DEEZER_SEARCH_URL:${MOCK}/deezer`, '--var', 'HISTORY_MERGE_MS:0', '--var', `LYRICS_URL:${MOCK}/lrclib`], { cwd: root, env, stdio: ['ignore', 'pipe', 'pipe'] });
+const server = spawn(process.execPath, [wrangler, 'dev', '--config', testConfig, '--port', String(PORT), '--ip', '127.0.0.1', '--persist-to', state, '--var', `TRANSCRIBE_URL:${MOCK}/transcribe`, '--var', `LLM_URL:${MOCK}/llm`, '--var', `MUSIC_SEARCH_URL:${MOCK}/search`, '--var', `DEEZER_SEARCH_URL:${MOCK}/deezer`, '--var', 'HISTORY_MERGE_MS:0', '--var', `LYRICS_URL:${MOCK}/lrclib`], { cwd: root, env, stdio: ['ignore', 'pipe', 'pipe'] });
 let serverLog = '';
 server.stdout.on('data', d => { serverLog += d; });
 server.stderr.on('data', d => { serverLog += d; });
@@ -926,6 +935,18 @@ try {
   await shot(A, 'lyrics-ai-timed');
   check(aiLines.length === 3 && /^\[00:00\.3\d\]Hello there\n\[00:01\.[78]\d\]Second line\n\[00:03\.[34]\d\]Third line$/.test(aiSaved || '') && transcribed.length >= 1 && transcribed[0].prompt.includes('Hello there') && transcribed[0].bytes > 1000,
     'plain lyrics get timed to the song with AI and saved', JSON.stringify({ aiSaved, aiLines, transcribed: transcribed.map(x => ({ ...x, prompt: x.prompt.slice(0, 40) })) }));
+  // Chinese lyrics offer Romanization (pinyin, made in the browser) and Translation (from the language model)
+  await A.click('[data-ly-edit]'); await A.waitForTimeout(200);
+  await A.fill('#ly-edit', '[00:00.30]我爱你\n[00:02.00]簪花雨'); await A.click('[data-ly-save]'); await A.waitForTimeout(500);
+  const optNames = await A.$$eval('.ly-opts [data-lyx]', x => x.map(e => e.textContent.trim()));
+  await A.click('[data-lyx="rom"]'); await A.waitForSelector('#ly .ly-rom', { timeout: 8000 }).catch(() => {});
+  await A.click('[data-lyx="tr"]'); await A.waitForSelector('#ly .ly-tr', { timeout: 8000 }).catch(() => {});
+  await A.waitForTimeout(300);
+  const extras = await A.evaluate(() => [[...document.querySelectorAll('#ly .ly-rom')].map(e => e.textContent), [...document.querySelectorAll('#ly .ly-tr')].map(e => e.textContent)]);
+  await shot(A, 'lyrics-extras');
+  check(optNames.join('|') === 'Romanization|Translation' && extras[0][0] === 'wǒ ài nǐ' && extras[0][1] === 'zān huā yǔ' && extras[1][0] === 'EN: 我爱你' && llmAsks.some(x => x.startsWith('You translate')),
+    'Chinese lyrics show pinyin and a translation under each line', JSON.stringify({ optNames, extras, llmAsks }));
+  await A.click('[data-lyx="rom"]'); await A.click('[data-lyx="tr"]'); await A.waitForTimeout(200);   // turn them off again for the tests that follow
   await A.keyboard.press('Escape'); await A.waitForTimeout(450);
 
   // --- the play queue floats under the search bar, lined up with it, and fades in and out

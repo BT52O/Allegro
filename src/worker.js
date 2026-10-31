@@ -359,6 +359,47 @@ async function api(request, env, path) {
   }
   // AI timing for lyrics: the app sends about 30 seconds of the song at a time (16 kHz mono WAV, base64) and gets back
   // what Whisper heard, with the time of each word. The app lines those words up with the lyrics itself.
+  // Translation and romanization of lyrics, line by line, by a language model on Workers AI. Results are kept in R2,
+  // keyed by the exact lyrics, so each song is only done once per language.
+  if (path === 'lyrics-extra' && method === 'POST') {
+    const text = await request.text();
+    if (text.length > 300000) return fail(413, 'Those lyrics are too long.');
+    let b; try { b = JSON.parse(text); } catch (e) { return fail(400, 'Bad data.'); }
+    const kind = b.kind === 'romanize' ? 'romanize' : 'translate';
+    const TO = { en: 'English', 'zh-Hans': 'Simplified Chinese', 'zh-Hant': 'Traditional Chinese' };
+    const to = TO[b.to] ? b.to : 'en';
+    const lines = (Array.isArray(b.lines) ? b.lines : []).slice(0, 400).map(x => str(x, 400));
+    if (!lines.some(x => x.trim())) return json({ lines: lines.map(() => '') });
+    const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(kind + to + JSON.stringify(lines)));
+    const hash = [...new Uint8Array(digest)].slice(0, 12).map(x => x.toString(16).padStart(2, '0')).join('');
+    const id = String(b.id || ''), key = ID_RE.test(id) ? `lyrics-x/${id}/${kind}-${to}-${hash}` : null;
+    if (key) { const hit = await env.BUCKET.get(key); if (hit) return json(JSON.parse(await hit.text())); }
+    const sys = kind === 'translate'
+      ? `You translate song lyrics into ${TO[to]}. You get a JSON array of lyric lines. Translate each line on its own, keeping the meaning and feeling; keep names as they are; if a line is already in ${TO[to]}, repeat it unchanged. Reply with only a JSON array of strings: exactly one string per input line, in the same order, nothing else.`
+      : 'You write how song lyrics are pronounced, in Latin letters. You get a JSON array of lyric lines. For each line give its romanization using the standard system for its language: Hepburn romaji for Japanese, Hanyu Pinyin with tone marks for Chinese, Revised Romanization for Korean. Leave words already in Latin letters as they are. Reply with only a JSON array of strings: exactly one string per input line, in the same order, nothing else.';
+    const ask = async chunk => {
+      const body = { messages: [{ role: 'system', content: sys }, { role: 'user', content: JSON.stringify(chunk) }], max_tokens: 4096, temperature: 0.1 };
+      let out;
+      if (env.LLM_URL) { const r = await fetch(env.LLM_URL, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) }); if (!r.ok) throw new Error('stand-in ' + r.status); out = await r.json(); }
+      else if (env.AI) out = await env.AI.run('@cf/meta/llama-3.3-70b-instruct-fp8-fast', body);
+      else throw new Error('no AI');
+      let txt = out && out.response; if (typeof txt !== 'string') txt = JSON.stringify(txt || '');
+      const i = txt.indexOf('['), j = txt.lastIndexOf(']');
+      const arr = i >= 0 && j > i ? JSON.parse(txt.slice(i, j + 1)) : [];
+      return chunk.map((_, k) => str(Array.isArray(arr) ? arr[k] : '', 600));
+    };
+    // only the lines with words are sent, 40 at a time
+    const filled = lines.map((x, i) => [x, i]).filter(([x]) => x.trim()), out = lines.map(() => '');
+    try {
+      const chunks = []; for (let i = 0; i < filled.length; i += 40) chunks.push(filled.slice(i, i + 40));
+      const res = await Promise.all(chunks.map(c => ask(c.map(([x]) => x))));
+      chunks.forEach((c, ci) => c.forEach(([, i], k) => { out[i] = res[ci][k] || ''; }));
+    } catch (e) { return fail(502, kind === 'translate' ? "Couldn't translate the lyrics right now. Try again in a minute." : "Couldn't romanize the lyrics right now. Try again in a minute."); }
+    const result = { lines: out };
+    if (key) await env.BUCKET.put(key, JSON.stringify(result), { httpMetadata: { contentType: 'application/json' } });
+    return json(result);
+  }
+
   if (path === 'transcribe' && method === 'POST') {
     const text = await request.text();
     if (text.length > 4 * 1024 * 1024) return fail(413, 'That piece of audio is too long.');
@@ -455,6 +496,7 @@ async function api(request, env, path) {
     }
     if (!part && method === 'DELETE') {
       await env.BUCKET.delete(['audio/' + id, 'cover/' + id, 'lyrics/' + id]);
+      try { const xs = await env.BUCKET.list({ prefix: 'lyrics-x/' + id + '/' }); if (xs.objects.length) await env.BUCKET.delete(xs.objects.map(o => o.key)); } catch (e) {}
       await env.DB.prepare('DELETE FROM songs WHERE id = ?').bind(id).run();
       await env.DB.prepare('DELETE FROM song_comments WHERE song = ?').bind(id).run();
       return json({ ok: true });

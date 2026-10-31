@@ -604,6 +604,16 @@ input[type="range"]:disabled { opacity: .4; cursor: default; }
 .ly-line { transition: color .35s, text-shadow .45s, filter .45s, opacity .2s; }
 .ly-line.past { filter: blur(1.8px); }
 .ly-line.past:hover { filter: none; }
+/* romanization and translation under each line, smaller; they light up with their line */
+.ly-x { display: block; font-size: .56em; font-weight: 600; letter-spacing: 0; margin-top: 5px; opacity: .85; }
+.ly-x + .ly-x { margin-top: 3px; }
+.ly.plain .ly-x { font-size: .8em; opacity: .7; }
+.ly-opts { position: absolute; bottom: 14px; right: 14px; z-index: 2; display: flex; gap: 6px; }
+.ly-opts .sp-btn { height: 32px; padding: 0 12px; font-size: .8rem; gap: 6px; -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); }
+.ly-opt.on { background: #fff; color: #111; }
+.ly-opt.on:hover { background: rgba(255, 255, 255, .88); }
+.ly-spin { width: 12px; height: 12px; border-radius: 50%; border: 2px solid currentColor; border-right-color: transparent; animation: ly-spin .7s linear infinite; }
+@keyframes ly-spin { to { transform: rotate(360deg); } }
 .ly-singer { display: block; font-size: .74rem; font-weight: 700; letter-spacing: .03em; color: rgba(255, 255, 255, .5); margin-bottom: 4px; }
 .ly.plain { padding: 8px 0 24px; gap: 14px; }
 .ly.plain .ly-line { color: rgba(255, 255, 255, .86); font-size: clamp(1.1rem, 1.6vw, 1.35rem); cursor: default; }
@@ -1478,7 +1488,7 @@ const I18N = [
   ['Open now playing', '打开正在播放', '開啟正在播放'], ['Close now playing', '关闭正在播放', '關閉正在播放'], ['Show queue', '显示播放队列', '顯示播放佇列'], ['Go back', '后退', '上一頁'], ['Go forward', '前进', '下一頁'],
   ['More options', '更多选项', '更多選項'], ['Playlist options', '歌单选项', '歌單選項'], ['Folder options', '文件夹选项', '資料夾選項'], ['Page break options', '分段选项', '分段選項'], ['Add a song or page break', '添加歌曲或分段', '加入歌曲或分段'], ['Add to this folder', '添加到此文件夹', '加入此資料夾'],
   ['Collapse Sidebar', '收起侧边栏', '收合側邊欄'], ['Expand Sidebar', '展开侧边栏', '展開側邊欄'], ['Song position', '播放进度', '播放進度'], ['Zoom', '缩放', '縮放'], ['Start an Empty One', '新建一个空歌单', '新增一個空歌單'], ['Player', '播放器', '播放器'],
-  ['Wiki', '百科', '百科'], ['Lyrics', '歌词', '歌詞'], ['Comments', '评论', '評論'], ['Singer', '歌手', '歌手'], ['Timing the lyrics to the song', '正在把歌词和歌曲对齐', '正在把歌詞和歌曲對齊'], ['Cancel', '取消', '取消'], ['Delete', '删除', '刪除'], ['Remove', '移除', '移除'], ['Delete this comment?', '删除这条评论？', '刪除這則評論？'], ['The comment will be deleted.', '这条评论将被删除。', '這則評論將被刪除。'], ['The photo will be deleted.', '这张图片将被删除。', '這張圖片將被刪除。'], ['The playlist will be deleted. The songs stay in your library.', '歌单将被删除，歌曲仍保留在你的音乐库中。', '歌單將被刪除，歌曲仍保留在你的音樂庫中。'], ['The song will be removed from your library and every playlist, and its file deleted.', '这首歌将从音乐库和所有歌单中移除，文件也会被删除。', '這首歌將從音樂庫和所有歌單中移除，檔案也會被刪除。'], ['The page break will be removed. The songs stay in the playlist.', '分段将被移除，歌曲仍保留在歌单中。', '分段將被移除，歌曲仍保留在歌單中。'], ['Find on Genius', '在 Genius 上查找', '在 Genius 上查找'], ['You can find the words on Genius and paste them in with Add Lyrics. Allegro times them to the song for you.', '你可以在 Genius 上找到歌词，用“添加歌词”粘贴进来，Allegro 会自动把它和歌曲对齐。', '你可以在 Genius 上找到歌詞，用「加入歌詞」貼上，Allegro 會自動把它和歌曲對齊。'], ['Credits', '制作', '製作'], ['Lyricist', '作词', '作詞'], ['Composer', '作曲', '作曲'],
+  ['Wiki', '百科', '百科'], ['Lyrics', '歌词', '歌詞'], ['Comments', '评论', '評論'], ['Singer', '歌手', '歌手'], ['Timing the lyrics to the song', '正在把歌词和歌曲对齐', '正在把歌詞和歌曲對齊'], ['Cancel', '取消', '取消'], ['Delete', '删除', '刪除'], ['Remove', '移除', '移除'], ['Delete this comment?', '删除这条评论？', '刪除這則評論？'], ['The comment will be deleted.', '这条评论将被删除。', '這則評論將被刪除。'], ['The photo will be deleted.', '这张图片将被删除。', '這張圖片將被刪除。'], ['The playlist will be deleted. The songs stay in your library.', '歌单将被删除，歌曲仍保留在你的音乐库中。', '歌單將被刪除，歌曲仍保留在你的音樂庫中。'], ['The song will be removed from your library and every playlist, and its file deleted.', '这首歌将从音乐库和所有歌单中移除，文件也会被删除。', '這首歌將從音樂庫和所有歌單中移除，檔案也會被刪除。'], ['The page break will be removed. The songs stay in the playlist.', '分段将被移除，歌曲仍保留在歌单中。', '分段將被移除，歌曲仍保留在歌單中。'], ['Romanization', '罗马音', '羅馬拼音'], ['Translation', '翻译', '翻譯'], ['Find on Genius', '在 Genius 上查找', '在 Genius 上查找'], ['You can find the words on Genius and paste them in with Add Lyrics. Allegro times them to the song for you.', '你可以在 Genius 上找到歌词，用“添加歌词”粘贴进来，Allegro 会自动把它和歌曲对齐。', '你可以在 Genius 上找到歌詞，用「加入歌詞」貼上，Allegro 會自動把它和歌曲對齊。'], ['Credits', '制作', '製作'], ['Lyricist', '作词', '作詞'], ['Composer', '作曲', '作曲'],
   ['About This Song', '关于这首歌', '關於這首歌'], ['In Liked Songs', '已在喜欢的歌曲中', '已在喜歡的歌曲中'], ['Looking for lyrics…', '正在查找歌词…', '正在尋找歌詞…'], ['No lyrics found for this song.', '没有找到这首歌的歌词。', '沒有找到這首歌的歌詞。'],
   ['Instrumental', '纯音乐', '純音樂'], ['Add Lyrics', '添加歌词', '加入歌詞'], ['Sync', '同步', '同步'], ['Add Lyrics Myself', '自己添加歌词', '自己加入歌詞'], ['Edit Lyrics', '编辑歌词', '編輯歌詞'], ['Search Online Again', '重新在线查找', '重新線上尋找'], ['Lyrics saved', '歌词已保存', '歌詞已儲存'],
   ["Paste the lyrics. Put a time like [01:23.45] at the start of a line to make it light up with the song. For a duet, start a line with the singer's name and a colon (Name: …), and their lines go on their own side.", '粘贴歌词。在行首加上 [01:23.45] 这样的时间，歌词就会随歌曲高亮。对唱时，在行首写上歌手名字和冒号（名字：…），他们的歌词会显示在各自的一侧。', '貼上歌詞。在行首加上 [01:23.45] 這樣的時間，歌詞就會隨歌曲亮起。對唱時，在行首寫上歌手名字和冒號（名字：…），他們的歌詞會顯示在各自的一側。'],
@@ -3535,7 +3545,7 @@ function renderPanel() {
   if ($('#sheet').hidden) return;
   $$('[data-sp-tab]').forEach(b => { const on = b.dataset.spTab === spTab; b.classList.toggle('on', on); b.setAttribute('aria-selected', on); });
   const t = tk(S.current), body = $('#sp-body');
-  $$('#s-panel > .ly-tools').forEach(x => x.remove());
+  $$('#s-panel > .ly-tools, #s-panel > .ly-opts').forEach(x => x.remove());
   body.classList.toggle('lyr', spTab === 'lyrics' && !SP.editLyr && !!(SP.lyr.lines && SP.lyr.lines.length));
   if (!t) { body.innerHTML = '<p class="sp-msg">Nothing Playing</p>'; return; }
   if (spTab === 'wiki') body.innerHTML = wikiHTML(t);
@@ -3543,7 +3553,8 @@ function renderPanel() {
   else if (spTab === 'lyrics') {
     if (SP.lyr.id !== t.id) loadLyrics(t);
     body.innerHTML = lyricsHTML(t);
-    const tl = body.querySelector('.ly-tools'); if (tl) $('#s-panel').appendChild(tl);   // Edit Lyrics and Sync sit in the panel's top-right corner
+    body.querySelectorAll('.ly-tools, .ly-opts').forEach(x => $('#s-panel').appendChild(x));   // Edit Lyrics and Sync sit top right; Romanization and Translation bottom right
+    lyxAuto(t);
     body.classList.toggle('lyr', !SP.editLyr && !!(SP.lyr.lines && SP.lyr.lines.length));
     SP.lyr.cur = -2; lyrSync(true); lyrLoop(); lyFade();
   } else { if (SP.cm.id !== t.id) loadComments(t); body.innerHTML = commentsHTML(t); }
@@ -3822,6 +3833,66 @@ const geniusLink = t => `<a class="sp-btn" href="https://genius.com/search?q=${e
 // follow the text onto a second line when it wraps.
 const LY_SEG = /\s+|[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}\u3000-\u303f\uff00-\uffef]|[^\s\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}\u3000-\u303f\uff00-\uffef]+/gu;
 const lySegs = text => (String(text).match(LY_SEG) || []).map(x => /^\s+$/.test(x) ? ' ' : `<span class="ly-w" data-text="${esc(x)}">${esc(x)}</span>`).join('');
+/* ---- Romanization and Translation, shown under each lyric line ----
+   Chinese is turned into pinyin right in the browser (pinyin-pro), Korean into Revised Romanization by a small built-in
+   converter, and anything else (Japanese, say) goes to a language model on the server, as do translations. */
+let LYX = { tr: false, rom: false };
+try { Object.assign(LYX, JSON.parse(localStorage.getItem('allegro.lyx') || '{}')); } catch (e) {}
+const saveLyx = () => { try { localStorage.setItem('allegro.lyx', JSON.stringify({ tr: !!LYX.tr, rom: !!LYX.rom })); } catch (e) {} };
+const lyxTexts = () => { const L = SP.lyr || {}; return (L.lines && L.lines.length ? L.lines : L.plain || []).map(l => l.text || ''); };
+const lyxKey = (t, texts) => t.id + ':' + hash(texts.join('\n'));
+function lyxNeeds(texts) {
+  const all = texts.join(' '), lang = lyLang(all);
+  const nonLatin = /[^\p{Script=Latin}\p{Script=Common}\p{Script=Inherited}]/u.test(all.replace(/\s/g, ''));
+  const ascii = !/[^\x00-\x7f\u2018\u2019\u201c\u201d\u2026\u2014\u2013]/.test(all);
+  return { lang, rom: nonLatin, tr: LANG === 'en' ? !ascii : lang !== 'zh' };
+}
+const HG = {
+  ini: ['g', 'kk', 'n', 'd', 'tt', 'r', 'm', 'b', 'pp', 's', 'ss', '', 'j', 'jj', 'ch', 'k', 't', 'p', 'h'],
+  med: ['a', 'ae', 'ya', 'yae', 'eo', 'e', 'yeo', 'ye', 'o', 'wa', 'wae', 'oe', 'yo', 'u', 'wo', 'we', 'wi', 'yu', 'eu', 'ui', 'i'],
+  fin: ['', 'k', 'k', 'k', 'n', 'n', 'n', 't', 'l', 'k', 'm', 'l', 'l', 'l', 'p', 'l', 'm', 'p', 'p', 't', 't', 'ng', 't', 't', 'k', 't', 'p', 't'],
+  // a final consonant that runs into a following vowel is read as that syllable's first sound
+  carry: { 1: 'g', 2: 'kk', 4: 'n', 6: 'n', 7: 'd', 8: 'r', 15: 'r', 16: 'm', 17: 'b', 19: 's', 20: 'ss', 22: 'j', 23: 'ch', 24: 'k', 25: 't', 26: 'p', 27: '' }
+};
+function hangulRR(text) {
+  const ch = [...String(text)], out = [];
+  for (let i = 0; i < ch.length; i++) {
+    const c = ch[i].codePointAt(0) - 0xac00;
+    if (c < 0 || c > 11171) { out.push(ch[i]); continue; }
+    const ini = Math.floor(c / 588), med = Math.floor(c % 588 / 28), fin = c % 28;
+    const nx = (ch[i + 1] || '').codePointAt(0) - 0xac00, nextSilent = nx >= 0 && nx <= 11171 && Math.floor(nx / 588) === 11;
+    let syl = (out.carry != null ? out.carry : HG.ini[ini]) + HG.med[med]; out.carry = null;
+    if (fin && nextSilent && HG.carry[fin] != null) out.carry = HG.carry[fin]; else syl += HG.fin[fin];
+    out.push(syl);
+  }
+  return out.join('').replace(/\s+/g, ' ').trim();
+}
+let pinyinReady = null;
+const loadPinyin = () => pinyinReady || (pinyinReady = new Promise((res, rej) => { const sc = document.createElement('script'); sc.src = '/vendor/pinyin-pro.min.js'; sc.onload = () => res(window.pinyinPro); sc.onerror = () => { pinyinReady = null; rej(new Error("Couldn't load the pinyin helper.")); }; document.head.appendChild(sc); }));
+function renderLyKeep() { if (spTab !== 'lyrics' || SP.editLyr || $('#sheet').hidden) return; const b = $('#sp-body'), y = b.scrollTop; renderPanel(); b.scrollTop = y; lyFade(); }
+async function lyxFetch(t, which) {
+  const texts = lyxTexts(), key = lyxKey(t, texts);
+  if (!texts.some(x => x.trim())) return;
+  if (!SP.lyx || SP.lyx.key !== key) SP.lyx = { key, tr: null, rom: null, busy: {} };
+  const X = SP.lyx; if (X[which] || X.busy[which]) return;
+  X.busy[which] = true; renderLyKeep();
+  try {
+    const need = lyxNeeds(texts);
+    let out;
+    if (which === 'rom' && need.lang === 'zh') { const P = await loadPinyin(); out = texts.map(x => x.trim() ? P.pinyin(x, { toneType: 'symbol', nonZh: 'consecutive' }).replace(/\s+/g, ' ').trim() : ''); }
+    else if (which === 'rom' && need.lang === 'ko') out = texts.map(hangulRR);
+    else out = (await api('lyrics-extra', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id: t.id, kind: which === 'rom' ? 'romanize' : 'translate', to: LANG, lines: texts }) })).lines;
+    if (SP.lyx === X) X[which] = out || [];
+  } catch (e) { toast(e.message || "Couldn't do that right now."); LYX[which] = false; saveLyx(); }
+  if (SP.lyx === X) X.busy[which] = false;
+  if (tk(S.current) === t) renderLyKeep();
+}
+function lyxAuto(t) {
+  if (SP.editLyr || !SP.lyr || SP.lyr.id !== t.id || SP.lyr.loading) return;
+  const texts = lyxTexts(); if (!texts.some(x => x.trim())) return;
+  const need = lyxNeeds(texts), X = SP.lyx && SP.lyx.key === lyxKey(t, texts) ? SP.lyx : null;
+  for (const k of ['rom', 'tr']) if (LYX[k] && need[k] && !(X && (X[k] || X.busy[k]))) setTimeout(() => lyxFetch(t, k), 0);
+}
 function lyricsHTML(t) {
   const L = SP.lyr, canEdit = t.kind === 'cloud' && cloud.canWrite;
   if (SP.editLyr) return `<label class="sp-field">Lyrics<textarea id="ly-edit" style="min-height:42vh" placeholder="[00:12.30] First line&#10;[00:16.80] Next line">${esc(L.raw || '')}</textarea></label>
@@ -3835,9 +3906,17 @@ function lyricsHTML(t) {
     : L.syncErr ? `<p class="ly-status err">${esc(L.syncErr)}</p>` : '';
   if (L.none) return `<p class="sp-msg">${L.instrumental ? 'Instrumental' : 'No lyrics found for this song.'}</p>${canEdit && !L.instrumental ? '<p class="sp-hint">You can find the words on Genius and paste them in with Add Lyrics. Allegro times them to the song for you.</p>' : ''}${tools.replace('ly-tools', 'sp-actions').replace('</div>', geniusLink(t) + '</div>')}`;
   const singerTag = l => l.singer ? `<span class="ly-singer" data-nt>${esc(l.singer)}</span>` : '';
+  const texts = lyxTexts(), X = SP.lyx && SP.lyx.key === lyxKey(t, texts) ? SP.lyx : null, need = lyxNeeds(texts);
+  const extra = i => {
+    const src = (texts[i] || '').trim(); if (!src || !X) return '';
+    const r = LYX.rom && need.rom && X.rom && (X.rom[i] || '').trim(), tl = LYX.tr && need.tr && X.tr && (X.tr[i] || '').trim();
+    return (r && r !== src ? `<span class="ly-x ly-rom">${esc(r)}</span>` : '') + (tl && tl !== src ? `<span class="ly-x ly-tr">${esc(tl)}</span>` : '');
+  };
+  const optBtn = (k, label) => `<button class="sp-btn ly-opt${LYX[k] ? ' on' : ''}" data-lyx="${k}" aria-pressed="${!!LYX[k]}">${X && X.busy && X.busy[k] ? '<span class="ly-spin" aria-hidden="true"></span>' : ''}<span>${label}</span></button>`;
+  const opts = need.rom || need.tr ? `<div class="ly-opts">${need.rom ? optBtn('rom', 'Romanization') : ''}${need.tr ? optBtn('tr', 'Translation') : ''}</div>` : '';
   const sideCls = l => l.side === 1 ? ' side-1' : l.side === 'c' ? ' side-c' : '';
-  if (L.lines.length) return `${status}<div class="ly" id="ly" data-nt>${L.lines.map((l, i) => `<p class="ly-line${sideCls(l)}${l.text ? '' : ' gap'}" data-ly-i="${i}">${singerTag(l)}<span class="ly-t">${lySegs(l.text || '♪')}</span></p>`).join('')}</div>${tools}`;
-  return `${status}<div class="ly plain" data-nt>${L.plain.map(l => `<p class="ly-line${sideCls(l)}">${singerTag(l)}${esc(l.text) || '&nbsp;'}</p>`).join('')}</div>${tools}`;
+  if (L.lines.length) return `${status}<div class="ly" id="ly" data-nt>${L.lines.map((l, i) => `<p class="ly-line${sideCls(l)}${l.text ? '' : ' gap'}" data-ly-i="${i}">${singerTag(l)}<span class="ly-t">${lySegs(l.text || '♪')}</span>${extra(i)}</p>`).join('')}</div>${tools}${opts}`;
+  return `${status}<div class="ly plain" data-nt>${L.plain.map((l, i) => `<p class="ly-line${sideCls(l)}">${singerTag(l)}${esc(l.text) || '&nbsp;'}${extra(i)}</p>`).join('')}</div>${tools}${opts}`;
 }
 function lyrSync(force) {
   const L = SP.lyr; if (!L.lines || !L.lines.length || spTab !== 'lyrics' || SP.editLyr) return;
@@ -3893,6 +3972,8 @@ document.addEventListener('click', async e => {
   const line = e.target.closest('[data-ly-i]');
   if (line && SP.lyr.lines) { const l = SP.lyr.lines[+line.dataset.lyI]; if (l && audio.duration) { audio.currentTime = l.t; SP.userScroll = 0; lyrSync(true); } return; }
   if (e.target.closest('[data-ly-edit]')) { SP.editLyr = true; renderPanel(); return; }
+  const lx = e.target.closest('[data-lyx]');
+  if (lx) { const k = lx.dataset.lyx; LYX[k] = !LYX[k]; saveLyx(); if (LYX[k]) lyxFetch(t, k); renderLyKeep(); return; }
   if (e.target.closest('[data-ly-ai]')) { SP.lyr.syncErr = null; aiSyncLyrics(t); return; }
   if (e.target.closest('[data-ly-cancel]')) { SP.editLyr = false; renderPanel(); return; }
   if (e.target.closest('[data-ly-retry]')) { SP.lyr = { id: null }; renderPanel(); return; }
