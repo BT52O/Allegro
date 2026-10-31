@@ -516,7 +516,6 @@ input[type="range"]:disabled { opacity: .4; cursor: default; }
   animation: rise .36s cubic-bezier(.2, .8, .2, 1);
 }
 .sheet.closing { animation: sink .36s cubic-bezier(.2, .8, .2, 1) forwards; pointer-events: none; }   /* same speed and easing as opening: it starts moving at once and settles */
-.sheet, .sheet.closing { will-change: transform, opacity; }
 @keyframes rise { from { transform: translateY(48px) scale(.985); opacity: 0; } }
 @keyframes sink { to { transform: translateY(48px) scale(.985); opacity: 0; } }
 .sheet-tint { position: absolute; inset: 0; background: linear-gradient(180deg, rgb(var(--tint, var(--tint-def)) / .75), rgb(var(--tint, var(--tint-def)) / .12) 75%); pointer-events: none; transition: background .5s; }
@@ -534,7 +533,7 @@ input[type="range"]:disabled { opacity: .4; cursor: default; }
 .s-art { width: 100%; max-width: min(100%, 52vh); aspect-ratio: 1; align-self: center; border-radius: 10px; overflow: hidden; box-shadow: 0 30px 60px -24px rgba(0,0,0,.65); }
 .s-art img { width: 100%; height: 100%; object-fit: cover; }
 /* the cover leans toward the pointer with a glint of light, like Tidal */
-.s-art { position: relative; transition: transform .6s cubic-bezier(.2, .8, .2, 1), box-shadow .6s; will-change: transform; }
+.s-art { position: relative; transition: transform .6s cubic-bezier(.2, .8, .2, 1), box-shadow .6s; }
 .s-art.tilting { transition: box-shadow .5s; box-shadow: 0 46px 90px -30px rgba(0, 0, 0, .75); }
 .s-shine { position: absolute; inset: 0; pointer-events: none; opacity: 0; transition: opacity .45s; border-radius: inherit; }
 .s-art.tilting .s-shine { transition: none; }
@@ -2898,7 +2897,7 @@ function updateMeta() {
   $$('.t-dur').forEach(e => { e.textContent = t ? fmt(t.duration) : '0:00'; });
   $$('.seek').forEach(s => { s.disabled = !t; });
   if (t) {
-    $('#s-cover').src = t.cover; $('#s-title').textContent = t.title; $('#s-artist').textContent = t.artist;
+    $('#s-cover').src = t.ownCoverFull || t.cover;   // the full-size file, not the small copy lists use $('#s-title').textContent = t.title; $('#s-artist').textContent = t.artist;
     $('#s-ctx').textContent = S.context ? S.context.name : t.album;
     if (!$('#sheet').hidden && SP.shownId !== t.id) { SP.shownId = t.id; SP.editWiki = SP.editLyr = false; SP.userScroll = 0; renderPanel(); }
     tintOf(t.cover).then(rgb => { if (rgb && tk(S.current) === t) { $('#sheet').style.setProperty('--tint', rgb); edgeTintOf(t.cover).then(e => { if (e && tk(S.current) === t) { for (const el of [$('#sheet'), $('#player')]) { el.style.setProperty('--deep', deepTint(e)); el.style.setProperty('--deep2', deepTint(e, .72)); } } }); $('#player').style.setProperty('--ptint', rgb); } });
@@ -4481,13 +4480,15 @@ function cropClose(result) {
 }
 async function cropExport() {
   const c = crop, s = c.base * c.zoom, src = c.V / s;
-  const out = Math.max(64, Math.min(1600, Math.round(src)));
+  // a square picture used whole is kept exactly as it is: no resizing, no re-compressing
+  if (c.w === c.h && c.zoom === 1 && /^image\/(jpeg|png|webp)$/.test(c.file.type) && c.file.size <= MAX_PL_COVER) return c.file;
+  const out = Math.max(64, Math.min(4000, Math.round(src)));
   const cv = document.createElement('canvas'); cv.width = cv.height = out;
   const g = cv.getContext('2d'); g.imageSmoothingQuality = 'high';
   g.drawImage($('#crop-img'), -c.x / s, -c.y / s, src, src, 0, 0, out, out);
   const toBlob = (type, q) => new Promise(r => cv.toBlob(r, type, q));
   let blob = c.file.type === 'image/png' ? await toBlob('image/png') : null;   // keeps transparency
-  if (!blob || blob.size > MAX_PL_COVER) blob = await toBlob('image/jpeg', .92);
+  if (!blob || blob.size > MAX_PL_COVER) blob = await toBlob('image/jpeg', .95);
   if (blob && blob.size > MAX_PL_COVER) blob = await toBlob('image/jpeg', .8);
   return blob;
 }
@@ -4610,7 +4611,7 @@ function appleFromBrowser(term) {
     title: x.trackName, artist: x.artistName, album: x.collectionName || '',
     albumArtist: x.collectionArtistName && x.collectionArtistName !== x.artistName ? x.collectionArtistName : '',
     year: (x.releaseDate || '').slice(0, 4), released: (x.releaseDate || '').slice(0, 10), genre: x.primaryGenreName || '', trackNo: x.trackNumber || 0,
-    art: (x.artworkUrl100 || '').replace(/\/\d+x\d+(bb)?\.(jpg|png|webp)$/i, '/600x600bb.jpg')
+    art: (x.artworkUrl100 || '').replace(/\/\d+x\d+(bb)?\.(jpg|png|webp)$/i, '/3000x3000bb.jpg')   // Apple's largest artwork
   })));
 }
 async function lookupSongs(term) {
@@ -4656,6 +4657,33 @@ async function findSongInfo(cands) {
   }
   return null;
 }
+// Lists show covers small, so each song cover also gets a 600 px copy; the full file is kept for Now Playing.
+async function makeThumb(blob, size = 600) {
+  const bmp = await createImageBitmap(blob);
+  const k = Math.min(1, size / Math.max(bmp.width, bmp.height)), w = Math.round(bmp.width * k), h = Math.round(bmp.height * k);
+  const cv = document.createElement('canvas'); cv.width = w; cv.height = h;
+  const g = cv.getContext('2d'); g.imageSmoothingQuality = 'high'; g.drawImage(bmp, 0, 0, w, h); bmp.close && bmp.close();
+  return new Promise(r => cv.toBlob(r, 'image/jpeg', .86));
+}
+async function putThumb(id, blob) {
+  try { const sm = await makeThumb(blob); if (!sm) return false; await api('songs/' + encodeURIComponent(id) + '/cover-sm', { method: 'PUT', headers: { 'content-type': 'image/jpeg' }, body: sm }); return true; }
+  catch (e) { return false; }
+}
+// Covers added before small copies existed get one in the background, a couple at a time.
+let thumbFill = false;
+async function fillThumbs() {
+  if (thumbFill || !cloud.canWrite) return; thumbFill = true;
+  try {
+    const todo = [...S.tracks.values()].filter(t => t.kind === 'cloud' && t.meta && t.meta.cover && !t.meta.coverSm);
+    for (const t of todo) {
+      try {
+        const r = await fetch(coverUrl(t.id), { credentials: 'same-origin' }); if (!r.ok) continue;
+        if (await putThumb(t.id, await r.blob()) && tk(t.id)) { const meta = { ...tk(t.id).meta, coverSm: true };   // the latest details, so nothing edited meanwhile is undone
+          delete meta.id; delete meta.size; const saved = await api('songs/' + encodeURIComponent(t.id), { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify(meta) }); cloudTrack(t.id, saved); }
+      } catch (e) {}
+    }
+  } finally { thumbFill = false; }
+}
 async function fetchArt(url) {
   if (!url) return null;
   try {
@@ -4687,7 +4715,7 @@ async function saveSongMeta(id, changes, coverBlob) {
   const meta = { ...t.meta, ...changes };
   if (coverBlob) {
     await api('songs/' + encodeURIComponent(id) + '/cover', { method: 'PUT', headers: { 'content-type': coverBlob.type }, body: coverBlob });
-    meta.cover = true; meta.coverV = Date.now();
+    meta.cover = true; meta.coverV = Date.now(); meta.coverSm = await putThumb(id, coverBlob);
   }
   delete meta.id; delete meta.size;
   const saved = await api('songs/' + encodeURIComponent(id), { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify(meta) });
@@ -4760,7 +4788,7 @@ function seSrc() {
   const t = tk(se.id);
   if (se.preview) return se.preview;
   if (se.artUrl) return se.artUrl;
-  return se.remove || !t ? null : t.ownCover;
+  return se.remove || !t ? null : (t.ownCoverFull || t.ownCover);
 }
 function drawSeArt() {
   const t = tk(se.id), src = seSrc();
@@ -4818,7 +4846,7 @@ $('#se-search').addEventListener('click', async () => {
   list = list.map((r, i) => [r, fits(r), i]).sort((a, b) => b[1] - a[1] || a[2] - b[2]).map(x => x[0]);
   SE_HITS = list.slice(0, 8);
   $('#se-status').textContent = why || (SE_HITS.length ? 'Pick the right one to fill in the details and art.' : 'No matches. Check the spelling, or fill it in yourself.');
-  $('#se-results').innerHTML = SE_HITS.map((r, i) => `<button type="button" class="se-hit" data-hit="${i}">${r.art ? `<img src="${esc(r.art.replace('600x600', '100x100'))}" alt="" loading="lazy">` : '<span class="ph"></span>'}<span class="se-hit-t"><b>${esc(r.title)}</b><span>${esc(r.artist)}${r.album ? ' · ' + esc(r.album) : ''}${r.year ? ' · ' + esc(r.year) : ''}</span></span></button>`).join('');
+  $('#se-results').innerHTML = SE_HITS.map((r, i) => `<button type="button" class="se-hit" data-hit="${i}">${r.art ? `<img src="${esc(r.art.replace('3000x3000', '100x100'))}" alt="" loading="lazy">` : '<span class="ph"></span>'}<span class="se-hit-t"><b>${esc(r.title)}</b><span>${esc(r.artist)}${r.album ? ' · ' + esc(r.album) : ''}${r.year ? ' · ' + esc(r.year) : ''}</span></span></button>`).join('');
   $('#se-results').hidden = !SE_HITS.length;
 });
 let SE_HITS = [];
@@ -5176,7 +5204,8 @@ function cloudTrack(id, d) {
   Object.assign(t, {
     title: d.title || 'Untitled', artist: d.artist || 'Unknown artist', albumArtist: d.albumArtist || '', album: d.album || 'Unknown album',
     year: d.year || '', released: d.released || '', bpm: d.bpm || 0, key: d.key || '', trackNo: d.trackNo || 0, genre: d.genre || '', duration: d.duration, added: d.added || Date.now(),
-    fileName: d.fileName, size: d.size, mime: d.mime, ownCover: d.cover ? coverUrl(id) + (d.coverV ? '?v=' + d.coverV : '') : null,
+    fileName: d.fileName, size: d.size, mime: d.mime, ownCover: d.cover ? coverUrl(id) + '?' + (d.coverSm ? 's=1&' : '') + 'v=' + (d.coverV || 0) : null,
+    ownCoverFull: d.cover ? coverUrl(id) + '?v=' + (d.coverV || 0) : null,
     hue: hash((d.album || '') + (d.artist || '')) % 360, coverStyle: hash(d.album || '') % 5, meta: JSON.parse(JSON.stringify(d))
   });
   if (!t.url || !t.url.startsWith('blob:')) t.url = audioUrl(id);
@@ -5189,10 +5218,11 @@ async function uploadSong(rec) {
   let cover = false;
   if (rec.coverBlob && /^image\/(jpeg|png|gif|webp)$/.test(rec.coverBlob.type)) {
     try { await api('songs/' + rec.id + '/cover', { method: 'PUT', headers: { 'content-type': rec.coverBlob.type }, body: rec.coverBlob }); cover = true; } catch (e) {}
+    if (cover) rec.coverSm = await putThumb(rec.id, rec.coverBlob);
   }
   const meta = {
     title: rec.title, artist: rec.artist, albumArtist: rec.albumArtist || '', album: rec.album, year: rec.year || '', released: rec.released || '', bpm: rec.bpm || 0, key: rec.key || '', tagsRead: true,
-    trackNo: rec.trackNo || 0, genre: rec.genre || '', duration: rec.duration, added: rec.added, fileName: rec.name, mime, cover
+    trackNo: rec.trackNo || 0, genre: rec.genre || '', duration: rec.duration, added: rec.added, fileName: rec.name, mime, cover, coverSm: !!rec.coverSm
   };
   try { return await api('songs/' + rec.id, { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify(meta) }); }
   catch (e) { fetch('/api/songs/' + rec.id, { method: 'DELETE', credentials: 'same-origin' }).catch(() => {}); throw e; }
@@ -5254,7 +5284,7 @@ async function loadLibrary(first) {
   for (const t of [...S.tracks.values()]) if (t.kind === 'cloud' && !seen.has(t.id)) detachTrack(t.id);
   applyState(data.state);
   rebuild();
-  if (!cloud.songsLoaded) { cloud.songsLoaded = true; tryRestoreLast(); }
+  if (!cloud.songsLoaded) { cloud.songsLoaded = true; tryRestoreLast(); setTimeout(fillThumbs, 4000); }
   if (!S.renaming && $('#menu').hidden) render(); else renderSide();
   applyPlaceTop(true);
   updateMeta(); renderQueue(); renderSide(); syncLikes();

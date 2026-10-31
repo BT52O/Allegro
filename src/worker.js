@@ -79,7 +79,7 @@ function cleanMeta(d) {
     title: str(d.title) || 'Untitled', artist: str(d.artist) || 'Unknown artist', albumArtist: str(d.albumArtist),
     album: str(d.album) || 'Unknown album', year: str(d.year, 10), trackNo: Number(d.trackNo) || 0, genre: str(d.genre, 80),
     duration: Number(d.duration) || 0, added: Number(d.added) || Date.now(), fileName: str(d.fileName),
-    mime: str(d.mime, 60), cover: !!d.cover, coverV: Number(d.coverV) || 0,
+    mime: str(d.mime, 60), cover: !!d.cover, coverV: Number(d.coverV) || 0, coverSm: !!d.coverSm,
     released: /^\d{4}(-\d{2}-\d{2})?$/.test(str(d.released, 10)) ? str(d.released, 10) : '',
     lyricist: str(d.lyricist, 200), composer: str(d.composer, 200), about: str(d.about, 4000),
     bpm: Number(d.bpm) > 0 && Number(d.bpm) < 1000 ? Math.round(Number(d.bpm) * 10) / 10 : 0, key: str(d.key, 12), tagsRead: !!d.tagsRead
@@ -275,7 +275,7 @@ async function api(request, env, path) {
         albumArtist: x.collectionArtistName && x.collectionArtistName !== x.artistName ? str(x.collectionArtistName) : '',
         year: str(x.releaseDate, 4), released: str(x.releaseDate, 10), genre: str(x.primaryGenreName, 80), trackNo: Number(x.trackNumber) || 0,
         duration: (Number(x.trackTimeMillis) || 0) / 1000,
-        art: typeof x.artworkUrl100 === 'string' ? x.artworkUrl100.replace(/\/\d+x\d+(bb)?\.(jpg|png|webp)$/i, '/600x600bb.jpg') : ''
+        art: typeof x.artworkUrl100 === 'string' ? x.artworkUrl100.replace(/\/\d+x\d+(bb)?\.(jpg|png|webp)$/i, '/3000x3000bb.jpg') : ''   // Apple's largest artwork
       })));
     const deezer = getJSON((env.DEEZER_SEARCH_URL || 'https://api.deezer.com/search') + '?' + new URLSearchParams({ q: term, limit: '15' }), 'Deezer')
       .then(d => { if (d.error) throw new Error('Deezer ' + (d.error.message || 'error')); return d; })
@@ -456,7 +456,12 @@ async function api(request, env, path) {
   let m = path.match(/^audio\/([^/]+)$/);
   if (m && method === 'GET') return ID_RE.test(m[1]) ? serveObject(request, env, 'audio/' + m[1], true) : fail(404, 'Not found');
   m = path.match(/^cover\/([^/]+)$/);
-  if (m && method === 'GET') return ID_RE.test(m[1]) ? serveObject(request, env, 'cover/' + m[1], false) : fail(404, 'Not found');
+  if (m && method === 'GET') {
+    if (!ID_RE.test(m[1])) return fail(404, 'Not found');
+    // ?s=1 asks for the small copy used in lists (full covers can be 3000 px); older songs without one get the full cover
+    if (new URL(request.url).searchParams.get('s') && await env.BUCKET.head('cover-sm/' + m[1])) return serveObject(request, env, 'cover-sm/' + m[1], false);
+    return serveObject(request, env, 'cover/' + m[1], false);
+  }
 
   m = path.match(/^artist-photo\/([^/]+)$/);
   if (m) {
@@ -476,18 +481,19 @@ async function api(request, env, path) {
     if (method === 'DELETE') { await env.BUCKET.delete('plcover/' + id); return json({ ok: true }); }
   }
 
-  m = path.match(/^songs\/([^/]+)(?:\/(audio|cover))?$/);
+  m = path.match(/^songs\/([^/]+)(?:\/(audio|cover-sm|cover))?$/);
   if (m) {
     const [, id, part] = m;
     if (!ID_RE.test(id)) return fail(400, 'Bad song id.');
     if (part === 'audio' && method === 'PUT') return putObject(request, env, 'audio/' + id, MAX_AUDIO, t => t.startsWith('audio/') || t === 'application/octet-stream' || t === 'video/mp4' || t === 'video/webm');
     if (part === 'cover' && method === 'PUT') return putObject(request, env, 'cover/' + id, MAX_COVER, t => /^image\/(jpeg|png|gif|webp)$/.test(t));
+    if (part === 'cover-sm' && method === 'PUT') return putObject(request, env, 'cover-sm/' + id, 2 * 1024 * 1024, t => /^image\/(jpeg|png|webp)$/.test(t));
     if (!part && method === 'PUT') {
       const audio = await env.BUCKET.head('audio/' + id);
       if (!audio) return fail(409, 'Upload the song file first.');
       const meta = cleanMeta(await request.json().catch(() => ({})));
       const cover = meta.cover ? await env.BUCKET.head('cover/' + id) : null;
-      if (!meta.cover) await env.BUCKET.delete('cover/' + id);   // photo removed, or the song never had one
+      if (!meta.cover) await env.BUCKET.delete(['cover/' + id, 'cover-sm/' + id]);   // photo removed, or the song never had one
       meta.cover = !!cover;
       meta.size = audio.size + (cover ? cover.size : 0);
       await env.DB.prepare('INSERT INTO songs (id, data, size, added) VALUES (?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET data = excluded.data, size = excluded.size')
@@ -495,7 +501,7 @@ async function api(request, env, path) {
       return json({ id, ...meta });
     }
     if (!part && method === 'DELETE') {
-      await env.BUCKET.delete(['audio/' + id, 'cover/' + id, 'lyrics/' + id]);
+      await env.BUCKET.delete(['audio/' + id, 'cover/' + id, 'cover-sm/' + id, 'lyrics/' + id]);
       try { const xs = await env.BUCKET.list({ prefix: 'lyrics-x/' + id + '/' }); if (xs.objects.length) await env.BUCKET.delete(xs.objects.map(o => o.key)); } catch (e) {}
       await env.DB.prepare('DELETE FROM songs WHERE id = ?').bind(id).run();
       await env.DB.prepare('DELETE FROM song_comments WHERE song = ?').bind(id).run();
