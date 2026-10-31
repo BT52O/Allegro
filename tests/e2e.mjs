@@ -242,8 +242,8 @@ try {
   check(bubbles.join('|') === 'Remove Photo|View Full Image' && lbOk && lbClosed, 'Edit details has Remove photo and View full image buttons', JSON.stringify(bubbles));
   const before = await A.$$eval('#view .tl .tr', x => x.map(e => e.dataset.id));
   const r0 = await (await A.$('#view .tl .tr >> nth=0')).boundingBox(), r2 = await (await A.$('#view .tl .tr >> nth=2')).boundingBox();
-  await A.mouse.move(r0.x + 300, r0.y + r0.height / 2); await A.mouse.down();
-  await A.mouse.move(r0.x + 310, r0.y + 30, { steps: 4 }); await A.mouse.move(r2.x + 320, r2.y + r2.height * .8, { steps: 8 });
+  await A.mouse.move(r0.x + 20, r0.y + r0.height / 2); await A.mouse.down();   // grab by the number, clear of any links
+  await A.mouse.move(r0.x + 30, r0.y + 30, { steps: 4 }); await A.mouse.move(r2.x + 40, r2.y + r2.height * .8, { steps: 8 });
   await A.mouse.up(); await A.waitForTimeout(1200);
   data = await lib(A);
   const order = data.state.playlists.find(p => p.id === 'pl-example').ids;
@@ -707,6 +707,20 @@ try {
   await shot(A, 'menu-fly');
   await A.keyboard.press('Escape'); await A.waitForTimeout(150);
   check(!!fly && fly[0] >= 2 && fly[1] >= 1 && fly[2] === 'Add to Playlist' && await A.evaluate(() => document.getElementById('menu-fly').hidden), 'hovering Add to Playlist shows your playlists beside the menu', JSON.stringify(fly));
+  // select songs with the boxes at the end of each row; Shift-click takes in everything between
+  {
+    const rows = await A.$$('#view .tl .tr[data-id]');
+    await rows[0].hover(); await A.click('#view .tl .tr[data-id] >> nth=0 >> [data-sel]');
+    await A.click('#view .tl .tr[data-id] >> nth=3 >> [data-sel]', { modifiers: ['Shift'], force: true }); await A.waitForTimeout(300);
+    const s1 = await A.evaluate(() => [document.querySelectorAll('#view .tr.sel').length, document.querySelector('#selbar').classList.contains('show'), document.querySelector('#selbar .sb-count').textContent, document.querySelector('[data-sel-all]').getAttribute('aria-checked'), [...document.querySelectorAll('#selbar [data-selact]')].map(b => b.dataset.selact).join(',')]);
+    await shot(A, 'select-songs');
+    await A.click('[data-sel-all]', { force: true }); await A.waitForTimeout(200);
+    const s2 = await A.evaluate(() => [document.querySelectorAll('#view .tr.sel').length, document.querySelectorAll('#view .tr[data-id]').length, document.querySelector('[data-sel-all]').getAttribute('aria-checked')]);
+    await A.keyboard.press('Escape'); await A.waitForTimeout(300);
+    const s3 = await A.evaluate(() => [document.querySelectorAll('#view .tr.sel').length, document.querySelector('#selbar').classList.contains('show')]);
+    check(s1[0] === 4 && s1[1] && s1[2] === '4 songs selected' && s1[3] === 'mixed' && /play,next,queue,playlist,like/.test(s1[4]) && s2[0] === s2[1] && s2[2] === 'true' && s3[0] === 0 && !s3[1],
+      'songs can be ticked, Shift-click selects a run of them, a bar offers what to do, Escape clears', JSON.stringify({ s1, s2, s3 }));
+  }
   check(upMenu.includes('Edit Song') && !songsMenu.includes('Edit Song'), 'Edit Song is in the menu only in Uploads');
 
   // --- column picker at the left of the list header: each list keeps its own columns, saved online
