@@ -610,11 +610,19 @@ input[type="range"]:disabled { opacity: .4; cursor: default; }
 .ly-x { display: block; font-size: .56em; font-weight: 600; letter-spacing: 0; margin-top: 5px; opacity: .85; }
 .ly-x.ly-rom { margin: 0 0 4px; }
 .ly.plain .ly-x { font-size: .8em; opacity: .7; }
-.ly-opts { position: absolute; bottom: 14px; right: 14px; z-index: 2; display: flex; gap: 6px; }
-.ly-opts .sp-btn { height: 32px; padding: 0 12px; font-size: .8rem; gap: 6px; background: rgba(255, 255, 255, .2); }
-.ly-opts .sp-btn:hover { background: rgba(255, 255, 255, .3); }
-.ly-opt.on { background: #fff; color: #111; }
-.ly-opt.on:hover { background: rgba(255, 255, 255, .88); }
+/* the translate button; it slides open to the left into Off / Translation / Romanization */
+.ly-opts { position: absolute; bottom: 14px; right: 14px; z-index: 2; display: flex; align-items: center; gap: 6px; }
+.ly-xbtn { width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; color: #fff; background: rgba(255, 255, 255, .2); transition: background-color .2s, color .2s, transform .2s; flex: none; }
+.ly-xbtn:hover { background: rgba(255, 255, 255, .3); }
+.ly-xbtn.on { background: #fff; color: #111; }
+.ly-xbtn .ic { width: 22px; height: 22px; stroke-width: 1.5; }
+.ly-seg { display: flex; gap: 2px; padding: 4px; border-radius: 14px; background: rgba(0, 0, 0, .22); max-width: 0; opacity: 0; overflow: hidden; pointer-events: none; white-space: nowrap;
+  transition: max-width .38s cubic-bezier(.2, .8, .2, 1), opacity .25s, padding .38s; padding-left: 0; padding-right: 0; }
+.ly-opts.open .ly-seg { max-width: 360px; opacity: 1; pointer-events: auto; padding: 4px; }
+.ly-segb { display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 14px; border-radius: 10px; color: rgba(255, 255, 255, .78); font-weight: 700; font-size: .82rem; transition: background-color .2s, color .2s; }
+.ly-segb:hover { color: #fff; }
+.ly-segb.on { background: #fff; color: #111; }
+@media (prefers-reduced-motion: reduce) { .ly-seg, .ly-xbtn { transition: none; } }
 .ly-spin { width: 12px; height: 12px; border-radius: 50%; border: 2px solid currentColor; border-right-color: transparent; animation: ly-spin .7s linear infinite; }
 @keyframes ly-spin { to { transform: rotate(360deg); } }
 .ly-singer { display: block; font-size: .74rem; font-weight: 700; letter-spacing: .03em; color: rgba(255, 255, 255, .5); margin-bottom: 4px; }
@@ -1491,7 +1499,7 @@ const I18N = [
   ['Open now playing', '打开正在播放', '開啟正在播放'], ['Close now playing', '关闭正在播放', '關閉正在播放'], ['Show queue', '显示播放队列', '顯示播放佇列'], ['Go back', '后退', '上一頁'], ['Go forward', '前进', '下一頁'],
   ['More options', '更多选项', '更多選項'], ['Playlist options', '歌单选项', '歌單選項'], ['Folder options', '文件夹选项', '資料夾選項'], ['Page break options', '分段选项', '分段選項'], ['Add a song or page break', '添加歌曲或分段', '加入歌曲或分段'], ['Add to this folder', '添加到此文件夹', '加入此資料夾'],
   ['Collapse Sidebar', '收起侧边栏', '收合側邊欄'], ['Expand Sidebar', '展开侧边栏', '展開側邊欄'], ['Song position', '播放进度', '播放進度'], ['Zoom', '缩放', '縮放'], ['Start an Empty One', '新建一个空歌单', '新增一個空歌單'], ['Player', '播放器', '播放器'],
-  ['Wiki', '百科', '百科'], ['Lyrics', '歌词', '歌詞'], ['Comments', '评论', '評論'], ['Singer', '歌手', '歌手'], ['Timing the lyrics to the song', '正在把歌词和歌曲对齐', '正在把歌詞和歌曲對齊'], ['Cancel', '取消', '取消'], ['Delete', '删除', '刪除'], ['Remove', '移除', '移除'], ['Delete this comment?', '删除这条评论？', '刪除這則評論？'], ['The comment will be deleted.', '这条评论将被删除。', '這則評論將被刪除。'], ['The photo will be deleted.', '这张图片将被删除。', '這張圖片將被刪除。'], ['The playlist will be deleted. The songs stay in your library.', '歌单将被删除，歌曲仍保留在你的音乐库中。', '歌單將被刪除，歌曲仍保留在你的音樂庫中。'], ['The song will be removed from your library and every playlist, and its file deleted.', '这首歌将从音乐库和所有歌单中移除，文件也会被删除。', '這首歌將從音樂庫和所有歌單中移除，檔案也會被刪除。'], ['The page break will be removed. The songs stay in the playlist.', '分段将被移除，歌曲仍保留在歌单中。', '分段將被移除，歌曲仍保留在歌單中。'], ['Romanization', '罗马音', '羅馬拼音'], ['Translation', '翻译', '翻譯'], ['Find on Genius', '在 Genius 上查找', '在 Genius 上查找'], ['You can find the words on Genius and paste them in with Add Lyrics. Allegro times them to the song for you.', '你可以在 Genius 上找到歌词，用“添加歌词”粘贴进来，Allegro 会自动把它和歌曲对齐。', '你可以在 Genius 上找到歌詞，用「加入歌詞」貼上，Allegro 會自動把它和歌曲對齊。'], ['Credits', '制作', '製作'], ['Lyricist', '作词', '作詞'], ['Composer', '作曲', '作曲'],
+  ['Wiki', '百科', '百科'], ['Lyrics', '歌词', '歌詞'], ['Comments', '评论', '評論'], ['Singer', '歌手', '歌手'], ['Timing the lyrics to the song', '正在把歌词和歌曲对齐', '正在把歌詞和歌曲對齊'], ['Cancel', '取消', '取消'], ['Delete', '删除', '刪除'], ['Remove', '移除', '移除'], ['Delete this comment?', '删除这条评论？', '刪除這則評論？'], ['The comment will be deleted.', '这条评论将被删除。', '這則評論將被刪除。'], ['The photo will be deleted.', '这张图片将被删除。', '這張圖片將被刪除。'], ['The playlist will be deleted. The songs stay in your library.', '歌单将被删除，歌曲仍保留在你的音乐库中。', '歌單將被刪除，歌曲仍保留在你的音樂庫中。'], ['The song will be removed from your library and every playlist, and its file deleted.', '这首歌将从音乐库和所有歌单中移除，文件也会被删除。', '這首歌將從音樂庫和所有歌單中移除，檔案也會被刪除。'], ['The page break will be removed. The songs stay in the playlist.', '分段将被移除，歌曲仍保留在歌单中。', '分段將被移除，歌曲仍保留在歌單中。'], ['Romanization', '音译', '音譯'], ['Translation', '翻译', '翻譯'], ['Off', '关闭', '關閉'], ['Find on Genius', '在 Genius 上查找', '在 Genius 上查找'], ['You can find the words on Genius and paste them in with Add Lyrics. Allegro times them to the song for you.', '你可以在 Genius 上找到歌词，用“添加歌词”粘贴进来，Allegro 会自动把它和歌曲对齐。', '你可以在 Genius 上找到歌詞，用「加入歌詞」貼上，Allegro 會自動把它和歌曲對齊。'], ['Credits', '制作', '製作'], ['Lyricist', '作词', '作詞'], ['Composer', '作曲', '作曲'],
   ['About This Song', '关于这首歌', '關於這首歌'], ['In Liked Songs', '已在喜欢的歌曲中', '已在喜歡的歌曲中'], ['Looking for lyrics…', '正在查找歌词…', '正在尋找歌詞…'], ['No lyrics found for this song.', '没有找到这首歌的歌词。', '沒有找到這首歌的歌詞。'],
   ['Instrumental', '纯音乐', '純音樂'], ['Add Lyrics', '添加歌词', '加入歌詞'], ['Sync', '同步', '同步'], ['Add Lyrics Myself', '自己添加歌词', '自己加入歌詞'], ['Edit Lyrics', '编辑歌词', '編輯歌詞'], ['Search Online Again', '重新在线查找', '重新線上尋找'], ['Lyrics saved', '歌词已保存', '歌詞已儲存'],
   ["Paste the lyrics. Put a time like [01:23.45] at the start of a line to make it light up with the song. For a duet, start a line with the singer's name and a colon (Name: …), and their lines go on their own side.", '粘贴歌词。在行首加上 [01:23.45] 这样的时间，歌词就会随歌曲高亮。对唱时，在行首写上歌手名字和冒号（名字：…），他们的歌词会显示在各自的一侧。', '貼上歌詞。在行首加上 [01:23.45] 這樣的時間，歌詞就會隨歌曲亮起。對唱時，在行首寫上歌手名字和冒號（名字：…），他們的歌詞會顯示在各自的一側。'],
@@ -1605,6 +1613,7 @@ const STROKE = {
   file: '<path d="M7 3.5h7l4 4v13H7z"/><path d="M14 3.5v4h4"/>',
   trash: '<path d="M5 7h14M10 7V4.8h4V7M7 7l1 13h8l1-13"/>',
   edit: '<path d="M4 20h4L19 9l-4-4L4 16z"/>',
+  translate: '<path d="M2.5 2.5h10v8H8l-3 2.5v-2.5H2.5z"/><path d="M7.5 3.9v.9M5 4.8h5M5.6 4.8c.4 2 1.6 3.3 3.9 4M9.4 4.8c-.4 2-1.6 3.3-3.9 4"/><path d="M11.5 13.5h10v8h-2.5V24l-3-2.5h-4.5z"/><path d="M14.6 19.7l1.9-4.6 1.9 4.6M15.3 18.1h2.4"/><path d="M20.5 9c0-3-2.4-5.5-5.5-5.5M16.5 2l-1.5 1.5 1.5 1.5M3.5 15c0 3 2.4 5.5 5.5 5.5M7.5 19l1.5 1.5-1.5 1.5"/>',
   sparkle: '<path d="M12 3.5l1.9 5.1 5.1 1.9-5.1 1.9L12 17.5l-1.9-5.1L5 10.5l5.1-1.9z"/><path d="M18.5 15.5l.8 2.2 2.2.8-2.2.8-.8 2.2-.8-2.2-2.2-.8 2.2-.8z"/>',
   album: '<circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="2"/>',
   user: '<circle cx="12" cy="8.5" r="3.5"/><path d="M5 20c.8-3.6 3.6-5.5 7-5.5s6.2 1.9 7 5.5"/>',
@@ -3841,6 +3850,8 @@ const lySegs = text => (String(text).match(LY_SEG) || []).map(x => /^\s+$/.test(
    converter, and anything else (Japanese, say) goes to a language model on the server, as do translations. */
 let LYX = { tr: false, rom: false };
 try { Object.assign(LYX, JSON.parse(localStorage.getItem('allegro.lyx') || '{}')); } catch (e) {}
+const lyxMode = () => LYX.rom ? 'rom' : LYX.tr ? 'tr' : 'off';
+if (LYX.rom && LYX.tr) LYX.tr = false;   // one at a time
 const saveLyx = () => { try { localStorage.setItem('allegro.lyx', JSON.stringify({ tr: !!LYX.tr, rom: !!LYX.rom })); } catch (e) {} };
 const lyxTexts = () => { const L = SP.lyr || {}; return (L.lines && L.lines.length ? L.lines : L.plain || []).map(l => l.text || ''); };
 const lyxKey = (t, texts) => t.id + ':' + hash(texts.join('\n'));
@@ -3916,8 +3927,9 @@ function lyricsHTML(t) {
     if (which === 'rom') { const r = LYX.rom && need.rom && X.rom && (X.rom[i] || '').trim(); return r && r !== src ? `<span class="ly-x ly-rom">${esc(r)}</span>` : ''; }
     const tl = LYX.tr && need.tr && X.tr && (X.tr[i] || '').trim(); return tl && tl !== src ? `<span class="ly-x ly-tr">${esc(tl)}</span>` : '';
   };
-  const optBtn = (k, label) => `<button class="sp-btn ly-opt${LYX[k] ? ' on' : ''}" data-lyx="${k}" aria-pressed="${!!LYX[k]}">${X && X.busy && X.busy[k] ? '<span class="ly-spin" aria-hidden="true"></span>' : ''}<span>${label}</span></button>`;
-  const opts = need.rom || need.tr ? `<div class="ly-opts">${need.rom ? optBtn('rom', 'Romanization') : ''}${need.tr ? optBtn('tr', 'Translation') : ''}</div>` : '';
+  // a translate button that opens into Off / Translation / Romanization (one at a time)
+  const mode = lyxMode(), seg = (k, label) => `<button class="ly-segb${mode === k ? ' on' : ''}" data-lyx-mode="${k}" aria-pressed="${mode === k}">${k !== 'off' && X && X.busy && X.busy[k] ? '<span class="ly-spin" aria-hidden="true"></span>' : ''}<span>${label}</span></button>`;
+  const opts = need.rom || need.tr ? `<div class="ly-opts${SP.lyxOpen ? ' open' : ''}"><div class="ly-seg" role="group" aria-label="Translation">${seg('off', 'Off')}${need.tr ? seg('tr', 'Translation') : ''}${need.rom ? seg('rom', 'Romanization') : ''}</div><button class="ly-xbtn${mode !== 'off' ? ' on' : ''}" data-lyx-toggle aria-expanded="${!!SP.lyxOpen}" aria-label="Translation and romanization">${ic('translate')}</button></div>` : '';
   const sideCls = l => l.side === 1 ? ' side-1' : l.side === 'c' ? ' side-c' : '';
   if (L.lines.length) return `${status}<div class="ly" id="ly" data-nt>${L.lines.map((l, i) => `<p class="ly-line${sideCls(l)}${l.text ? '' : ' gap'}" data-ly-i="${i}">${singerTag(l)}${extra(i, 'rom')}<span class="ly-t">${lySegs(l.text || '♪')}</span>${extra(i, 'tr')}</p>`).join('')}</div>${tools}${opts}`;
   return `${status}<div class="ly plain" data-nt>${L.plain.map((l, i) => `<p class="ly-line${sideCls(l)}">${singerTag(l)}${extra(i, 'rom')}${esc(l.text) || '&nbsp;'}${extra(i, 'tr')}</p>`).join('')}</div>${tools}${opts}`;
@@ -3976,8 +3988,20 @@ document.addEventListener('click', async e => {
   const line = e.target.closest('[data-ly-i]');
   if (line && SP.lyr.lines) { const l = SP.lyr.lines[+line.dataset.lyI]; if (l && audio.duration) { audio.currentTime = l.t; SP.userScroll = 0; lyrSync(true); } return; }
   if (e.target.closest('[data-ly-edit]')) { SP.editLyr = true; renderPanel(); return; }
-  const lx = e.target.closest('[data-lyx]');
-  if (lx) { const k = lx.dataset.lyx; LYX[k] = !LYX[k]; saveLyx(); if (LYX[k]) lyxFetch(t, k); renderLyKeep(); return; }
+  if (e.target.closest('[data-lyx-toggle]')) {
+    SP.lyxOpen = !SP.lyxOpen; clearTimeout(SP.lyxT);
+    const o = $('#s-panel > .ly-opts'); if (o) { o.classList.toggle('open', SP.lyxOpen); o.querySelector('[data-lyx-toggle]').setAttribute('aria-expanded', SP.lyxOpen); }
+    return;
+  }
+  const lx = e.target.closest('[data-lyx-mode]');
+  if (lx) {
+    const m = lx.dataset.lyxMode; LYX.tr = m === 'tr'; LYX.rom = m === 'rom'; saveLyx();
+    if (m !== 'off') lyxFetch(t, m);
+    renderLyKeep();
+    // fold back up a moment after choosing
+    clearTimeout(SP.lyxT); SP.lyxT = setTimeout(() => { SP.lyxOpen = false; const o = $('#s-panel > .ly-opts'); if (o) o.classList.remove('open'); }, 650);
+    return;
+  }
   if (e.target.closest('[data-ly-ai]')) { SP.lyr.syncErr = null; aiSyncLyrics(t); return; }
   if (e.target.closest('[data-ly-cancel]')) { SP.editLyr = false; renderPanel(); return; }
   if (e.target.closest('[data-ly-retry]')) { SP.lyr = { id: null }; renderPanel(); return; }

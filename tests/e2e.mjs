@@ -936,17 +936,26 @@ try {
   check(aiLines.length === 3 && /^\[00:00\.3\d\]Hello there\n\[00:01\.[78]\d\]Second line\n\[00:03\.[34]\d\]Third line$/.test(aiSaved || '') && transcribed.length >= 1 && transcribed[0].prompt.includes('Hello there') && transcribed[0].bytes > 1000,
     'plain lyrics get timed to the song with AI and saved', JSON.stringify({ aiSaved, aiLines, transcribed: transcribed.map(x => ({ ...x, prompt: x.prompt.slice(0, 40) })) }));
   // Chinese lyrics offer Romanization (pinyin, made in the browser) and Translation (from the language model)
+  if (await A.evaluate(() => document.body.classList.contains('is-playing'))) await A.click('#player [data-act="toggle"]');   // stay on this short song
   await A.click('[data-ly-edit]'); await A.waitForTimeout(200);
   await A.fill('#ly-edit', '[00:00.30]我爱你\n[00:02.00]簪花雨'); await A.click('[data-ly-save]'); await A.waitForTimeout(500);
-  const optNames = await A.$$eval('.ly-opts [data-lyx]', x => x.map(e => e.textContent.trim()));
-  await A.click('[data-lyx="rom"]'); await A.waitForSelector('#ly .ly-rom', { timeout: 8000 }).catch(() => {});
-  await A.click('[data-lyx="tr"]'); await A.waitForSelector('#ly .ly-tr', { timeout: 8000 }).catch(() => {});
+  await A.click('[data-lyx-toggle]'); await A.waitForTimeout(450);
+  const optNames = await A.$$eval('.ly-opts [data-lyx-mode]', x => x.map(e => e.textContent.trim()));
+  const segOpen = await A.evaluate(() => document.querySelector('.ly-seg').getBoundingClientRect().width);
+  await shot(A, 'lyrics-translate-open');
+  await A.click('[data-lyx-mode="rom"]'); await A.waitForSelector('#ly .ly-rom', { timeout: 8000 }).catch(() => {});
   await A.waitForTimeout(300);
-  const extras = await A.evaluate(() => [[...document.querySelectorAll('#ly .ly-rom')].map(e => e.textContent), [...document.querySelectorAll('#ly .ly-tr')].map(e => e.textContent)]);
+  const romOnly = await A.evaluate(() => [[...document.querySelectorAll('#ly .ly-rom')].map(e => e.textContent), document.querySelectorAll('#ly .ly-tr').length, !!document.querySelector('#ly .ly-line .ly-rom + .ly-t')]);
+  await A.waitForTimeout(700);
+  const folded = await A.evaluate(() => !document.querySelector('.ly-opts').classList.contains('open'));
+  await A.click('[data-lyx-toggle]'); await A.waitForTimeout(450);
+  await A.click('[data-lyx-mode="tr"]'); await A.waitForSelector('#ly .ly-tr', { timeout: 8000 }).catch(() => {});
+  await A.waitForTimeout(300);
+  const trOnly = await A.evaluate(() => [[...document.querySelectorAll('#ly .ly-tr')].map(e => e.textContent), document.querySelectorAll('#ly .ly-rom').length]);
   await shot(A, 'lyrics-extras');
-  check(optNames.join('|') === 'Romanization|Translation' && extras[0][0] === 'wǒ ài nǐ' && extras[0][1] === 'zān huā yǔ' && extras[1][0] === 'EN: 我爱你' && llmAsks.some(x => x.startsWith('You translate')),
-    'Chinese lyrics show pinyin and a translation under each line', JSON.stringify({ optNames, extras, llmAsks }));
-  await A.click('[data-lyx="rom"]'); await A.click('[data-lyx="tr"]'); await A.waitForTimeout(200);   // turn them off again for the tests that follow
+  check(optNames.join('|') === 'Off|Translation|Romanization' && segOpen > 150 && folded && romOnly[0][0] === 'wǒ ài nǐ' && romOnly[0][1] === 'zān huā yǔ' && romOnly[1] === 0 && romOnly[2] && trOnly[0][0] === 'EN: 我爱你' && trOnly[1] === 0 && llmAsks.some(x => x.startsWith('You translate')),
+    'the translate button opens into Off / Translation / Romanization; pinyin sits above each line, a translation below', JSON.stringify({ optNames, segOpen, folded, romOnly, trOnly, llmAsks }));
+  await A.waitForTimeout(800); await A.click('[data-lyx-toggle]'); await A.waitForTimeout(450); await A.click('[data-lyx-mode="off"]'); await A.waitForTimeout(200);   // off again for the tests that follow
   await A.keyboard.press('Escape'); await A.waitForTimeout(450);
 
   // --- the play queue floats under the search bar, lined up with it, and fades in and out
