@@ -969,6 +969,28 @@ try {
   await A.click('[data-lyx-toggle]'); await A.waitForTimeout(450); await A.click('[data-lyx-mode="off"]'); await A.waitForTimeout(200);   // off again for the tests that follow
   await A.keyboard.press('Escape'); await A.waitForTimeout(450);
 
+  // --- player bar: playback speed, a tall volume slider, and the quality of the file
+  await A.click('.nav-btn[data-nav="uploads"]'); await A.waitForTimeout(400);
+  await A.locator('#view .tr').first().locator('.t-name').click(); await A.waitForTimeout(1500);
+  await A.click('#spd-btn'); await A.waitForTimeout(300);
+  await A.evaluate(() => { const r = document.getElementById('spd'); r.value = 125; r.dispatchEvent(new Event('input', { bubbles: true })); });
+  await A.click('#spd-pitch + .sw'); await A.waitForTimeout(200);
+  const spd = await A.evaluate(() => [document.getElementById('spd-wrap').classList.contains('open'), document.getElementById('spd-lbl').textContent, document.getElementById('spd-btn').classList.contains('changed'), document.getElementById('spd-pitch').checked, JSON.parse(localStorage.getItem('allegro.speed'))]);
+  await shot(A, 'player-speed');
+  await A.click('#spd-reset'); await A.mouse.move(700, 300); await A.mouse.click(700, 300); await A.waitForTimeout(300);
+  await A.hover('#vol-btn'); await A.waitForTimeout(450);
+  const vt = await (await A.$('#vtrack')).boundingBox();
+  await A.mouse.click(vt.x + vt.width / 2, vt.y + vt.height * .75); await A.waitForTimeout(200);
+  const vol = await A.evaluate(() => [document.getElementById('vol-wrap').classList.contains('open'), +document.getElementById('vtrack').getAttribute('aria-valuenow')]);
+  await shot(A, 'player-volume');
+  await A.mouse.move(700, 300); await A.waitForTimeout(500);
+  await A.waitForSelector('#q-badge:not([hidden])', { timeout: 8000 }).catch(() => {});
+  const qb = await A.evaluate(() => document.getElementById('q-badge').hidden ? null : document.getElementById('q-badge').textContent);
+  check(spd[0] && spd[1] === '1.25x' && spd[2] && spd[3] === false && spd[4].rate === 1.25 && vol[0] && Math.abs(vol[1] - 25) <= 3 && /^MP3 \d+ kbps$/.test(qb || ''),
+    'the player bar has playback speed (with Preserve Pitch), a tall volume slider and the file quality', JSON.stringify({ spd, vol, qb }));
+  await A.evaluate(() => { const r = document.getElementById('spd'); }); await A.hover('#vol-btn'); await A.waitForTimeout(400);
+  { const v2 = await (await A.$('#vtrack')).boundingBox(); await A.mouse.click(v2.x + v2.width / 2, v2.y + v2.height * .2); } await A.mouse.move(700, 300); await A.waitForTimeout(300);
+
   // --- the play queue floats under the search bar, lined up with it, and fades in and out
   await A.locator('#view .tr').first().locator('.t-name').click(); await A.waitForTimeout(800);
   const mainW = await A.evaluate(() => document.getElementById('main').getBoundingClientRect().width);

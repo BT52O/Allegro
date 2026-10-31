@@ -492,9 +492,65 @@ body.touch-input .p-exp { display: none; }
 .prog { display: flex; align-items: center; gap: 10px; width: 100%; }
 .prog span { font: 400 .74rem var(--f-mono); color: var(--muted); font-variant-numeric: tabular-nums; min-width: 2.8em; }
 .prog span:first-child { text-align: right; }
-.p-right { display: flex; align-items: center; justify-content: flex-end; gap: 6px; min-width: 0; }
+.p-right { display: flex; align-items: center; justify-content: flex-end; gap: 12px; min-width: 0; }
 .p-right .cbtn.on::after { display: none; }
-.vol { width: 110px; flex: none; }
+/* right side of the player bar: speed, volume, the file's quality, queue, more */
+.pr-wrap { position: relative; display: flex; align-items: center; }
+.pr-btn { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; min-width: 40px; height: 44px; padding: 0 4px; border-radius: 8px; color: var(--muted); }
+.pr-btn:hover { color: var(--ink); }
+.pr-btn .ic { width: 20px; height: 20px; }
+.pr-btn span { font: 600 .66rem var(--f-body); font-variant-numeric: tabular-nums; }
+.spd-btn.changed { color: #2fbf71; }
+:root[data-theme="dark"] .spd-btn.changed, body.sheet-open .spd-btn.changed { color: #4ade80; }
+/* popups: white cards above the bar */
+.pr-pop { position: absolute; bottom: calc(100% + 14px); right: 50%; transform: translate(50%, 8px); z-index: 36; background: #fff; color: #111; border-radius: 14px;
+  box-shadow: 0 16px 40px -10px rgba(0, 0, 0, .3), 0 0 0 1px rgba(0, 0, 0, .07); opacity: 0; visibility: hidden; pointer-events: none;
+  transition: opacity .16s, transform .22s cubic-bezier(.2, .8, .2, 1), visibility 0s linear .22s; }
+.pr-wrap.open .pr-pop { opacity: 1; visibility: visible; pointer-events: auto; transform: translate(50%, 0); transition: opacity .16s, transform .22s cubic-bezier(.2, .8, .2, 1), visibility 0s; }
+.pr-pop::after { content: ""; position: absolute; left: 0; right: 0; top: 100%; height: 16px; }   /* keeps hover alive across the gap */
+/* playback speed */
+.spd-pop { width: 300px; padding: 16px 18px 14px; display: flex; flex-direction: column; gap: 14px; right: 0; transform: translate(0, 8px); }
+.pr-wrap.open .spd-pop { transform: none; }
+.spd-row { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.spd-title b { flex: 1; min-width: 0; font-size: .95rem; white-space: nowrap; }
+.spd-end { flex: none; width: 30px; font-size: .8rem; color: #666; font-variant-numeric: tabular-nums; }
+.spd-end:last-child { text-align: right; }
+.spd-pop input[type="range"] { flex: 1; min-width: 0; --ink: #111; --accent: #111; }
+.pr-chip { flex: none; font: 700 .68rem var(--f-body); letter-spacing: .03em; padding: 4px 8px; border-radius: 6px; background: #efefef; color: #111; font-variant-numeric: tabular-nums; }
+button.pr-chip:hover { background: #e2e2e2; }
+.spd-pitch { flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; font-size: .86rem; color: #222; cursor: pointer; white-space: nowrap; }
+.spd-pitch input { position: absolute; opacity: 0; pointer-events: none; }
+.spd-pitch .sw { width: 30px; height: 18px; border-radius: 999px; background: #d4d4d8; position: relative; transition: background-color .2s; flex: none; }
+.spd-pitch .sw::after { content: ""; position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; border-radius: 50%; background: #fff; box-shadow: 0 1px 2px rgba(0, 0, 0, .25); transition: transform .2s; }
+.spd-pitch input:checked + .sw { background: #2fbf71; }
+.spd-pitch input:checked + .sw::after { transform: translateX(12px); }
+.spd-pitch input:focus-visible + .sw { outline: 2px solid #111; outline-offset: 2px; }
+/* volume, after the picture: a tall card that reaches down around the speaker, holding a rounded slot that points
+   down at it; inside, a thin line fills from the bottom, with a flat bar to drag */
+#vol-wrap .vol-btn { position: relative; z-index: 37; }
+#vol-wrap.open .vol-btn { color: #111; }
+.vol-pop { bottom: -8px; width: 52px; height: 236px; padding: 14px 0 56px; display: flex; flex-direction: column; align-items: center; border-radius: 16px; }
+.vol-pct { height: 18px; font: 700 .72rem var(--f-body); color: #111; font-variant-numeric: tabular-nums; opacity: 0; transition: opacity .2s; }
+.vol-pop.showpct .vol-pct { opacity: 1; }
+.vslot { position: relative; flex: 1; width: 38px; margin-top: 4px; border-radius: 19px 19px 14px 14px; background: #ececee; }
+.vslot::after { content: ""; position: absolute; left: 50%; bottom: -8px; width: 16px; height: 16px; margin-left: -8px; background: #ececee; transform: rotate(45deg); border-radius: 3px; }
+.vtrack { position: absolute; left: 0; right: 0; top: 14px; bottom: 14px; cursor: pointer; touch-action: none; z-index: 1; }
+.vtrack:focus-visible { outline: 2px solid #111; outline-offset: 4px; border-radius: 6px; }
+.vtrack::before { content: ""; position: absolute; left: 50%; top: 0; bottom: 0; width: 4px; margin-left: -2px; border-radius: 2px; background: #cfcfd3; }
+.vtrack i { position: absolute; left: 50%; bottom: 0; width: 4px; margin-left: -2px; height: var(--v, 80%); border-radius: 2px; background: #111; }
+.vtrack b { position: absolute; left: 50%; bottom: var(--v, 80%); width: 18px; height: 5px; margin: 0 0 -2.5px -9px; border-radius: 3px; background: #111; }
+.q-badge { height: 34px; padding: 0 14px; border-radius: 999px; font: 700 .76rem var(--f-body); white-space: nowrap; background: #17171a; color: #e7e7ea; border: 1px solid rgba(255, 255, 255, .14); font-variant-numeric: tabular-nums; }
+.q-badge.lossless { color: #7fd8d0; border-color: rgba(127, 216, 208, .35); }
+.q-badge.hires { color: #f2c14e; border-color: rgba(242, 193, 78, .4); box-shadow: inset 0 0 12px rgba(242, 193, 78, .08); }
+.q-badge:hover { filter: brightness(1.15); }
+.qb-pop { width: 260px; padding: 16px 18px; right: 0; transform: translate(0, 8px); font-size: .85rem; }
+.pr-wrap.open .qb-pop { transform: none; }
+.qb-pop h4 { margin: 0 0 10px; font-size: .95rem; }
+.qb-pop dl { display: grid; grid-template-columns: auto 1fr; gap: 6px 14px; margin: 0; }
+.qb-pop dt { color: #666; }
+.qb-pop dd { margin: 0; text-align: right; font-variant-numeric: tabular-nums; }
+.qb-pop p { margin: 12px 0 0; color: #666; font-size: .78rem; line-height: 1.45; }
+@media (max-width: 1250px) { .q-badge { padding: 0 10px; font-size: .7rem; } }
 .p-mini-play, .p-mini-prog { display: none; }
 
 input[type="range"] { -webkit-appearance: none; appearance: none; flex: 1; min-width: 0; height: 20px; background: transparent; cursor: pointer; margin: 0; --pct: 0%; }
@@ -772,7 +828,7 @@ img { -webkit-user-drag: none; user-select: none; }
     height: 60px; margin: 0 8px; padding: 0 6px; border-radius: 10px; gap: 8px; grid-template-columns: minmax(0, 1fr) auto auto;
     background: color-mix(in srgb, rgb(var(--ptint, var(--tint-def))) 55%, var(--panel)); overflow: hidden;
   }
-  .p-center, .p-right .cbtn:not(.like-slot), .vol, .p-right .vol-btn { display: none; }
+  .p-center, .p-right .cbtn:not(.like-slot), .p-right .pr-wrap { display: none; }
   .p-right { display: contents; }
   .p-cover { width: 46px; height: 46px; border-radius: 5px; }
   .p-mini-play { display: grid; width: 44px; height: 44px; place-items: center; color: var(--ink); }
@@ -836,7 +892,7 @@ img { -webkit-user-drag: none; user-select: none; }
   .li.grid .li-art { width: 40px; }
   .queue-panel { width: 290px; }
   .player { grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr) auto; }
-  .vol { width: 80px; }
+  #qb-wrap { display: none; }
 }
 /* ---------- sign-in ---------- */
 .gate { position: fixed; inset: 0; z-index: 60; display: grid; place-items: center; background: var(--bg); padding: 24px max(16px, env(safe-area-inset-right, 0px)) 24px max(16px, env(safe-area-inset-left, 0px)); }
@@ -1285,9 +1341,24 @@ body.touch-input .has-pen::after { display: none; }
       <div class="prog"><span class="t-cur">0:00</span><input type="range" class="seek" id="seek" min="0" max="1000" value="0" aria-label="Song position"><span class="t-dur">0:00</span></div>
     </div>
     <div class="p-right">
+      <div class="pr-wrap" id="spd-wrap">
+        <button class="pr-btn spd-btn" id="spd-btn" aria-label="Playback speed" aria-haspopup="dialog" aria-expanded="false"><i data-ic="speed"></i><span id="spd-lbl" data-nt>1x</span></button>
+        <div class="pr-pop spd-pop" id="spd-pop" role="dialog" aria-label="Playback speed">
+          <div class="spd-row spd-title"><b>Playback Speed</b><span class="pr-chip" id="spd-val" data-nt>1.00x</span></div>
+          <div class="spd-row"><span class="spd-end">0.5x</span><input type="range" id="spd" min="50" max="200" step="5" value="100" aria-label="Playback speed"><span class="spd-end">2x</span></div>
+          <div class="spd-row"><label class="spd-pitch"><input type="checkbox" id="spd-pitch" checked><span class="sw" aria-hidden="true"></span><span>Preserve Pitch</span></label><button class="pr-chip" id="spd-reset" aria-label="Back to normal speed">1x</button></div>
+        </div>
+      </div>
+      <div class="pr-wrap" id="vol-wrap">
+        <button class="cbtn vol-btn" id="vol-btn" aria-label="Mute"><i data-ic="volume"></i></button>
+        <div class="pr-pop vol-pop" id="vol-pop"><span class="vol-pct" id="vol-pct" data-nt>80%</span><div class="vslot"><div class="vtrack" id="vtrack" role="slider" tabindex="0" aria-label="Volume" aria-valuemin="0" aria-valuemax="100" aria-valuenow="80"><i id="vfill"></i><b id="vknob"></b></div></div></div>
+      </div>
+      <div class="pr-wrap" id="qb-wrap">
+        <button class="q-badge" id="q-badge" hidden data-nt></button>
+        <div class="pr-pop qb-pop" id="qb-pop"></div>
+      </div>
       <button class="cbtn" data-act="queue" id="q-btn" aria-label="Queue" aria-pressed="false"><i data-ic="queue"></i></button>
-      <button class="cbtn vol-btn" id="vol-btn" aria-label="Mute"><i data-ic="volume"></i></button>
-      <input type="range" class="vol" id="vol" min="0" max="100" value="80" aria-label="Volume">
+      <button class="cbtn" id="p-more" aria-label="More options for this song"><i data-ic="more"></i></button>
     </div>
     <button class="p-mini-play" data-act="toggle" aria-label="Play"><i data-ic="play"></i></button>
     <div class="p-mini-prog" aria-hidden="true"><i id="mini-bar"></i></div>
@@ -1640,6 +1711,7 @@ const STROKE = {
   file: '<path d="M7 3.5h7l4 4v13H7z"/><path d="M14 3.5v4h4"/>',
   trash: '<path d="M5 7h14M10 7V4.8h4V7M7 7l1 13h8l1-13"/>',
   edit: '<path d="M4 20h4L19 9l-4-4L4 16z"/>',
+  speed: '<path d="M12 3.5a8.5 8.5 0 1 1-7.4 4.3"/><path d="M3.6 3.9 4.6 7.8 8.5 6.8"/><path d="M10.2 8.9v6.2l5-3.1z"/>',
   translate: '<path d="M2.5 2.5h10v8H8l-3 2.5v-2.5H2.5z"/><path d="M7.5 3.9v.9M5 4.8h5M5.6 4.8c.4 2 1.6 3.3 3.9 4M9.4 4.8c-.4 2-1.6 3.3-3.9 4"/><path d="M11.5 13.5h10v8h-2.5V24l-3-2.5h-4.5z"/><path d="M14.6 19.7l1.9-4.6 1.9 4.6M15.3 18.1h2.4"/><path d="M20.5 9c0-3-2.4-5.5-5.5-5.5M16.5 2l-1.5 1.5 1.5 1.5M3.5 15c0 3 2.4 5.5 5.5 5.5M7.5 19l1.5 1.5-1.5 1.5"/>',
   sparkle: '<path d="M12 3.5l1.9 5.1 5.1 1.9-5.1 1.9L12 17.5l-1.9-5.1L5 10.5l5.1-1.9z"/><path d="M18.5 15.5l.8 2.2 2.2.8-2.2.8-.8 2.2-.8-2.2-2.2-.8 2.2-.8z"/>',
   album: '<circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="2"/>',
@@ -5706,11 +5778,130 @@ $$('.seek').forEach(s => {
   s.addEventListener('input', () => { seeking = true; setPct(s); const d = audio.duration || tk(S.current)?.duration; if (d) $$('.t-cur').forEach(c => { c.textContent = fmt(s.value / 1000 * d); }); });
   s.addEventListener('change', () => { if (audio.duration) audio.currentTime = s.value / 1000 * audio.duration; seeking = false; });
 });
-const vol = $('#vol');
-vol.value = Math.round(S.volume * 100); setPct(vol);
-vol.addEventListener('input', () => { S.volume = vol.value / 100; S.muted = false; setPct(vol); applyVolume(); syncVolIcon(); save(); });
+/* ---- popups above the right side of the player bar: they open on hover, or on click/tap, and close when you move away ---- */
+function prPop(wrap, { hover = true } = {}) {
+  let t = 0;
+  const open = on => { clearTimeout(t); wrap.classList.toggle('open', on); const b = wrap.querySelector('[aria-expanded]'); if (b) b.setAttribute('aria-expanded', on); };
+  if (hover) {
+    wrap.addEventListener('pointerenter', e => { if (e.pointerType === 'mouse') { clearTimeout(t); t = setTimeout(() => open(true), 120); } });
+    wrap.addEventListener('pointerleave', e => { if (e.pointerType === 'mouse' && !wrap.classList.contains('dragging')) { clearTimeout(t); t = setTimeout(() => open(false), 260); } });
+  }
+  document.addEventListener('pointerdown', e => { if (!wrap.contains(e.target)) open(false); }, true);
+  return open;
+}
+// volume: a tall slider that pops up above the speaker
+const vtrack = $('#vtrack');
+let volPctT = 0;
+function drawVol(showPct) {
+  const v = S.muted ? 0 : Math.round(S.volume * 100);
+  vtrack.style.setProperty('--v', v + '%'); vtrack.setAttribute('aria-valuenow', v); $('#vol-pct').textContent = v + '%';
+  if (showPct) { const p = $('#vol-pop'); p.classList.add('showpct'); clearTimeout(volPctT); if (!$('#vol-wrap').classList.contains('dragging')) volPctT = setTimeout(() => p.classList.remove('showpct'), 900); }
+}
+function setVol(v) { S.volume = Math.max(0, Math.min(1, v)); S.muted = false; applyVolume(); syncVolIcon(); drawVol(true); save(); }
+drawVol();
+prPop($('#vol-wrap'));
+vtrack.addEventListener('pointerdown', e => {
+  e.preventDefault(); vtrack.setPointerCapture(e.pointerId); $('#vol-wrap').classList.add('dragging');
+  const at = ev => { const r = vtrack.getBoundingClientRect(); setVol((r.bottom - ev.clientY) / r.height); };
+  at(e);
+  const mv = ev => at(ev), up = () => { vtrack.removeEventListener('pointermove', mv); vtrack.removeEventListener('pointerup', up); vtrack.removeEventListener('pointercancel', up); $('#vol-wrap').classList.remove('dragging'); drawVol(true); };
+  vtrack.addEventListener('pointermove', mv); vtrack.addEventListener('pointerup', up); vtrack.addEventListener('pointercancel', up);
+});
+vtrack.addEventListener('keydown', e => { const k = { ArrowUp: .05, ArrowRight: .05, ArrowDown: -.05, ArrowLeft: -.05, PageUp: .2, PageDown: -.2 }[e.key]; if (k) { e.preventDefault(); setVol((S.muted ? 0 : S.volume) + k); } });
+$('#vol-wrap').addEventListener('wheel', e => { e.preventDefault(); setVol((S.muted ? 0 : S.volume) - Math.sign(e.deltaY) * .05); }, { passive: false });
 function syncVolIcon() { const b = $('#vol-btn'), m = S.muted || S.volume === 0; setIcon(b, m ? 'mute' : 'volume'); b.setAttribute('aria-label', m ? 'Unmute' : 'Mute'); }
-$('#vol-btn').addEventListener('click', () => { S.muted = !S.muted; applyVolume(); syncVolIcon(); });
+$('#vol-btn').addEventListener('click', () => { S.muted = !S.muted; applyVolume(); syncVolIcon(); drawVol(); });
+
+// playback speed, 0.5x to 2x, with or without keeping the pitch (turn it off for a Nightcore sound)
+const SPD = { rate: 1, pitch: true };
+try { Object.assign(SPD, JSON.parse(localStorage.getItem('allegro.speed') || '{}')); } catch (e) {}
+function applySpeed(save2) {
+  SPD.rate = Math.max(.5, Math.min(2, Math.round(SPD.rate * 100) / 100));
+  audio.defaultPlaybackRate = SPD.rate; audio.playbackRate = SPD.rate;
+  try { audio.preservesPitch = SPD.pitch; audio.mozPreservesPitch = SPD.pitch; audio.webkitPreservesPitch = SPD.pitch; } catch (e) {}
+  const lbl = SPD.rate === 1 ? '1x' : SPD.rate.toFixed(2).replace(/0$/, '') + 'x';
+  $('#spd-lbl').textContent = lbl; $('#spd-val').textContent = SPD.rate.toFixed(2) + 'x';
+  $('#spd-btn').classList.toggle('changed', SPD.rate !== 1);
+  const r = $('#spd'); r.value = Math.round(SPD.rate * 100); setPct(r);
+  $('#spd-pitch').checked = SPD.pitch;
+  if (save2) try { localStorage.setItem('allegro.speed', JSON.stringify(SPD)); } catch (e) {}
+}
+const openSpd = prPop($('#spd-wrap'), { hover: false });
+$('#spd-btn').addEventListener('click', () => openSpd(!$('#spd-wrap').classList.contains('open')));
+$('#spd').addEventListener('input', e => { let v = +e.target.value / 100; if (Math.abs(v - 1) < .03) v = 1; SPD.rate = v; applySpeed(true); });
+$('#spd-pitch').addEventListener('change', e => { SPD.pitch = e.target.checked; applySpeed(true); });
+$('#spd-reset').addEventListener('click', () => { SPD.rate = 1; applySpeed(true); });
+audio.addEventListener('loadedmetadata', () => { if (audio.playbackRate !== SPD.rate) applySpeed(false); });
+applySpeed(false);
+
+// the "..." at the end of the bar: the menu for the song that's playing
+$('#p-more').addEventListener('click', e => { if (S.current) trackMenu(e.currentTarget, S.current); });
+
+/* ---- the quality of the file that's playing, read from the start of the file itself ----
+   FLAC and WAV state their bit depth and sample rate; for MP3, AAC and Opus it shows the bitrate. */
+const QINFO = new Map();
+const MP3_KBPS = { 1: [0, 32, 40, 48, 56, 64, 80, 96, 112, 128, 160, 192, 224, 256, 320], 2: [0, 8, 16, 24, 32, 40, 48, 56, 64, 80, 96, 112, 128, 144, 160] };
+const MP3_RATE = { 3: [44100, 48000, 32000], 2: [22050, 24000, 16000], 0: [11025, 12000, 8000] };
+function parseAudioHead(u, total, dur, startAt = 0) {
+  const s4 = o => String.fromCharCode(u[o], u[o + 1], u[o + 2], u[o + 3]), le32 = o => u[o] | u[o + 1] << 8 | u[o + 2] << 16 | (u[o + 3] << 24 >>> 0), le16 = o => u[o] | u[o + 1] << 8;
+  const avg = () => dur > 0 ? Math.round(total * 8 / dur / 1000) : 0;
+  let off = startAt;
+  if (s4(0) === 'RIFF' && s4(8) === 'WAVE') {
+    for (let o = 12; o + 8 < u.length;) { const id = s4(o), n = le32(o + 4); if (id === 'fmt ') return { codec: 'WAV', lossless: true, rate: le32(o + 12), bits: le16(o + 22), ch: le16(o + 10) }; o += 8 + n + (n & 1); }
+    return { codec: 'WAV', lossless: true };
+  }
+  if (s4(0) === 'OggS') { const t = String.fromCharCode(...u.subarray(0, 120)); return { codec: t.includes('OpusHead') ? 'Opus' : t.includes('FLAC') ? 'FLAC' : 'Ogg Vorbis', lossless: t.includes('FLAC'), kbps: avg() }; }
+  if (s4(4) === 'ftyp') { const t = String.fromCharCode(...u.subarray(0, Math.min(u.length, 65536))); return t.includes('alac') ? { codec: 'ALAC', lossless: true, kbps: avg() } : { codec: 'AAC', kbps: avg() }; }
+  if (off === 0 && s4(0).slice(0, 3) === 'ID3') off = 10 + ((u[6] & 127) << 21 | (u[7] & 127) << 14 | (u[8] & 127) << 7 | (u[9] & 127)) + (u[5] & 16 ? 10 : 0);
+  if (off + 4 > u.length) return { need: off };
+  if (s4(off) === 'fLaC') { const p = off + 8; return { codec: 'FLAC', lossless: true, rate: (u[p + 10] << 12) | (u[p + 11] << 4) | (u[p + 12] >> 4), bits: (((u[p + 12] & 1) << 4) | (u[p + 13] >> 4)) + 1, ch: ((u[p + 12] >> 1) & 7) + 1 }; }
+  for (let o = off; o < Math.min(u.length - 4, off + 4096); o++) {
+    if (u[o] !== 0xFF || (u[o + 1] & 0xE0) !== 0xE0) continue;
+    const ver = (u[o + 1] >> 3) & 3, layer = (u[o + 1] >> 1) & 3, bi = u[o + 2] >> 4, ri = (u[o + 2] >> 2) & 3;
+    if (ver === 1 || layer !== 1 || bi === 0 || bi === 15 || ri === 3) continue;
+    const rate = MP3_RATE[ver][ri], head = String.fromCharCode(...u.subarray(o, Math.min(u.length, o + 200)));
+    const vbr = head.includes('Xing') || head.includes('VBRI');
+    return { codec: 'MP3', rate, kbps: vbr ? Math.round((total - off) * 8 / dur / 1000) || MP3_KBPS[ver === 3 ? 1 : 2][bi] : MP3_KBPS[ver === 3 ? 1 : 2][bi], vbr };
+  }
+  return { codec: '', kbps: avg() };
+}
+async function audioInfo(t) {
+  if (!t || t.kind === 'demo') return null;
+  if (QINFO.has(t.id)) return QINFO.get(t.id);
+  const p = (async () => {
+    const read = async (from, n) => {
+      if (t.kind === 'file' && t.rec && t.rec.blob) { const b = t.rec.blob; return { u: new Uint8Array(await b.slice(from, from + n).arrayBuffer()), total: b.size }; }
+      const r = await fetch(audioUrl(t.id), { credentials: 'same-origin', headers: { range: `bytes=${from}-${from + n - 1}` } });
+      if (!r.ok) throw new Error('read');
+      const cr = r.headers.get('content-range'), total = cr ? +cr.split('/')[1] : +(r.headers.get('content-length') || 0);
+      return { u: new Uint8Array(await r.arrayBuffer()), total };
+    };
+    let { u, total } = await read(0, 131072);
+    let info = parseAudioHead(u, total, t.duration || audio.duration || 0);
+    if (info.need) { const more = await read(info.need, 8192); const pad = new Uint8Array(info.need + more.u.length); pad.set(more.u, info.need); info = parseAudioHead(pad, total, t.duration || audio.duration || 0, info.need); }
+    info.size = total;
+    return info;
+  })().catch(() => null);
+  QINFO.set(t.id, p);
+  return p;
+}
+const khz = r => (r / 1000).toFixed(r % 1000 ? 1 : 0).replace(/\.0$/, '') + 'kHz';
+async function drawQuality() {
+  const b = $('#q-badge'), t = tk(S.current);
+  const info = await audioInfo(t);
+  if (tk(S.current) !== t) return;
+  if (!info || !(info.codec || info.kbps)) { b.hidden = true; return; }
+  const hires = info.lossless && ((info.bits || 16) > 16 || (info.rate || 44100) > 48000);
+  b.textContent = info.lossless && info.bits && info.rate ? `${info.bits}-bit ${khz(info.rate)}` : info.lossless ? info.codec : `${info.codec ? info.codec + ' ' : ''}${info.kbps ? info.kbps + ' kbps' : ''}`.trim();
+  b.className = 'q-badge' + (hires ? ' hires' : info.lossless ? ' lossless' : '');
+  b.hidden = false;
+  const tier = hires ? 'Hi-Res Lossless' : info.lossless ? 'Lossless (CD quality)' : (info.kbps || 0) >= 256 ? 'High (lossy)' : (info.kbps || 0) >= 160 ? 'Medium (lossy)' : 'Low (lossy)';
+  const row = (k, v) => v ? `<dt>${k}</dt><dd>${esc(String(v))}</dd>` : '';
+  $('#qb-pop').innerHTML = `<h4>${tier}</h4><dl>${row('Format', info.codec)}${row('Bit depth', info.bits && info.bits + '-bit')}${row('Sample rate', info.rate && khz(info.rate))}${row('Bitrate', info.kbps && (info.vbr ? 'about ' : '') + info.kbps + ' kbps')}${row('Channels', info.ch && (info.ch === 1 ? 'Mono' : info.ch === 2 ? 'Stereo' : info.ch))}${row('File size', info.size && (info.size / 1048576).toFixed(1) + ' MB')}</dl><p>Allegro plays your original file, so this is exactly what you hear.</p>`;
+}
+const openQb = prPop($('#qb-wrap'), { hover: false });
+$('#q-badge').addEventListener('click', () => openQb(!$('#qb-wrap').classList.contains('open')));
+audio.addEventListener('loadedmetadata', drawQuality);
 
 audio.addEventListener('play', syncPlayIcons);
 audio.addEventListener('playing', () => { if (pendingHistory && pendingHistory === S.current && audio.getAttribute('src') !== SILENT) { const id = pendingHistory; pendingHistory = null; recordPlay(id); } });
