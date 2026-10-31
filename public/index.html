@@ -598,12 +598,10 @@ input[type="range"]:disabled { opacity: .4; cursor: default; }
 .ly-line.side-c { align-self: center; text-align: center; }
 .ly-line.gap { font-size: 1.1rem; }
 .ly-t { display: block; position: relative; }
-.ly-line.on { color: rgba(255, 255, 255, .55); }
+.ly-line.on { color: #fff; text-shadow: 0 0 18px rgba(255, 255, 255, .5); }   /* the whole line being sung lights up and glows */
 /* the line being sung lights up word by word, following the words onto the next line when it wraps */
-.ly-line.on .ly-w { transition: color .22s ease-out, text-shadow .3s ease-out; }
-.ly-line.on .ly-w.lit { color: #fff; text-shadow: 0 0 16px rgba(255, 255, 255, .5); }   /* each sung word turns white and glows; nothing is clipped, so no edges show */
 /* lines already sung soften into a blur */
-.ly-line { transition: color .35s, filter .45s, opacity .2s; }
+.ly-line { transition: color .35s, text-shadow .45s, filter .45s, opacity .2s; }
 .ly-line.past { filter: blur(1.8px); }
 .ly-line.past:hover { filter: none; }
 .ly-singer { display: block; font-size: .74rem; font-weight: 700; letter-spacing: .03em; color: rgba(255, 255, 255, .5); margin-bottom: 4px; }
@@ -3848,23 +3846,10 @@ function lyrSync(force) {
   const els = $$('#ly .ly-line'); if (!els.length) return;
   if (i !== L.cur || force) {
     els.forEach((el, k) => el.classList.toggle('on', k === i));
-    if (L.cur >= 0 && els[L.cur]) els[L.cur].querySelectorAll('.ly-w.lit').forEach(w => w.classList.remove('lit'));
     els.forEach((el, k) => el.classList.toggle('past', i >= 0 && k < i));
-    L.cur = i; L.fill = null;
+    L.cur = i;
     const el = els[Math.max(0, i)], body = $('#sp-body');
     if (el && body && Date.now() - SP.userScroll > 2500) body.scrollTo({ top: el.offsetTop - body.clientHeight * .4 + el.offsetHeight / 2, behavior: force ? 'auto' : 'smooth' });
-  }
-  if (i >= 0 && els[i]) {
-    // fill word by word: words already sung are white, the current word fills from its left edge
-    if (!L.fill) { const spans = [...els[i].querySelectorAll('.ly-w')]; let c = 0; L.fill = { spans, at: spans.map(w => { const s0 = c; c += w.textContent.length; return s0; }), total: c, last: [] }; }
-    const F = L.fill, a = L.lines[i].t, b = (L.lines[i + 1] || { t: a + 4 }).t;
-    const span = Math.max(.4, Math.min(b - a, 1 + F.total * .12));   // sing time: up to the next line, but not stretched over a long pause
-    const done = Math.max(0, Math.min(1, (cur - a) / span)) * F.total;
-    F.spans.forEach((w, k) => {
-      const n = w.textContent.length || 1, v = Math.round(Math.max(0, Math.min(1, (done - F.at[k]) / n)) * 1000) / 10;
-      const lit = v >= 35;   // a word lights up once it's about a third sung
-      if (F.last[k] !== lit) { F.last[k] = lit; w.classList.toggle('lit', lit); }
-    });
   }
 }
 function lyrLoop() {

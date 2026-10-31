@@ -885,10 +885,10 @@ try {
   await A.waitForTimeout(1500);
   const ly = await A.evaluate(() => [...document.querySelectorAll('#ly .ly-line')].map(e => [e.textContent, e.className]));
   await shot(A, 'now-playing-lyrics');
-  await A.waitForFunction(() => document.querySelector('#ly .ly-line.on .ly-w.lit') && document.querySelector('#ly .ly-line.past'), null, { timeout: 8000 }).catch(() => {});   // timing varies on slower machines
+  await A.waitForFunction(() => document.querySelector('#ly .ly-line.on') && document.querySelector('#ly .ly-line.past'), null, { timeout: 8000 }).catch(() => {});   // timing varies on slower machines
   await A.click('#player [data-act="toggle"]'); await A.waitForTimeout(500);   // hold still so the color change has finished
-  const onVis = await A.evaluate(() => { const w = document.querySelector('#ly .ly-line.on .ly-w.lit'); if (!w) return null; const st = getComputedStyle(w); const past = document.querySelector('#ly .ly-line.past'); return [st.color, st.textShadow, past ? getComputedStyle(past).filter : '']; });
-  check(!!onVis && onVis[0] === 'rgb(255, 255, 255)' && /rgba\(255, 255, 255/.test(onVis[1]) && /blur/.test(onVis[2]), 'the line being sung lights up word by word with a soft glow; sung lines blur', JSON.stringify(onVis));
+  const onVis = await A.evaluate(() => { const w = document.querySelector('#ly .ly-line.on'); if (!w) return null; const st = getComputedStyle(w); const past = document.querySelector('#ly .ly-line.past'); return [st.color, st.textShadow, past ? getComputedStyle(past).filter : '']; });
+  check(!!onVis && onVis[0] === 'rgb(255, 255, 255)' && /rgba\(255, 255, 255/.test(onVis[1]) && /blur/.test(onVis[2]), 'the whole line being sung lights up with a soft glow; sung lines blur', JSON.stringify(onVis));
   await A.click('#player [data-act="toggle"]'); await A.waitForTimeout(200);
   check(ly.length === 5 && !/side/.test(ly[0][1]) && /side-1/.test(ly[2][1]) && ly[2][0].startsWith('Guest Singer') && /side-c/.test(ly[4][1]) && ly.some(l => / on/.test(l[1])), 'lyrics load with timing; a duet partner sings on the right, together lines in the middle', JSON.stringify(ly));
   check(lrclibAsks.some(x => x.startsWith('Allegro/')), 'lyrics are looked up on LRCLIB from the browser, naming Allegro', JSON.stringify(lrclibAsks.slice(0, 3)));
