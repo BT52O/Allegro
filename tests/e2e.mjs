@@ -877,7 +877,7 @@ try {
   const ly = await A.evaluate(() => [...document.querySelectorAll('#ly .ly-line')].map(e => [e.textContent, e.className]));
   await shot(A, 'now-playing-lyrics');
   const onVis = await A.evaluate(() => { const ws = [...document.querySelectorAll('#ly .ly-line.on .ly-w')]; if (!ws.length) return null; const st = getComputedStyle(ws[0], '::after'); return [st.content, st.color, st.textShadow, ws.map(w => w.style.getPropertyValue('--wp'))]; });
-  check(!!onVis && onVis[0].length > 2 && onVis[1] === 'rgb(255, 255, 255)' && onVis[2] === 'none' && onVis[3].some(v => parseFloat(v) > 0), 'the line being sung fills in white word by word, with no glow box', JSON.stringify(onVis));
+  check(!!onVis && onVis[0].length > 2 && onVis[1] === 'rgb(255, 255, 255)' && /rgba\(255, 255, 255/.test(onVis[2]) && onVis[3].some(v => parseFloat(v) > 0), 'the line being sung fills in white word by word, with a soft glow', JSON.stringify(onVis));
   check(ly.length === 5 && !/side/.test(ly[0][1]) && /side-1/.test(ly[2][1]) && ly[2][0].startsWith('Guest Singer') && /side-c/.test(ly[4][1]) && ly.some(l => / on/.test(l[1])), 'lyrics load with timing; a duet partner sings on the right, together lines in the middle', JSON.stringify(ly));
   check(lrclibAsks.some(x => x.startsWith('Allegro/')), 'lyrics are looked up on LRCLIB from the browser, naming Allegro', JSON.stringify(lrclibAsks.slice(0, 3)));
   await A.click('#ly .ly-line >> nth=3'); await A.waitForTimeout(400);

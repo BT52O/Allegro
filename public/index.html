@@ -540,7 +540,7 @@ input[type="range"]:disabled { opacity: .4; cursor: default; }
 .s-art.tilting .s-shine { transition: none; }
 @media (min-width: 760px) { .s-art::after { content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .14); } }
 /* Now Playing panel: Wiki, Lyrics, Comments */
-.s-panel { display: none; flex-direction: column; min-height: 0; border-radius: 24px; background: rgba(255, 255, 255, .1); -webkit-backdrop-filter: blur(24px); backdrop-filter: blur(24px); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .08); overflow: hidden; color: #fff; }
+.s-panel { position: relative; display: none; flex-direction: column; min-height: 0; border-radius: 24px; background: rgba(255, 255, 255, .1); -webkit-backdrop-filter: blur(24px); backdrop-filter: blur(24px); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .08); overflow: hidden; color: #fff; }
 .sp-tabs { display: inline-flex; align-self: flex-start; gap: 1px; margin: 12px 14px 0; padding: 3px; border-radius: 999px; background: rgba(0, 0, 0, .28); flex: none; }
 .sp-tab { height: 26px; padding: 0 12px; border-radius: 999px; color: rgba(255, 255, 255, .68); font-weight: 700; font-size: .78rem; transition: background-color .2s, color .2s; }
 .sp-tab:hover { color: #fff; }
@@ -550,7 +550,7 @@ input[type="range"]:disabled { opacity: .4; cursor: default; }
 .sp-queue .qrow { padding-left: 6px; }
 .sp-tab.on { background: rgba(255, 255, 255, .2); color: #fff; }
 .sp-body { flex: 1; min-height: 0; overflow-y: auto; padding: 20px 28px 28px; overscroll-behavior: contain; }
-.sp-body.lyr { -webkit-mask-image: linear-gradient(to bottom, transparent, #000 22px, #000 82%, transparent); mask-image: linear-gradient(to bottom, transparent, #000 22px, #000 82%, transparent); padding-top: 0; padding-bottom: 0; }
+.sp-body.lyr { padding-top: 0; padding-bottom: 0; }
 .sp-msg { color: rgba(255, 255, 255, .7); line-height: 1.6; }
 .ly-status { display: flex; align-items: center; gap: 8px; margin: 0 0 14px; font-size: .85rem; color: rgba(255, 255, 255, .72); }
 .ly-status .ic { width: 16px; height: 16px; flex: none; }
@@ -601,11 +601,13 @@ input[type="range"]:disabled { opacity: .4; cursor: default; }
 .ly-line.on { color: rgba(255, 255, 255, .55); }
 /* the line being sung fills with white word by word, following the words onto the next line when it wraps */
 .ly-w { position: relative; }
-.ly-line.on .ly-w::after { content: attr(data-text); position: absolute; left: 0; top: 0; color: #fff; white-space: pre; pointer-events: none; clip-path: inset(-.3em calc(100% - var(--wp, 0%)) -.3em 0); }
+.ly-line.on .ly-w::after { content: attr(data-text); position: absolute; left: 0; top: 0; color: #fff; white-space: pre; pointer-events: none; text-shadow: 0 0 14px rgba(255, 255, 255, .45), 0 0 2px rgba(255, 255, 255, .2); clip-path: inset(-1em var(--wr, 100%) -1em var(--wl, 0px)); }
 .ly-singer { display: block; font-size: .74rem; font-weight: 700; letter-spacing: .03em; color: rgba(255, 255, 255, .5); margin-bottom: 4px; }
 .ly.plain { padding: 8px 0 24px; gap: 14px; }
 .ly.plain .ly-line { color: rgba(255, 255, 255, .86); font-size: clamp(1.1rem, 1.6vw, 1.35rem); cursor: default; }
-.ly-tools { position: sticky; bottom: 0; display: flex; justify-content: flex-end; gap: 8px; padding: 0 0 18px; }
+.ly-tools { position: absolute; top: 12px; right: 14px; z-index: 2; display: flex; gap: 6px; }
+.ly-tools .sp-btn { height: 32px; padding: 0 12px; font-size: .8rem; gap: 6px; }
+.ly-tools .sp-btn .ic { width: 15px; height: 15px; }
 /* comments */
 .cm-head { margin: 0 0 14px; font: 800 1.3rem var(--f-display); }
 .cm-new { display: flex; flex-direction: column; gap: 10px; margin-bottom: 8px; }
@@ -3453,6 +3455,7 @@ function renderPanel() {
   if ($('#sheet').hidden) return;
   $$('[data-sp-tab]').forEach(b => { const on = b.dataset.spTab === spTab; b.classList.toggle('on', on); b.setAttribute('aria-selected', on); });
   const t = tk(S.current), body = $('#sp-body');
+  $$('#s-panel > .ly-tools').forEach(x => x.remove());
   body.classList.toggle('lyr', spTab === 'lyrics' && !SP.editLyr && !!(SP.lyr.lines && SP.lyr.lines.length));
   if (!t) { body.innerHTML = '<p class="sp-msg">Nothing Playing</p>'; return; }
   if (spTab === 'wiki') body.innerHTML = wikiHTML(t);
@@ -3460,8 +3463,9 @@ function renderPanel() {
   else if (spTab === 'lyrics') {
     if (SP.lyr.id !== t.id) loadLyrics(t);
     body.innerHTML = lyricsHTML(t);
+    const tl = body.querySelector('.ly-tools'); if (tl) $('#s-panel').appendChild(tl);   // Edit Lyrics and Sync sit in the panel's top-right corner
     body.classList.toggle('lyr', !SP.editLyr && !!(SP.lyr.lines && SP.lyr.lines.length));
-    SP.lyr.cur = -2; lyrSync(true); lyrLoop();
+    SP.lyr.cur = -2; lyrSync(true); lyrLoop(); lyFade();
   } else { if (SP.cm.id !== t.id) loadComments(t); body.innerHTML = commentsHTML(t); }
 }
 
@@ -3748,7 +3752,7 @@ function lyricsHTML(t) {
   const aiBtn = canEdit && !L.none && !L.syncing ? `<button class="sp-btn" data-ly-ai>${ic('sparkle')}<span>Sync</span></button>` : '';
   const tools = canEdit ? `<div class="ly-tools"><button class="sp-btn" data-ly-edit>${ic('edit')}<span>${L.none ? 'Add Lyrics' : 'Edit Lyrics'}</span></button>${aiBtn}</div>` : '';
   const status = L.syncing ? `<p class="ly-status">${ic('sparkle')}<span>Timing the lyrics to the song</span><span class="ly-dots" aria-hidden="true"><i>.</i><i>.</i><i>.</i></span></p>`
-    : L.syncErr ? `<p class="ly-status err">${esc(L.syncErr)}</p>` : L.aiTimed ? '<p class="ly-status">Timed by AI. If a line is off, try Sync again or adjust the time with Edit Lyrics.</p>' : '';
+    : L.syncErr ? `<p class="ly-status err">${esc(L.syncErr)}</p>` : '';
   if (L.none) return `<p class="sp-msg">${L.instrumental ? 'Instrumental' : 'No lyrics found for this song.'}</p>${canEdit && !L.instrumental ? '<p class="sp-hint">You can find the words on Genius and paste them in with Add Lyrics. Allegro times them to the song for you.</p>' : ''}${tools.replace('ly-tools', 'sp-actions').replace('</div>', geniusLink(t) + '</div>')}`;
   const singerTag = l => l.singer ? `<span class="ly-singer" data-nt>${esc(l.singer)}</span>` : '';
   const sideCls = l => l.side === 1 ? ' side-1' : l.side === 'c' ? ' side-c' : '';
@@ -3762,7 +3766,7 @@ function lyrSync(force) {
   const els = $$('#ly .ly-line'); if (!els.length) return;
   if (i !== L.cur || force) {
     els.forEach((el, k) => el.classList.toggle('on', k === i));
-    if (L.cur >= 0 && els[L.cur]) els[L.cur].querySelectorAll('.ly-w').forEach(w => w.style.removeProperty('--wp'));
+    if (L.cur >= 0 && els[L.cur]) els[L.cur].querySelectorAll('.ly-w').forEach(w => { w.style.removeProperty('--wp'); w.style.removeProperty('--wl'); w.style.removeProperty('--wr'); });
     L.cur = i; L.fill = null;
     const el = els[Math.max(0, i)], body = $('#sp-body');
     if (el && body && Date.now() - SP.userScroll > 2500) body.scrollTo({ top: el.offsetTop - body.clientHeight * .4 + el.offsetHeight / 2, behavior: force ? 'auto' : 'smooth' });
@@ -3775,7 +3779,12 @@ function lyrSync(force) {
     const done = Math.max(0, Math.min(1, (cur - a) / span)) * F.total;
     F.spans.forEach((w, k) => {
       const n = w.textContent.length || 1, v = Math.round(Math.max(0, Math.min(1, (done - F.at[k]) / n)) * 1000) / 10;
-      if (F.last[k] !== v) { F.last[k] = v; w.style.setProperty('--wp', v + '%'); }
+      if (F.last[k] !== v) {
+        F.last[k] = v; w.style.setProperty('--wp', v + '%');
+        // finished words let their glow spill past the edges; the word being sung is cut at the point reached
+        w.style.setProperty('--wl', v > 0 ? '-1em' : '0px');
+        w.style.setProperty('--wr', v >= 100 ? '-1em' : (100 - v) + '%');
+      }
     });
   }
 }
@@ -3855,6 +3864,16 @@ document.addEventListener('submit', async e => {
   catch (ex) { toast(`Couldn't post: ${ex.message}`); }
 });
 ['wheel', 'touchmove'].forEach(ev => $('#sp-body').addEventListener(ev, () => { SP.userScroll = Date.now(); }, { passive: true }));
+// Lyric lines fade out as they reach the top or bottom of the panel, instead of being cut off at the edge.
+function lyFade() {
+  const body = $('#sp-body'); if (!body.classList.contains('lyr')) return;
+  const B = body.getBoundingClientRect();
+  $$('#ly .ly-line').forEach(el => {
+    const r = el.getBoundingClientRect(), o = Math.max(0, Math.min(1, (r.top - B.top + r.height * .6) / 56, (B.bottom - r.bottom + r.height * .6) / 90));
+    el.style.opacity = o < 1 ? o.toFixed(2) : '';
+  });
+}
+$('#sp-body').addEventListener('scroll', lyFade, { passive: true });
 $('#s-ptoggle').addEventListener('click', e => {
   const s = $('#sheet'), on = !s.classList.contains('show-panel');
   s.classList.toggle('show-panel', on);
