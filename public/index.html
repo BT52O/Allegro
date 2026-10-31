@@ -537,7 +537,10 @@ input[type="range"]:disabled { opacity: .4; cursor: default; }
 .s-art.tilting { transition: box-shadow .5s; box-shadow: 0 46px 90px -30px rgba(0, 0, 0, .75); }
 .s-shine { position: absolute; inset: 0; pointer-events: none; opacity: 0; transition: opacity .45s; border-radius: inherit; }
 .s-art.tilting .s-shine { transition: none; }
-@media (min-width: 760px) { .s-art::after { content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .14); } }
+/* desktop: a hairline of light around the edge, and the lower part of the cover gently dimmed, as Tidal does
+   (measured from Tidal: no change down to the middle, about 8% darker at four fifths down, about 18% at the bottom) */
+@media (min-width: 760px) { .s-art::after { content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .14);
+  background: linear-gradient(to bottom, rgba(0, 0, 0, 0) 55%, rgba(0, 0, 0, .07) 80%, rgba(0, 0, 0, .17) 95%, rgba(0, 0, 0, .2) 100%); } }
 /* Now Playing panel: Wiki, Lyrics, Comments */
 /* No background blur on the panel: behind it is only a smooth gradient, and a blurred panel made Chrome draw visible
    boxes around the blurred and faded lyric lines inside it. */
