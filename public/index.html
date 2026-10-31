@@ -550,7 +550,7 @@ input[type="range"]:disabled { opacity: .4; cursor: default; }
 .sp-queue .qrow { padding-left: 6px; }
 .sp-tab.on { background: rgba(255, 255, 255, .2); color: #fff; }
 .sp-body { flex: 1; min-height: 0; overflow-y: auto; padding: 20px 28px 28px; overscroll-behavior: contain; }
-.sp-body.lyr { padding-top: 0; padding-bottom: 0; }
+.sp-body.lyr { padding-top: 0; padding-bottom: 0; margin-top: 18px; }
 .sp-msg { color: rgba(255, 255, 255, .7); line-height: 1.6; }
 .ly-status { display: flex; align-items: center; gap: 8px; margin: 0 0 14px; font-size: .85rem; color: rgba(255, 255, 255, .72); }
 .ly-status .ic { width: 16px; height: 16px; flex: none; }
@@ -599,9 +599,13 @@ input[type="range"]:disabled { opacity: .4; cursor: default; }
 .ly-line.gap { font-size: 1.1rem; }
 .ly-t { display: block; position: relative; }
 .ly-line.on { color: rgba(255, 255, 255, .55); }
-/* the line being sung fills with white word by word, following the words onto the next line when it wraps */
-.ly-w { position: relative; }
-.ly-line.on .ly-w::after { content: attr(data-text); position: absolute; left: 0; top: 0; color: #fff; white-space: pre; pointer-events: none; text-shadow: 0 0 14px rgba(255, 255, 255, .45), 0 0 2px rgba(255, 255, 255, .2); clip-path: inset(-1em var(--wr, 100%) -1em var(--wl, 0px)); }
+/* the line being sung lights up word by word, following the words onto the next line when it wraps */
+.ly-line.on .ly-w { transition: color .22s ease-out, text-shadow .3s ease-out; }
+.ly-line.on .ly-w.lit { color: #fff; text-shadow: 0 0 16px rgba(255, 255, 255, .5); }   /* each sung word turns white and glows; nothing is clipped, so no edges show */
+/* lines already sung soften into a blur */
+.ly-line { transition: color .35s, filter .45s, opacity .2s; }
+.ly-line.past { filter: blur(1.8px); }
+.ly-line.past:hover { filter: none; }
 .ly-singer { display: block; font-size: .74rem; font-weight: 700; letter-spacing: .03em; color: rgba(255, 255, 255, .5); margin-bottom: 4px; }
 .ly.plain { padding: 8px 0 24px; gap: 14px; }
 .ly.plain .ly-line { color: rgba(255, 255, 255, .86); font-size: clamp(1.1rem, 1.6vw, 1.35rem); cursor: default; }
@@ -3766,7 +3770,8 @@ function lyrSync(force) {
   const els = $$('#ly .ly-line'); if (!els.length) return;
   if (i !== L.cur || force) {
     els.forEach((el, k) => el.classList.toggle('on', k === i));
-    if (L.cur >= 0 && els[L.cur]) els[L.cur].querySelectorAll('.ly-w').forEach(w => { w.style.removeProperty('--wp'); w.style.removeProperty('--wl'); w.style.removeProperty('--wr'); });
+    if (L.cur >= 0 && els[L.cur]) els[L.cur].querySelectorAll('.ly-w.lit').forEach(w => w.classList.remove('lit'));
+    els.forEach((el, k) => el.classList.toggle('past', i >= 0 && k < i));
     L.cur = i; L.fill = null;
     const el = els[Math.max(0, i)], body = $('#sp-body');
     if (el && body && Date.now() - SP.userScroll > 2500) body.scrollTo({ top: el.offsetTop - body.clientHeight * .4 + el.offsetHeight / 2, behavior: force ? 'auto' : 'smooth' });
@@ -3779,12 +3784,8 @@ function lyrSync(force) {
     const done = Math.max(0, Math.min(1, (cur - a) / span)) * F.total;
     F.spans.forEach((w, k) => {
       const n = w.textContent.length || 1, v = Math.round(Math.max(0, Math.min(1, (done - F.at[k]) / n)) * 1000) / 10;
-      if (F.last[k] !== v) {
-        F.last[k] = v; w.style.setProperty('--wp', v + '%');
-        // finished words let their glow spill past the edges; the word being sung is cut at the point reached
-        w.style.setProperty('--wl', v > 0 ? '-1em' : '0px');
-        w.style.setProperty('--wr', v >= 100 ? '-1em' : (100 - v) + '%');
-      }
+      const lit = v >= 35;   // a word lights up once it's about a third sung
+      if (F.last[k] !== lit) { F.last[k] = lit; w.classList.toggle('lit', lit); }
     });
   }
 }
@@ -3869,7 +3870,7 @@ function lyFade() {
   const body = $('#sp-body'); if (!body.classList.contains('lyr')) return;
   const B = body.getBoundingClientRect();
   $$('#ly .ly-line').forEach(el => {
-    const r = el.getBoundingClientRect(), o = Math.max(0, Math.min(1, (r.top - B.top + r.height * .6) / 56, (B.bottom - r.bottom + r.height * .6) / 90));
+    const r = el.getBoundingClientRect(), o = Math.max(0, Math.min(1, (r.top - B.top) / 70, (B.bottom - r.bottom + r.height * .6) / 90));
     el.style.opacity = o < 1 ? o.toFixed(2) : '';
   });
 }
