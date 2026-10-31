@@ -275,7 +275,7 @@ try {
   data = await lib(A); plx = data.state.playlists.find(p => p.id === 'pl-example');
   check(spRows.join() === 'Untagged Song' && addedLabel === 'Added' && plx.ids.includes(untaggedId) && !!(await A.$(`#view .tl .tr[data-id="${untaggedId}"]`)), 'Add a Song finds songs and adds them to the playlist', JSON.stringify({ spRows, addedLabel, already }));
   await A.hover('#view .pl-break'); await A.click('#view .pl-break [data-break-more]'); await A.waitForTimeout(250);
-  await A.click('#menu .mi:has-text("Remove Page Break")'); await A.waitForTimeout(600);
+  await A.click('#menu .mi:has-text("Remove Page Break")'); await A.waitForTimeout(250); await A.click('#cf-yes'); await A.waitForTimeout(600);
   data = await lib(A); plx = data.state.playlists.find(p => p.id === 'pl-example');
   check(!plx.ids.some(x => x.startsWith('brk:')) && !(await A.$('#view .pl-break')), 'a page break can be removed');
 
@@ -438,15 +438,15 @@ try {
   }
   await A.click(`#view .card[data-open="folder:${sub.id}"]`); await A.waitForTimeout(500);
   await A.click('.folder-head [data-folder-more]'); await A.waitForTimeout(250);
-  await A.click('#menu .mi:has-text("Delete Folder")'); await A.waitForTimeout(700);
+  await A.click('#menu .mi:has-text("Delete Folder")'); await A.waitForTimeout(250); await A.click('#cf-yes'); await A.waitForTimeout(700);
   data = await lib(A);
   check(parentCards.includes('folder:' + sub.id) && data.state.folders.find(f => f.id === fd.id).ids.includes('pl-example') && (await A.textContent('#view h1')) === '华语', 'deleting a folder inside a folder moves what it held up a level', JSON.stringify(parentCards));
   await A.click(`#side-list [data-open="folder:${other.id}"]`); await A.waitForTimeout(500);
   await A.click('.folder-head [data-folder-more]'); await A.waitForTimeout(250);
-  await A.click('#menu .mi:has-text("Delete Folder")'); await A.waitForTimeout(600);
+  await A.click('#menu .mi:has-text("Delete Folder")'); await A.waitForTimeout(250); await A.click('#cf-yes'); await A.waitForTimeout(600);
   await A.click(`#side-list [data-open="folder:${fd.id}"]`); await A.waitForTimeout(500);
   await A.click('.folder-head [data-folder-more]'); await A.waitForTimeout(250);
-  await A.click('#menu .mi:has-text("Delete Folder")'); await A.waitForTimeout(600);
+  await A.click('#menu .mi:has-text("Delete Folder")'); await A.waitForTimeout(250); await A.click('#cf-yes'); await A.waitForTimeout(600);
   await A.click('#side-list [data-open="playlist:pl-example"]'); await A.waitForTimeout(500);
   await A.click('#side-list [data-open="playlist:' + madeId + '"]'); await A.waitForTimeout(500);
   check(cardsPerRow >= 1, 'folder page shows its playlists as cards', String(cardsPerRow));
@@ -677,7 +677,7 @@ try {
   const otherBlank = (await B.evaluate(async () => (await (await fetch('/api/library')).json()).state.artistPics.length)) === 1;
   check(!!pic && arImg && otherBlank, 'choosing an artist photo crops, saves online and shows it', JSON.stringify({ pic, arImg }));
   await A.click('.actions [data-ctx-more]'); await A.waitForTimeout(250);
-  await A.click('#menu .mi:has-text("Remove Artist Photo")'); await A.waitForTimeout(800);
+  await A.click('#menu .mi:has-text("Remove Artist Photo")'); await A.waitForTimeout(250); await A.click('#cf-yes'); await A.waitForTimeout(800);
   data = await lib(A);
   check(!(data.state.artistPics || []).some(x => x.name === 'Mock Artist') && !!(await A.$('.vhead .art .artist-ph')), 'an artist photo can be removed');
 
@@ -691,6 +691,13 @@ try {
   await A.click(`#view .tr[data-id="${tagged.id}"] .more`, { force: true }); await A.waitForTimeout(250);
   const songsMenu = await A.$$eval('#menu .mi', x => x.map(e => e.textContent.trim()));
   await A.keyboard.press('Escape');
+  // hovering Add to Playlist opens the playlists in a panel beside the menu
+  await A.click(`#view .tr[data-id="${tagged.id}"] .more`, { force: true }); await A.waitForTimeout(250);
+  await A.hover('#menu .mi:has-text("Add to Playlist")'); await A.waitForTimeout(450);
+  const fly = await A.evaluate(() => { const f = document.getElementById('menu-fly'); return f.hidden ? null : [f.querySelectorAll('.mi').length, f.querySelectorAll('.mf-art').length, f.querySelector('.m-title').textContent]; });
+  await shot(A, 'menu-fly');
+  await A.keyboard.press('Escape'); await A.waitForTimeout(150);
+  check(!!fly && fly[0] >= 2 && fly[1] >= 1 && fly[2] === 'Add to Playlist' && await A.evaluate(() => document.getElementById('menu-fly').hidden), 'hovering Add to Playlist shows your playlists beside the menu', JSON.stringify(fly));
   check(upMenu.includes('Edit Song') && !songsMenu.includes('Edit Song'), 'Edit Song is in the menu only in Uploads');
 
   // --- column picker at the left of the list header: each list keeps its own columns, saved online
@@ -762,8 +769,10 @@ try {
   await B.click('.tab[data-nav=library]'); await B.click('[data-chip="songs"]'); await B.waitForTimeout(400);
   const victim = (await lib(B)).songs.find(s => s.title === 'Untagged Song').id;
   await B.click(`.tr[data-id="${victim}"] .more`, { force: true }); await B.waitForTimeout(300);
-  await B.click('.mi.danger'); await B.waitForTimeout(9500);
-  check(!(await lib(B)).songs.some(s => s.id === victim), 'removing a song deletes it online');
+  await B.click('.mi.danger'); await B.waitForTimeout(300);
+  const askTxt = await B.evaluate(() => !document.getElementById('cf-dlg').hidden && document.getElementById('cf-title').textContent);
+  await B.click('#cf-yes'); await B.waitForTimeout(17000);
+  check(!!askTxt && askTxt.startsWith('Delete') && !(await lib(B)).songs.some(s => s.id === victim), 'removing a song asks first, then deletes it online once Undo has run out', String(askTxt));
 
   // --- no drag-and-drop uploading: dropping a file on the page does nothing
   const songsBefore = (await lib(A)).songs.length;

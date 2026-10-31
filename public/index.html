@@ -688,6 +688,17 @@ input[type="range"]:disabled { opacity: .4; cursor: default; }
 .mi.danger { color: #b3261e; }
 .mi.danger .ic { color: #b3261e; }
 .mi.sel { font-weight: 700; }
+.mi.fly-on { background: var(--hover); }
+.menu-fly { z-index: 41; min-width: 240px; max-height: min(440px, calc(100vh - 16px)); animation: fly-in .18s cubic-bezier(.2, .8, .2, 1); }
+.menu-fly.from-left { animation-name: fly-in-l; }
+@keyframes fly-in { from { opacity: 0; transform: translateX(-8px) scale(.98); } }
+@keyframes fly-in-l { from { opacity: 0; transform: translateX(8px) scale(.98); } }
+.menu-fly .mi.with-art { padding: 6px 12px 6px 8px; }
+.mi .mf-art { width: 36px; height: 36px; border-radius: 5px; overflow: hidden; flex: none; }
+.mf-art img, .mf-art .mosaic, .mf-art .liked-art { width: 100%; height: 100%; object-fit: cover; display: block; }
+.menu-fly .mi small { display: block; font-size: .76rem; color: var(--muted); margin-top: 2px; }
+.menu-fly .mi.with-art > span:last-child { display: flex; flex-direction: column; }
+@media (prefers-reduced-motion: reduce) { .menu-fly { animation: none; } }
 .mi.sel .ic { color: var(--ink); order: 2; margin-left: auto; }
 .m-views { display: grid; grid-template-columns: repeat(2, 1fr); gap: 4px; margin: 2px 8px 8px; padding: 4px; border-radius: 8px; background: var(--chip); }
 .mv { height: 40px; display: grid; place-items: center; border-radius: 6px; color: var(--muted); }
@@ -871,6 +882,12 @@ img { -webkit-user-drag: none; user-select: none; }
 .pe-fields textarea:focus { outline: 2px solid var(--ink); outline-offset: 1px; background: var(--panel); }
 .pe-note { margin: 0; font-size: .8rem; color: var(--muted); }
 .modal-foot { display: flex; justify-content: flex-end; }
+/* "Are you sure?" before anything is deleted */
+.cf-modal { width: min(100%, 400px); gap: 10px; }
+.cf-modal h2 { margin: 0; font: 700 1.2rem var(--f-display); }
+.cf-modal p { margin: 0 0 6px; color: var(--muted); line-height: 1.5; }
+.cf-foot { gap: 10px; }
+.btn.danger { background: #c62828; color: #fff; }
 .modal .gate-err { min-height: 0; }
 .vhead.editable .art { cursor: pointer; }
 @keyframes fade-in { from { opacity: 0; } }
@@ -1321,6 +1338,13 @@ body.touch-input .has-pen::after { display: none; }
     <div class="modal-foot"><button type="button" class="btn" id="fk-done">Done</button></div>
   </div>
 </div>
+<div class="modal-scrim" id="cf-dlg" hidden>
+  <div class="modal cf-modal" role="alertdialog" aria-modal="true" aria-labelledby="cf-title" aria-describedby="cf-body">
+    <h2 id="cf-title"></h2>
+    <p id="cf-body"></p>
+    <div class="modal-foot cf-foot"><button class="btn ghost" type="button" id="cf-no">Cancel</button><button class="btn danger" type="button" id="cf-yes">Delete</button></div>
+  </div>
+</div>
 <div class="modal-scrim" id="fd-edit" hidden>
   <form class="modal fd-modal" id="fd-edit-form" role="dialog" aria-modal="true" aria-labelledby="fd-title" novalidate>
     <div class="modal-head"><h2 id="fd-title">Create Folder</h2><button type="button" class="circ" id="fd-close" aria-label="Close"><i data-ic="close"></i></button></div>
@@ -1370,6 +1394,7 @@ body.touch-input .has-pen::after { display: none; }
 </div>
 <div class="menu-scrim" id="menu-scrim" hidden></div>
 <div class="menu" id="menu" hidden role="menu"></div>
+<div class="menu menu-fly" id="menu-fly" hidden role="menu"></div>
 <div class="toast" id="toast" role="status" aria-live="polite"><span id="toast-msg"></span><button id="toast-act" hidden></button></div>
 <input type="file" id="file-input" class="sr-only" accept="audio/*,.mp3,.m4a,.aac,.wav,.flac,.ogg,.opus" multiple tabindex="-1" aria-hidden="true">
 <input type="file" id="folder-input" class="sr-only" webkitdirectory multiple tabindex="-1" aria-hidden="true">
@@ -1455,7 +1480,7 @@ const I18N = [
   ['Open now playing', '打开正在播放', '開啟正在播放'], ['Close now playing', '关闭正在播放', '關閉正在播放'], ['Show queue', '显示播放队列', '顯示播放佇列'], ['Go back', '后退', '上一頁'], ['Go forward', '前进', '下一頁'],
   ['More options', '更多选项', '更多選項'], ['Playlist options', '歌单选项', '歌單選項'], ['Folder options', '文件夹选项', '資料夾選項'], ['Page break options', '分段选项', '分段選項'], ['Add a song or page break', '添加歌曲或分段', '加入歌曲或分段'], ['Add to this folder', '添加到此文件夹', '加入此資料夾'],
   ['Collapse Sidebar', '收起侧边栏', '收合側邊欄'], ['Expand Sidebar', '展开侧边栏', '展開側邊欄'], ['Song position', '播放进度', '播放進度'], ['Zoom', '缩放', '縮放'], ['Start an Empty One', '新建一个空歌单', '新增一個空歌單'], ['Player', '播放器', '播放器'],
-  ['Wiki', '百科', '百科'], ['Lyrics', '歌词', '歌詞'], ['Comments', '评论', '評論'], ['Singer', '歌手', '歌手'], ['Timing the lyrics to the song', '正在把歌词和歌曲对齐', '正在把歌詞和歌曲對齊'], ['Find on Genius', '在 Genius 上查找', '在 Genius 上查找'], ['You can find the words on Genius and paste them in with Add Lyrics. Allegro times them to the song for you.', '你可以在 Genius 上找到歌词，用“添加歌词”粘贴进来，Allegro 会自动把它和歌曲对齐。', '你可以在 Genius 上找到歌詞，用「加入歌詞」貼上，Allegro 會自動把它和歌曲對齊。'], ['Credits', '制作', '製作'], ['Lyricist', '作词', '作詞'], ['Composer', '作曲', '作曲'],
+  ['Wiki', '百科', '百科'], ['Lyrics', '歌词', '歌詞'], ['Comments', '评论', '評論'], ['Singer', '歌手', '歌手'], ['Timing the lyrics to the song', '正在把歌词和歌曲对齐', '正在把歌詞和歌曲對齊'], ['Cancel', '取消', '取消'], ['Delete', '删除', '刪除'], ['Remove', '移除', '移除'], ['Delete this comment?', '删除这条评论？', '刪除這則評論？'], ['The comment will be deleted.', '这条评论将被删除。', '這則評論將被刪除。'], ['The photo will be deleted.', '这张图片将被删除。', '這張圖片將被刪除。'], ['The playlist will be deleted. The songs stay in your library.', '歌单将被删除，歌曲仍保留在你的音乐库中。', '歌單將被刪除，歌曲仍保留在你的音樂庫中。'], ['The song will be removed from your library and every playlist, and its file deleted.', '这首歌将从音乐库和所有歌单中移除，文件也会被删除。', '這首歌將從音樂庫和所有歌單中移除，檔案也會被刪除。'], ['The page break will be removed. The songs stay in the playlist.', '分段将被移除，歌曲仍保留在歌单中。', '分段將被移除，歌曲仍保留在歌單中。'], ['Find on Genius', '在 Genius 上查找', '在 Genius 上查找'], ['You can find the words on Genius and paste them in with Add Lyrics. Allegro times them to the song for you.', '你可以在 Genius 上找到歌词，用“添加歌词”粘贴进来，Allegro 会自动把它和歌曲对齐。', '你可以在 Genius 上找到歌詞，用「加入歌詞」貼上，Allegro 會自動把它和歌曲對齊。'], ['Credits', '制作', '製作'], ['Lyricist', '作词', '作詞'], ['Composer', '作曲', '作曲'],
   ['About This Song', '关于这首歌', '關於這首歌'], ['In Liked Songs', '已在喜欢的歌曲中', '已在喜歡的歌曲中'], ['Looking for lyrics…', '正在查找歌词…', '正在尋找歌詞…'], ['No lyrics found for this song.', '没有找到这首歌的歌词。', '沒有找到這首歌的歌詞。'],
   ['Instrumental', '纯音乐', '純音樂'], ['Add Lyrics', '添加歌词', '加入歌詞'], ['Sync', '同步', '同步'], ['Add Lyrics Myself', '自己添加歌词', '自己加入歌詞'], ['Edit Lyrics', '编辑歌词', '編輯歌詞'], ['Search Online Again', '重新在线查找', '重新線上尋找'], ['Lyrics saved', '歌词已保存', '歌詞已儲存'],
   ["Paste the lyrics. Put a time like [01:23.45] at the start of a line to make it light up with the song. For a duet, start a line with the singer's name and a colon (Name: …), and their lines go on their own side.", '粘贴歌词。在行首加上 [01:23.45] 这样的时间，歌词就会随歌曲高亮。对唱时，在行首写上歌手名字和冒号（名字：…），他们的歌词会显示在各自的一侧。', '貼上歌詞。在行首加上 [01:23.45] 這樣的時間，歌詞就會隨歌曲亮起。對唱時，在行首寫上歌手名字和冒號（名字：…），他們的歌詞會顯示在各自的一側。'],
@@ -1619,6 +1644,22 @@ const uid = p => p + Date.now().toString(36) + Math.random().toString(36).slice(
 const setPct = el => el.style.setProperty('--pct', ((el.value - el.min) / (el.max - el.min) * 100) + '%');
 
 let toastTimer;
+// Asks before deleting. Resolves true only if Delete is pressed (Enter also confirms; Escape, Cancel or a click outside cancel).
+let cfDone = null;
+function askDelete(title, body, yes = 'Delete') {
+  if (cfDone) cfDone(false);
+  closeMenu();
+  $('#cf-title').textContent = tr(title); $('#cf-body').textContent = tr(body); $('#cf-yes').textContent = tr(yes);
+  $('#cf-dlg').hidden = false;
+  const back = document.activeElement;
+  setTimeout(() => $('#cf-yes').focus(), 30);
+  return new Promise(res => { cfDone = v => { cfDone = null; $('#cf-dlg').hidden = true; try { back && back.focus && back.focus({ preventScroll: true }); } catch (e) {} res(v); }; });
+}
+$('#cf-yes').addEventListener('click', () => cfDone && cfDone(true));
+$('#cf-no').addEventListener('click', () => cfDone && cfDone(false));
+$('#cf-dlg').addEventListener('click', e => { if (e.target.id === 'cf-dlg' && cfDone) cfDone(false); });
+document.addEventListener('keydown', e => { if (!cfDone) return; if (e.key === 'Escape') { e.preventDefault(); e.stopImmediatePropagation(); cfDone(false); } }, true);
+const UNDO_MS = 15000;   // how long Undo stays available after deleting something
 function toast(msg, action) {
   $('#toast-msg').textContent = msg;
   const b = $('#toast-act');
@@ -1626,7 +1667,7 @@ function toast(msg, action) {
   else { b.hidden = true; b.onclick = null; }
   $('#toast').classList.add('show');
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => $('#toast').classList.remove('show'), action ? 6000 : 3200);
+  toastTimer = setTimeout(() => $('#toast').classList.remove('show'), action ? UNDO_MS : 3200);
 }
 
 /* ================= state ================= */
@@ -2942,17 +2983,48 @@ function drawMenu(items, title) {
     : `<button class="mi${it.danger ? ' danger' : ''}" data-mi="${i}" role="menuitem">${ic(it.icon || 'music')}<span>${esc(it.label)}</span>${it.sub ? ic('fwd') : ''}</button>`).join('');
 }
 function closeMenu() {
+  closeFly();
   $('#menu').removeAttribute('style'); menuPlace = null;
   $('#menu').hidden = true; $('#menu-scrim').hidden = true;
   $$('.tr.menu-open').forEach(r => r.classList.remove('menu-open'));
   $$('.col-btn[aria-expanded="true"]').forEach(b => b.setAttribute('aria-expanded', 'false'));
   menuItems = null; menuAnchor = null;
 }
+/* Hovering an item with more choices (Add to Playlist, Move to Folder) opens them in a panel beside the menu.
+   Clicking the item still opens them in place, which is how it works on phones. */
+let flyItems = null, flyFor = -1, flyT = 0;
+function closeFly() { clearTimeout(flyT); flyItems = null; flyFor = -1; const f = $('#menu-fly'); f.hidden = true; f.innerHTML = ''; $$('#menu .mi.fly-on').forEach(x => x.classList.remove('fly-on')); }
+function openFly(mi) {
+  const i = +mi.dataset.mi, it = menuItems && menuItems[i]; if (!it || !it.sub) return;
+  if (flyFor === i && !$('#menu-fly').hidden) return;
+  closeFly(); flyFor = i; flyItems = it.sub(); mi.classList.add('fly-on');
+  const f = $('#menu-fly');
+  f.innerHTML = `<div class="m-title">${esc(tr(it.label))}</div>` + flyItems.map((x, k) => x.sep ? '<div class="m-sep"></div>'
+    : `<button class="mi${x.art ? ' with-art' : ''}" data-mf="${k}" role="menuitem">${x.art ? `<span class="mf-art">${x.art}</span>` : ic(x.icon || 'music')}<span>${esc(x.label)}${x.note ? `<small>${esc(x.note)}</small>` : ''}</span></button>`).join('');
+  f.hidden = false;
+  const M = $('#menu').getBoundingClientRect(), r = mi.getBoundingClientRect(), w = f.offsetWidth, h = f.offsetHeight;
+  const right = M.right + 6 + w <= innerWidth - 8;
+  f.classList.toggle('from-left', !right);
+  f.style.left = (right ? M.right + 6 : Math.max(8, M.left - 6 - w)) + 'px';
+  f.style.top = Math.max(8, Math.min(r.top - 6, innerHeight - h - 8)) + 'px';
+}
+$('#menu').addEventListener('pointerover', e => {
+  if (e.pointerType !== 'mouse' || $('#menu').classList.contains('as-sheet')) return;
+  const mi = e.target.closest('.mi[data-mi]'); if (!mi) return;
+  const it = menuItems && menuItems[+mi.dataset.mi]; clearTimeout(flyT);
+  if (it && it.sub) flyT = setTimeout(() => openFly(mi), 110);
+  else if (flyFor >= 0) flyT = setTimeout(closeFly, 220);
+});
+$('#menu-fly').addEventListener('pointerenter', () => clearTimeout(flyT));
+$('#menu-fly').addEventListener('click', e => {
+  const b = e.target.closest('[data-mf]'); if (!b || !flyItems) return;
+  const x = flyItems[+b.dataset.mf]; closeMenu(); x && x.fn && x.fn();
+});
 function playlistSub(ids) {
   return () => [
     { label: 'New Playlist', icon: 'plus', fn: () => newPlaylist(ids, p => toast(`Added to ${p.name}`, { label: 'Open', fn: () => openKey('playlist:' + p.id) })) },
     ...(S.playlists.length ? [{ sep: true }] : []),
-    ...S.playlists.map(p => ({ label: p.name, icon: 'list', fn: () => {
+    ...S.playlists.map(p => ({ label: p.name, icon: 'list', art: plArt(p), note: plural(live(p.ids).length, 'song'), fn: () => {
       const fresh = ids.filter(id => !p.ids.includes(id));
       if (!fresh.length) { toast(`Already in ${p.name}`); return; }
       p.ids.unshift(...fresh); save(); renderSide();   // new songs go to the top of the playlist
@@ -2974,8 +3046,9 @@ function trackMenu(anchor, id, listInfo) {
     { label: 'Go to Album', icon: 'album', fn: () => go({ name: 'album', key: t.albumKey }) }
   ];
   if (listInfo && listInfo.ctx && listInfo.ctx.key === 'uploads' && t.kind === 'cloud' && cloud.canWrite) items.unshift({ label: 'Edit Song', icon: 'edit', fn: () => editSong(id) }, { sep: true });
-  if (listInfo && listInfo.playlist) items.push({ sep: true }, { label: 'Remove from This Playlist', icon: 'trash', fn: () => {
+  if (listInfo && listInfo.playlist) items.push({ sep: true }, { label: 'Remove from This Playlist', icon: 'trash', fn: async () => {
     const p = S.playlists.find(x => x.id === listInfo.playlist); if (!p) return;
+    if (!(await askDelete(`Remove ${t.title}?`, `The song will be taken out of ${p.name}. It stays in your library.`, 'Remove'))) return;
     const idx = p.ids.indexOf(id); if (idx < 0) return;
     p.ids.splice(idx, 1); save(); render(); renderSide();
     toast(`Removed from ${p.name}`, { label: 'Undo', fn: () => { p.ids.splice(idx, 0, id); save(); render(); } });
@@ -3026,13 +3099,15 @@ function commitRename() {
   if (p) { const v = inp.value.trim(); if (v) p.name = v; save(); if (S.context && S.context.key === 'playlist:' + p.id) S.context.name = p.name; }
   render();
 }
-function deletePlaylist(id) {
+async function deletePlaylist(id) {
+  const idx0 = S.playlists.findIndex(p => p.id === id); if (idx0 < 0) return;
+  if (!(await askDelete(`Delete ${S.playlists[idx0].name}?`, 'The playlist will be deleted. The songs stay in your library.'))) return;
   const idx = S.playlists.findIndex(p => p.id === id); if (idx < 0) return;
   const [p] = S.playlists.splice(idx, 1);
   S.recent = S.recent.filter(k => k !== 'playlist:' + id); save();
   if (S.view.name === 'playlist' && S.view.key === id) { S.view = { name: 'library', tab: 'playlists' }; render(true); } else { render(); }
   let undone = false;
-  if (p.cover) setTimeout(() => { if (!undone && cloud.canWrite) fetch('/api/playlist-cover/' + encodeURIComponent(p.id), { method: 'DELETE', credentials: 'same-origin' }).catch(() => {}); }, 8000);
+  if (p.cover) setTimeout(() => { if (!undone && cloud.canWrite) fetch('/api/playlist-cover/' + encodeURIComponent(p.id), { method: 'DELETE', credentials: 'same-origin' }).catch(() => {}); }, UNDO_MS + 1000);
   toast(`Deleted ${p.name}`, { label: 'Undo', fn: () => { undone = true; S.playlists.splice(idx, 0, p); save(); render(); renderSide(); } });
 }
 
@@ -3185,7 +3260,9 @@ function folderMenu(anchor, id) {
     { label: 'Delete Folder', icon: 'trash', danger: true, fn: () => deleteFolder(f.id) }
   ], f.name);
 }
-function deleteFolder(id) {
+async function deleteFolder(id) {
+  const f0 = S.folders.find(f => f.id === id); if (!f0) return;
+  if (!(await askDelete(`Delete ${f0.name}?`, `The folder will be deleted. What's inside moves to ${parentOf(id) ? parentOf(id).name : 'My Playlists'}.`))) return;
   const idx = S.folders.findIndex(f => f.id === id); if (idx < 0) return;
   // what was inside moves up one level: into the parent folder, or back to My Playlists
   const parent = parentOf(id), pAt = parent ? parent.ids.indexOf(id) : -1, before = parent ? parent.ids.slice() : null;
@@ -3212,9 +3289,10 @@ function breakMenu(anchor, plId, bid) {
   openMenu(anchor, [
     { label: 'Rename or Move', icon: 'edit', fn: () => openBreakDialog(plId, bid) },
     { sep: true },
-    { label: 'Remove Page Break', icon: 'trash', danger: true, fn: () => {
-      const at = p.ids.indexOf('brk:' + bid); if (at < 0) return;
+    { label: 'Remove Page Break', icon: 'trash', danger: true, fn: async () => {
       const name = breakName(p, bid);
+      if (!(await askDelete(`Remove ${name}?`, 'The page break will be removed. The songs stay in the playlist.', 'Remove'))) return;
+      const at = p.ids.indexOf('brk:' + bid); if (at < 0) return;
       p.ids.splice(at, 1); userActed = true; save(); render();
       toast(`Removed ${name}`, { label: 'Undo', fn: () => { p.ids.splice(at, 0, 'brk:' + bid); save(); render(); } });
     } }
@@ -3833,7 +3911,7 @@ document.addEventListener('click', async e => {
   if (e.target.closest('[data-ly-ai]')) { SP.lyr.syncErr = null; aiSyncLyrics(t); return; }
   if (e.target.closest('[data-ly-cancel]')) { SP.editLyr = false; renderPanel(); return; }
   if (e.target.closest('[data-ly-retry]')) { SP.lyr = { id: null }; renderPanel(); return; }
-  if (e.target.closest('[data-ly-reset]')) { try { await api('lyrics/' + encodeURIComponent(t.id), { method: 'DELETE' }); } catch (ex) {} SP.editLyr = false; SP.lyr = { id: null }; renderPanel(); return; }
+  if (e.target.closest('[data-ly-reset]')) { if (!(await askDelete('Delete your saved lyrics?', 'Your saved lyrics for this song will be deleted and Allegro will look them up online again.'))) return; try { await api('lyrics/' + encodeURIComponent(t.id), { method: 'DELETE' }); } catch (ex) {} SP.editLyr = false; SP.lyr = { id: null }; renderPanel(); return; }
   if (e.target.closest('[data-ly-save]')) {
     const text = $('#ly-edit').value, timed = /\[\d+:\d+/.test(text);
     try {
@@ -3853,6 +3931,7 @@ document.addEventListener('click', async e => {
   }
   const dl = e.target.closest('[data-cm-del]');
   if (dl && SP.cm.list) {
+    if (!(await askDelete('Delete this comment?', 'The comment will be deleted.'))) return;
     SP.cm.list = SP.cm.list.filter(x => String(x.id) !== dl.dataset.cmDel); renderPanel();
     api(`comments/${encodeURIComponent(t.id)}/${dl.dataset.cmDel}`, { method: 'DELETE' }).then(() => toast('Comment deleted'), () => { SP.cm = { id: null }; renderPanel(); });
   }
@@ -4705,7 +4784,9 @@ $('#ar-file').addEventListener('change', async e => {
   userActed = true; save(); rebuild(); render(); renderSide();
   toast(`New photo for ${name}`);
 });
-function removeArtistPhoto(name) {
+async function removeArtistPhoto(name) {
+  if (!artistPic(name)) return;
+  if (!(await askDelete(`Remove the photo for ${name}?`, 'The photo will be deleted.', 'Remove'))) return;
   const old = artistPic(name); if (!old) return;
   S.artistPics = S.artistPics.filter(x => x.name !== name);
   userActed = true; save(); rebuild(); render();
@@ -4948,9 +5029,11 @@ function sendDelete(id) {
     .catch(() => toast("Couldn't finish removing that song. It may come back; remove it again."));
 }
 window.addEventListener('pagehide', () => { [...pendingDeletes].forEach(sendDelete); });
-function removeTrack(id) {
+async function removeTrack(id) {
   const t = tk(id);
   if (!t || !(t.kind === 'file' || (t.kind === 'cloud' && cloud.canWrite))) return;
+  if (!(await askDelete(`Delete ${t.title}?`, 'The song will be removed from your library and every playlist, and its file deleted.'))) return;
+  if (!tk(id)) return;
   const likedAt = S.liked.indexOf(id), inPl = S.playlists.map(p => [p, p.ids.indexOf(id)]).filter(x => x[1] >= 0);
   if (likedAt >= 0) S.liked.splice(likedAt, 1);
   inPl.forEach(([p, i]) => p.ids.splice(i, 1));
@@ -4958,7 +5041,7 @@ function removeTrack(id) {
   let undone = false, finalize;
   if (t.kind === 'file') { idbDel(id); finalize = () => { try { URL.revokeObjectURL(t.url); } catch (e) {} }; }
   else { pendingDeletes.add(id); finalize = () => sendDelete(id); }
-  const timer = setTimeout(() => { if (!undone) finalize(); }, 8000);
+  const timer = setTimeout(() => { if (!undone) finalize(); }, UNDO_MS + 1000);
   rebuild(); save(); render(); renderQueue(); renderSide();
   toast(`Removed ${t.title}`, { label: 'Undo', fn: async () => {
     undone = true; clearTimeout(timer);
@@ -5216,7 +5299,8 @@ document.addEventListener('click', e => {
   if (mi) {
     const it = menuItems && menuItems[+mi.dataset.mi]; if (!it) return;
     if (it.back) { const prevItems = menuStack.pop(); drawMenu(prevItems.items, prevItems.title); placeMenu(true); return; }
-    if (it.sub) { menuStack.push({ items: menuItems, title: $('#menu .m-title')?.textContent }); drawMenu([{ label: 'Back', icon: 'back', back: true }, { sep: true }, ...it.sub()], it.label); placeMenu(true); return; }
+    if (it.sub && flyFor === +mi.dataset.mi && !$('#menu-fly').hidden) return;
+    if (it.sub) { closeFly(); menuStack.push({ items: menuItems, title: $('#menu .m-title')?.textContent }); drawMenu([{ label: 'Back', icon: 'back', back: true }, { sep: true }, ...it.sub()], it.label); placeMenu(true); return; }
     closeMenu(); it.fn(); return;
   }
   if (T.closest('#menu-scrim')) { closeMenu(); return; }
