@@ -564,9 +564,9 @@ try {
 
   // --- clicking the page you are already on refreshes it
   await A.click('.nav-btn[data-nav="home"]'); await A.waitForTimeout(500);
-  await A.evaluate(() => { window.__marker = document.querySelector('#view h1'); });
+  await A.evaluate(() => { window.__marker = document.querySelector('#view .home-tabs'); });
   await A.click('.nav-btn[data-nav="home"]'); await A.waitForTimeout(600);
-  check(await A.evaluate(() => window.__marker !== document.querySelector('#view h1') && document.querySelector('#view').classList.contains('enter-fwd')), 'clicking the current page refreshes it');
+  check(await A.evaluate(() => window.__marker !== document.querySelector('#view .home-tabs') && document.querySelector('#view').classList.contains('enter-fwd')), 'clicking the current page refreshes it');
   await A.hover('.logo'); await A.waitForTimeout(300);
   check(await A.$eval('.logo', e => getComputedStyle(e).backgroundColor === 'rgba(0, 0, 0, 0)'), 'the Allegro logo has no hover shading');
 
@@ -674,7 +674,7 @@ try {
   const arPen = await A.$eval('.vhead .art [data-artist-pen]', e => getComputedStyle(e).opacity === '1').catch(() => false);
   const noLabel = !(await A.$('.vhead .eyebrow'));
   const fromFont = await A.$eval('.s-from .eyebrow', e => [getComputedStyle(e).fontFamily, getComputedStyle(e).textTransform]);
-  check(noLabel && fromFont[0].startsWith('Onest') && fromFont[1] === 'none', 'page headers have no type label, and Playing From uses the site font', JSON.stringify(fromFont));
+  check(noLabel && fromFont[0].startsWith('Roboto') && fromFont[1] === 'none', 'page headers have no type label, and Playing From uses the site font', JSON.stringify(fromFont));
   check(blankCard && arDim && arPen, 'artists start blank, and the artist picture dims and shows a pen on hover', JSON.stringify([blankCard, arDim, arPen]));
   const arChooser = A.waitForEvent('filechooser');
   await A.click('.vhead .art [data-artist-pen]');
@@ -741,7 +741,7 @@ try {
   check(colOpts.join('|') === 'Song Cover|Title|Artist|Album|Date Released|Duration' && stillOpen && colsLeft && menuInPanel, 'column menu sits left of # and lists Song Cover, Title, Artist, Album, Date Released and Duration (no BPM or Key)', JSON.stringify(colOpts));
   check(upAlbums === 0 && !upHead.includes('Album') && durCells === 0 && !(await A.$('#view .tl-head .c-dur')), 'checked columns show and unchecked ones hide', JSON.stringify({ upHead, durCells, upAlbums }));
   const fonts = await A.evaluate(() => { const d = document.querySelector('#view .tr .c-dur') || document.querySelector('.prog span'), a = document.querySelector('#view .tr .c-added'); return [getComputedStyle(d).fontFamily, getComputedStyle(a).fontFamily]; });
-  check(fonts[0] === fonts[1] && fonts[0].startsWith('Onest'), 'durations use the same font as the rest of the row', JSON.stringify(fonts));
+  check(fonts[0] === fonts[1] && fonts[0].startsWith('Roboto'), 'durations use the same font as the rest of the row', JSON.stringify(fonts));
   check(relHead && relCells.includes('Feb. 2, 2021') && relCells.includes('Jan. 1, 2019'), 'the date column shows when each song was released', JSON.stringify(relCells));
   await A.click('.nav-btn[data-nav="library"]'); await A.waitForTimeout(400); await A.click('[data-chip="songs"]'); await A.waitForTimeout(300);
   const libCols = [await A.$$eval('#view .tr .c-album', x => x.length), !!(await A.$('#view .tr .c-dur'))];
@@ -1014,6 +1014,19 @@ try {
   await A.waitForTimeout(450);
   const qGone = await A.evaluate(() => [getComputedStyle(document.getElementById('queue-panel')).opacity, getComputedStyle(document.getElementById('queue-panel')).visibility, document.getElementById('queue-panel').inert]);
   check(qOut[0] > 0 && qOut[1] === 'visible' && qGone.join() === '0,hidden,true', 'closing the queue fades it out smoothly', JSON.stringify([qOut, qGone]));
+
+  // --- Home has tabs (Home, New Releases, Charts, Podcasts) in place of the greeting; the font is Roboto Medium
+  await A.click('.nav-btn[data-nav="home"]'); await A.waitForTimeout(400);
+  const tabsTxt = await A.$$eval('.home-tabs .ht', x => x.map(e => e.textContent));
+  const font = await A.evaluate(() => { const st = getComputedStyle(document.body); return [st.fontFamily.split(',')[0], st.fontWeight, st.fontSize, !document.querySelector('#view .greet')]; });
+  await A.click('[data-home-tab="charts"]'); await A.waitForTimeout(400);
+  const charts = await A.evaluate(() => [[...document.querySelectorAll('#view .sec-head h2')].map(e => e.textContent), document.querySelectorAll('#view .tr').length, document.querySelector('.ht.on').textContent]);
+  await shot(A, 'home-charts');
+  await A.click('[data-home-tab="new"]'); await A.waitForTimeout(400);
+  const fresh = await A.evaluate(() => [[...document.querySelectorAll('#view .sec-head h2')].map(e => e.textContent), document.querySelectorAll('#view .tr').length]);
+  await A.click('[data-home-tab="home"]'); await A.waitForTimeout(300);
+  check(tabsTxt.join('|') === 'Home|New Releases|Charts|Podcasts' && /Roboto/.test(font[0]) && font[1] === '500' && font[2] === '14px' && font[3] && charts[0].includes('Top Songs of All Time') && charts[1] > 0 && charts[2] === 'Charts' && fresh[0].includes('Newest Songs') && fresh[1] > 0,
+    'Home has New Releases, Charts and Podcasts tabs instead of the greeting; the font is Roboto Medium at 14px', JSON.stringify({ tabsTxt, font, charts, fresh }));
 
   // --- nothing is reachable without a session
   const anon = await (await browser.newContext()).newPage();

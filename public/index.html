@@ -16,7 +16,7 @@
 <title>Allegro</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600;700;800&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700;900&display=swap">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Music&text=%F0%9D%84%9E&display=swap">
 <style>
 /* Layout: app shell. Sidebar | scrolling main | optional queue, with the player bar across the bottom. Phones swap the sidebar for a tab bar. */
@@ -37,9 +37,9 @@
   --tint-def: 170 170 170;
   --scrim: rgba(0, 0, 0, .38);
   --shadow: 0 14px 40px -14px rgba(0, 0, 0, .3);
-  --f-display: 'Onest', 'Avenir Next', system-ui, sans-serif;
+  --f-display: 'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
   --f-nav: var(--f-display);
-  --f-body: 'Onest', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  --f-body: 'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
   --f-mono: var(--f-body);   /* numbers (durations, times, track numbers) use the same font as everything else */
   --f-clef: 'Noto Music', 'Apple Symbols', 'Segoe UI Symbol', 'Bravura Text', serif;
   color-scheme: light;
@@ -59,11 +59,11 @@
 [data-theme="dark"] .pl-pen { background: rgba(30, 30, 33, .92); color: #f1f1f2; } [data-theme="dark"] .pl-pen:hover { background: #2a2a2e; }
 [data-theme="dark"] .switch i { background: #111; } [data-theme="dark"] .switch:not(.on) i { background: #f1f1f2; }
 [data-theme="dark"] .vh-item.on { box-shadow: 0 1px 4px rgba(0, 0, 0, .4), inset 3px 0 0 var(--ink); }
-html { height: 100%; box-sizing: border-box; }
+html { height: 100%; box-sizing: border-box; font-size: 15px; }   /* everything sized in rem comes down a step, closer to Tidal */
 *, *::before, *::after { box-sizing: border-box; }
 body {
   height: 100%; overflow: hidden; background: var(--bg); color: var(--ink);
-  font: 15px/1.45 var(--f-body); -webkit-font-smoothing: antialiased; -webkit-tap-highlight-color: transparent;
+  font: 500 14px/1.45 var(--f-body); -webkit-font-smoothing: antialiased;   /* Roboto Medium at 14px, like Tidal */ -webkit-tap-highlight-color: transparent;
 }
 button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; }
 input { font: inherit; color: inherit; }
@@ -195,6 +195,16 @@ body.is-playing .li.grid.playing .spk { display: grid; }
   transition: background .4s;
 }
 #view > :not(.view-bg) { position: relative; z-index: 1; }
+/* Home's tabs: plain words, the current one underlined in red */
+.home-tabs { display: flex; gap: 30px; margin: 2px 0 -6px; overflow-x: auto; scrollbar-width: none; }
+.home-tabs::-webkit-scrollbar { display: none; }
+.ht { position: relative; padding: 6px 0 12px; font: 500 1rem var(--f-body); color: var(--ink); white-space: nowrap; opacity: .9; }
+.ht:hover { opacity: 1; }
+.ht.on { color: color-mix(in srgb, var(--ink) 80%, var(--panel)); }
+.ht.on::after { content: ""; position: absolute; left: 0; right: 0; bottom: 2px; height: 3px; border-radius: 3px; background: #e8304a; box-shadow: 0 0 6px rgba(232, 48, 74, .55), 0 2px 14px rgba(232, 48, 74, .4); }
+/* a soft red haze rising from the underline behind the word, as in the reference */
+.ht.on::before { content: ""; position: absolute; left: -10%; right: -10%; bottom: -4px; height: 70%; border-radius: 50%; background: radial-gradient(ellipse at 50% 85%, rgba(232, 48, 74, .22), rgba(232, 48, 74, 0) 70%); filter: blur(6px); pointer-events: none; z-index: -1; }
+.ht { isolation: isolate; }
 .greet { margin: 4px 0 0; font: 800 clamp(1.8rem, 4.6cqi, 2.6rem)/1.05 var(--f-display); letter-spacing: -.03em; text-wrap: balance; }
 .sec { display: flex; flex-direction: column; gap: 10px; }
 .sec-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
@@ -1525,7 +1535,7 @@ let LANG = 'en';
 try { LANG = localStorage.getItem('allegro.lang') || 'en'; } catch (e) {}
 if (!LANGS.some(l => l[0] === LANG)) LANG = 'en';
 const I18N = [
-  ['Home', '首页', '首頁'], ['Explore', '探索', '探索'], ['My Library', '我的音乐库', '我的音樂庫'], ['Uploads', '上传', '上傳'],
+  ['Home', '首页', '首頁'], ['New Releases', '新歌', '新歌'], ['Charts', '排行榜', '排行榜'], ['Podcasts', '播客', '播客'], ['Latest Albums & Singles', '最新专辑与单曲', '最新專輯與單曲'], ['Newest Songs', '最新歌曲', '最新歌曲'], ['Top Songs This Month', '本月热门歌曲', '本月熱門歌曲'], ['Top Artists', '热门艺人', '熱門藝人'], ['Top Songs of All Time', '历来热门歌曲', '歷來熱門歌曲'], ['No podcasts yet', '还没有播客', '還沒有播客'], ["Podcasts aren't available in Allegro yet.", 'Allegro 暂时还不支持播客。', 'Allegro 暫時還不支援播客。'], ['No charts yet', '还没有排行榜', '還沒有排行榜'], ['Play some music and your most-played songs and artists will show up here.', '播放一些音乐后，你最常听的歌曲和艺人会显示在这里。', '播放一些音樂後，你最常聽的歌曲和藝人會顯示在這裡。'], ['Nothing dated yet', '还没有带日期的歌曲', '還沒有帶日期的歌曲'], ['Explore', '探索', '探索'], ['My Library', '我的音乐库', '我的音樂庫'], ['Uploads', '上传', '上傳'],
   ['My Playlists', '我的歌单', '我的歌單'], ['Create', '新建', '新增'], ['Create a Playlist or Folder', '新建歌单或文件夹', '新增歌單或資料夾'],
   ['Playlist', '歌单', '歌單'], ['Folder', '文件夹', '資料夾'], ['Playlists', '歌单', '歌單'], ['Albums', '专辑', '專輯'], ['Artists', '艺人', '藝人'], ['Songs', '歌曲', '歌曲'],
   ['Album', '专辑', '專輯'], ['Artist', '艺人', '藝人'], ['Title', '标题', '標題'], ['Date Released', '发行日期', '發行日期'], ['Duration', '时长', '時長'], ['Song Cover', '歌曲封面', '歌曲封面'],
@@ -1711,6 +1721,7 @@ const STROKE = {
   file: '<path d="M7 3.5h7l4 4v13H7z"/><path d="M14 3.5v4h4"/>',
   trash: '<path d="M5 7h14M10 7V4.8h4V7M7 7l1 13h8l1-13"/>',
   edit: '<path d="M4 20h4L19 9l-4-4L4 16z"/>',
+  mic: '<rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21M8.5 21h7"/>',
   speed: '<path d="M12 3.5a8.5 8.5 0 1 1-7.4 4.3"/><path d="M3.6 3.9 4.6 7.8 8.5 6.8"/><path d="M10.2 8.9v6.2l5-3.1z"/>',
   translate: '<path d="M2.5 2.5h10v8H8l-3 2.5v-2.5H2.5z"/><path d="M7.5 3.9v.9M5 4.8h5M5.6 4.8c.4 2 1.6 3.3 3.9 4M9.4 4.8c-.4 2-1.6 3.3-3.9 4"/><path d="M11.5 13.5h10v8h-2.5V24l-3-2.5h-4.5z"/><path d="M14.6 19.7l1.9-4.6 1.9 4.6M15.3 18.1h2.4"/><path d="M20.5 9c0-3-2.4-5.5-5.5-5.5M16.5 2l-1.5 1.5 1.5 1.5M3.5 15c0 3 2.4 5.5 5.5 5.5M7.5 19l1.5 1.5-1.5 1.5"/>',
   sparkle: '<path d="M12 3.5l1.9 5.1 5.1 1.9-5.1 1.9L12 17.5l-1.9-5.1L5 10.5l5.1-1.9z"/><path d="M18.5 15.5l.8 2.2 2.2.8-2.2.8-.8 2.2-.8-2.2-2.2-.8 2.2-.8z"/>',
@@ -2680,6 +2691,31 @@ function homeRows() {
   return shelf('shelf-recent', 'Recently Played', pl, { empty: 'Playlists you play will show up here.' })
     + shelf('shelf-history', 'Track History', al, { viewAll: 'history', empty: 'Albums, singles and EPs you play will show up here.' });
 }
+/* ---- Home's tabs: Home, New Releases, Charts, Podcasts (from your own library) ---- */
+const HOME_TABS = [['home', 'Home'], ['new', 'New Releases'], ['charts', 'Charts'], ['podcasts', 'Podcasts']];
+const relKey = t => t.released || (t.year ? t.year + '-00-00' : '');
+function homeNew() {
+  // newest releases first, by the release date on each song (or its year)
+  const songs = [...S.tracks.values()].filter(relKey).sort((a, b) => relKey(b).localeCompare(relKey(a)));
+  const albums = [...IDX.albums.values()].map(a => ({ a, rel: a.ids.map(id => relKey(tk(id))).sort().pop() || '' })).filter(x => x.rel).sort((x, y) => y.rel.localeCompare(x.rel)).map(x => x.a);
+  if (!songs.length) return '<div class="empty"><h3>Nothing dated yet</h3><p>Songs show up here once they have a release date. Add one in Edit Song, or use Find Info Online.</p></div>';
+  return `${albums.length ? `<section class="sec"><div class="sec-head"><h2>Latest Albums & Singles</h2></div><div class="cards">${albums.slice(0, 10).map(albumCard).join('')}</div></section>` : ''}
+    <section class="sec"><div class="sec-head"><h2>Newest Songs</h2></div>${trackList(songs.slice(0, 50).map(t => t.id), { key: 'new-releases', name: 'New Releases' })}</section>`;
+}
+function homeCharts() {
+  // your most-played songs and artists, over the last 30 days and of all time
+  const since = Date.now() - 30 * 864e5, count = (from) => { const m = new Map(); for (const h of S.history) if (h.at >= from && S.tracks.has(h.id)) m.set(h.id, (m.get(h.id) || 0) + 1); return m; };
+  const month = count(since), ever = count(0);
+  const top = m => [...m.entries()].sort((a, b) => b[1] - a[1]).slice(0, 50).map(x => x[0]);
+  const ranks = ids => ({ nums: ids.map((_, i) => i + 1) });
+  const artists = new Map(); for (const [id, n] of ever) { const a = tk(id).artist; artists.set(a, (artists.get(a) || 0) + n); }
+  const topArtists = [...artists.entries()].sort((a, b) => b[1] - a[1]).map(x => IDX.artists.get(x[0])).filter(Boolean).slice(0, 10);
+  if (!ever.size) return '<div class="empty"><h3>No charts yet</h3><p>Play some music and your most-played songs and artists will show up here.</p></div>';
+  const m = top(month), e = top(ever);
+  return `${m.length ? `<section class="sec"><div class="sec-head"><h2>Top Songs This Month</h2></div>${trackList(m, { key: 'charts-month', name: 'Top Songs This Month' }, ranks(m))}</section>` : ''}
+    ${topArtists.length ? `<section class="sec"><div class="sec-head"><h2>Top Artists</h2></div><div class="cards">${topArtists.map(artistCard).join('')}</div></section>` : ''}
+    <section class="sec"><div class="sec-head"><h2>Top Songs of All Time</h2></div>${trackList(e, { key: 'charts-all', name: 'Top Songs of All Time' }, ranks(e))}</section>`;
+}
 function refreshHomeRows() {
   const box = $('#home-rows'); if (!box) return;
   box.innerHTML = homeRows(); syncShelves(); syncPlayIcons();
@@ -2745,7 +2781,7 @@ function greeting(h) {
   return G === GREETINGS ? titleCase(pool[seed % pool.length]) : pool[seed % pool.length];
 }
 const VIEWS = {
-  home() {
+  home(v = S.view) {
     const h = new Date().getHours();
     const greet = greeting(h);
     const keys = ['liked'];
@@ -2754,7 +2790,12 @@ const VIEWS = {
     const recentIds = [...S.tracks.keys()].sort((a, b) => tk(b).added - tk(a).added).slice(0, 5);
     const where = cloud.canWrite ? 'Songs you add are saved to your Allegro library online, so they play on any device where you sign in.' : 'Songs you add are saved in this browser.';
     const callout = (fileCount() ? '' : `<div class="callout"><div class="callout-ic">${ic('music')}</div><div><h3>Bring Your Own Music</h3><p>Everything here now is a generated demo. Upload your MP3s from Uploads in the menu. ${where}</p></div><button class="btn" data-action="add">${ic('upload')}Add Music</button></div>`) + localBanner();
-    return `<h1 class="greet">${greet}</h1>
+    const tab = HOME_TABS.some(x => x[0] === v.tab) ? v.tab : 'home';
+    const tabs = `<nav class="home-tabs" role="tablist" aria-label="Home">${HOME_TABS.map(([k, l]) => `<button class="ht${k === tab ? ' on' : ''}" data-home-tab="${k}" role="tab" aria-selected="${k === tab}">${l}</button>`).join('')}</nav>`;
+    if (tab === 'new') return tabs + homeNew();
+    if (tab === 'charts') return tabs + homeCharts();
+    if (tab === 'podcasts') return tabs + `<div class="empty">${ic('mic')}<h3>No podcasts yet</h3><p>Podcasts aren't available in Allegro yet.</p></div>`;
+    return `${tabs}
       <div id="home-rows" class="home-rows">${homeRows()}</div>
       ${callout}
       <section class="sec"><div class="sec-head"><h2>Recently Added</h2><button class="link sm" data-open="library:songs">Show All</button></div>${trackList(recentIds, { key: 'library', name: 'Recently Added' }, { noHead: true })}</section>`;
@@ -5709,6 +5750,7 @@ document.addEventListener('click', e => {
     if (row.dataset.id === S.current) { toggle(); return; }
     playIds(L.ids, +row.dataset.i, L.ctx); return;
   }
+  const htab = T.closest('[data-home-tab]'); if (htab) { const k = htab.dataset.homeTab; if (S.view.name !== 'home' || (S.view.tab || 'home') !== k) go({ name: 'home', tab: k }); return; }
   const chip = T.closest('[data-chip]'); if (chip) { S.libTab = chip.dataset.chip; save(); S.view = { name: 'library', tab: S.libTab }; render(); return; }
   const ac = T.closest('[data-action]');
   if (ac) { if (ac.dataset.action === 'add') addMenu(ac); else if (ac.dataset.action === 'create') createMenu(ac); else if (ac.dataset.action === 'new-pl') newPlaylist(); else if (ac.dataset.action === 'upload-local') uploadLocal(ac); else if (ac.dataset.action === 'fill-info') fillMissingInfo(ac); return; }
