@@ -964,8 +964,17 @@ try {
   await shot(A, 'lyrics-extras');
   await A.waitForTimeout(1900);
   const folded = await A.evaluate(() => !document.querySelector('.ly-opts').classList.contains('open'));
-  check(optNames.join('|') === 'Off|Translation|Romanization' && segOpen > 150 && folded && both[0][0] === 'wǒ ài nǐ' && both[0][1] === 'zān huā yǔ' && both[1][0] === 'EN: 我爱你' && both[2] === 'ly-rom>ly-t>ly-tr' && both[3] === 'tr,rom' && llmAsks.some(x => x.startsWith('You translate')),
+  check(optNames.join('|') === 'Off|Translation|Romanization|繁體' && segOpen > 150 && folded && both[0][0] === 'wǒ ài nǐ' && both[0][1] === 'zān huā yǔ' && both[1][0] === 'EN: 我爱你' && both[2] === 'ly-rom>ly-t>ly-tr' && both[3] === 'tr,rom' && llmAsks.some(x => x.startsWith('You translate')),
     'Translation and Romanization can be on together: pinyin above each line, the translation below', JSON.stringify({ optNames, segOpen, folded, both, llmAsks }));
+  // Simplified lyrics can be shown in Traditional (and Traditional in Simplified)
+  await A.click('[data-lyx-toggle]'); await A.waitForTimeout(450);
+  await A.waitForFunction(() => { const b = document.querySelector('[data-lyx-mode="sc"]'); return b && b.textContent.trim() === '繁體'; }, null, { timeout: 8000 }).catch(() => {});
+  const scLabel = await A.evaluate(() => (document.querySelector('[data-lyx-mode="sc"]') || {}).textContent);
+  await A.click('[data-lyx-mode="sc"]');
+  await A.waitForFunction(() => [...document.querySelectorAll('#ly .ly-t')].some(e => e.textContent.includes('愛')), null, { timeout: 8000 }).catch(() => {});
+  const conv = await A.evaluate(() => [...document.querySelectorAll('#ly .ly-t')].map(e => e.textContent));
+  await A.waitForTimeout(1900);
+  check(scLabel && scLabel.trim() === '繁體' && conv[0] === '我愛你', 'Simplified Chinese lyrics can be switched to Traditional', JSON.stringify({ scLabel, conv }));
   await A.click('[data-lyx-toggle]'); await A.waitForTimeout(450); await A.click('[data-lyx-mode="off"]'); await A.waitForTimeout(200);   // off again for the tests that follow
   await A.keyboard.press('Escape'); await A.waitForTimeout(450);
 

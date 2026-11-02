@@ -4091,17 +4091,17 @@ const lySegs = text => (String(text).match(LY_SEG) || []).map(x => /^\s+$/.test(
 /* ---- Romanization and Translation, shown under each lyric line ----
    Chinese is turned into pinyin right in the browser (pinyin-pro), Korean into Revised Romanization by a small built-in
    converter, and anything else (Japanese, say) goes to a language model on the server, as do translations. */
-let LYX = { tr: false, rom: false };
+let LYX = { tr: false, rom: false, sc: false };
 try { Object.assign(LYX, JSON.parse(localStorage.getItem('allegro.lyx') || '{}')); } catch (e) {}
-const lyxMode = () => LYX.rom || LYX.tr ? 'on' : 'off';
-const saveLyx = () => { try { localStorage.setItem('allegro.lyx', JSON.stringify({ tr: !!LYX.tr, rom: !!LYX.rom })); } catch (e) {} };
+const lyxMode = () => LYX.rom || LYX.tr || LYX.sc ? 'on' : 'off';
+const saveLyx = () => { try { localStorage.setItem('allegro.lyx', JSON.stringify({ tr: !!LYX.tr, rom: !!LYX.rom, sc: !!LYX.sc })); } catch (e) {} };
 const lyxTexts = () => { const L = SP.lyr || {}; return (L.lines && L.lines.length ? L.lines : L.plain || []).map(l => l.text || ''); };
 const lyxKey = (t, texts) => t.id + ':' + hash(texts.join('\n'));
 function lyxNeeds(texts) {
   const all = texts.join(' '), lang = lyLang(all);
   const nonLatin = /[^\p{Script=Latin}\p{Script=Common}\p{Script=Inherited}]/u.test(all.replace(/\s/g, ''));
   const ascii = !/[^\x00-\x7f\u2018\u2019\u201c\u201d\u2026\u2014\u2013]/.test(all);
-  return { lang, rom: nonLatin, tr: LANG === 'en' ? !ascii : lang !== 'zh' };
+  return { lang, rom: nonLatin, tr: LANG === 'en' ? !ascii : lang !== 'zh', sc: lang === 'zh' };
 }
 const HG = {
   ini: ['g', 'kk', 'n', 'd', 'tt', 'r', 'm', 'b', 'pp', 's', 'ss', '', 'j', 'jj', 'ch', 'k', 't', 'p', 'h'],
@@ -4126,6 +4126,26 @@ function hangulRR(text) {
 let pinyinReady = null;
 const loadPinyin = () => pinyinReady || (pinyinReady = new Promise((res, rej) => { const sc = document.createElement('script'); sc.src = '/vendor/pinyin-pro.min.js'; sc.onload = () => res(window.pinyinPro); sc.onerror = () => { pinyinReady = null; rej(new Error("Couldn't load the pinyin helper.")); }; document.head.appendChild(sc); }));
 function renderLyKeep() { if (spTab !== 'lyrics' || SP.editLyr || $('#sheet').hidden) return; const b = $('#sp-body'), y = b.scrollTop; renderPanel(); b.scrollTop = y; lyFade(); }
+/* Simplified and Traditional Chinese, converted in the browser with OpenCC (opencc-js). The small Traditional-to-Simplified
+   table loads first and also tells which script the lyrics are in; the larger Simplified-to-Traditional one only when needed. */
+const loadScriptOnce = (() => { const got = {}; return src => got[src] || (got[src] = new Promise((res, rej) => { const sc = document.createElement('script'); sc.src = src; sc.onload = res; sc.onerror = () => { delete got[src]; rej(new Error("Couldn't load the converter.")); }; document.head.appendChild(sc); })); })();
+async function openccTo(dir) {   // dir 'cn' = to Simplified, 'tw' = to Traditional
+  await loadScriptOnce(dir === 'cn' ? '/vendor/opencc-t2cn.js' : '/vendor/opencc-full.js');
+  return dir === 'cn' ? window.OpenCC.Converter({ from: 'tw', to: 'cn' }) : window.OpenCC.Converter({ from: 'cn', to: 'tw' });
+}
+async function lyxDetect(t) {
+  const texts = lyxTexts(), key = lyxKey(t, texts);
+  if (!SP.lyx || SP.lyx.key !== key) SP.lyx = { key, tr: null, rom: null, busy: {} };
+  const X = SP.lyx; if (X.trad != null || X.detecting) return;
+  X.detecting = true;
+  try {
+    const toCn = await openccTo('cn'), all = [...texts.join('')], han = all.filter(c => /\p{Script=Han}/u.test(c)).length, out = [...toCn(all.join(''))];
+    let changed = 0; all.forEach((c, i) => { if (out[i] !== c) changed++; });
+    X.trad = han > 0 && changed >= 2 && changed / han > .02;
+  } catch (e) { X.trad = false; }
+  X.detecting = false;
+  if (SP.lyx === X && tk(S.current) === t) renderLyKeep();
+}
 async function lyxFetch(t, which) {
   const texts = lyxTexts(), key = lyxKey(t, texts);
   if (!texts.some(x => x.trim())) return;
@@ -4135,7 +4155,8 @@ async function lyxFetch(t, which) {
   try {
     const need = lyxNeeds(texts);
     let out;
-    if (which === 'rom' && need.lang === 'zh') { const P = await loadPinyin(); out = texts.map(x => x.trim() ? P.pinyin(x, { toneType: 'symbol', nonZh: 'consecutive' }).replace(/\s+/g, ' ').trim() : ''); }
+    if (which === 'sc') { if (X.trad == null) await lyxDetect(t); const conv = await openccTo(X.trad ? 'cn' : 'tw'); out = texts.map(x => x ? conv(x) : x); }
+    else if (which === 'rom' && need.lang === 'zh') { const P = await loadPinyin(); out = texts.map(x => x.trim() ? P.pinyin(x, { toneType: 'symbol', nonZh: 'consecutive' }).replace(/\s+/g, ' ').trim() : ''); }
     else if (which === 'rom' && need.lang === 'ko') out = texts.map(hangulRR);
     else out = (await api('lyrics-extra', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id: t.id, kind: which === 'rom' ? 'romanize' : 'translate', to: LANG, lines: texts }) })).lines;
     if (SP.lyx === X) X[which] = out || [];
@@ -4147,7 +4168,8 @@ function lyxAuto(t) {
   if (SP.editLyr || !SP.lyr || SP.lyr.id !== t.id || SP.lyr.loading) return;
   const texts = lyxTexts(); if (!texts.some(x => x.trim())) return;
   const need = lyxNeeds(texts), X = SP.lyx && SP.lyx.key === lyxKey(t, texts) ? SP.lyx : null;
-  for (const k of ['rom', 'tr']) if (LYX[k] && need[k] && !(X && (X[k] || X.busy[k]))) setTimeout(() => lyxFetch(t, k), 0);
+  if (need.sc && !(X && (X.trad != null || X.detecting))) setTimeout(() => lyxDetect(t), 0);
+  for (const k of ['rom', 'tr', 'sc']) if (LYX[k] && need[k] && !(X && (X[k] || X.busy[k]))) setTimeout(() => lyxFetch(t, k), 0);
 }
 function lyricsHTML(t) {
   const L = SP.lyr, canEdit = t.kind === 'cloud' && cloud.canWrite;
@@ -4164,6 +4186,7 @@ function lyricsHTML(t) {
   const singerTag = l => l.singer ? `<span class="ly-singer" data-nt>${esc(l.singer)}</span>` : '';
   const texts = lyxTexts(), X = SP.lyx && SP.lyx.key === lyxKey(t, texts) ? SP.lyx : null, need = lyxNeeds(texts);
   // romanization goes above the line, translation below it
+  const shown = i => (LYX.sc && need.sc && X && X.sc && X.sc[i]) || null;   // the line in the other Chinese script, when that's on
   const extra = (i, which) => {
     const src = (texts[i] || '').trim(); if (!src || !X) return '';
     if (which === 'rom') { const r = LYX.rom && need.rom && X.rom && (X.rom[i] || '').trim(); return r && r !== src ? `<span class="ly-x ly-rom">${esc(r)}</span>` : ''; }
@@ -4171,10 +4194,11 @@ function lyricsHTML(t) {
   };
   // a translate button that opens into Off / Translation / Romanization; Translation and Romanization can both be on
   const mode = lyxMode(), isOn = k => k === 'off' ? mode === 'off' : !!LYX[k], seg = (k, label) => `<button class="ly-segb${isOn(k) ? ' on' : ''}" data-lyx-mode="${k}" aria-pressed="${isOn(k)}">${k !== 'off' && X && X.busy && X.busy[k] ? '<span class="ly-spin" aria-hidden="true"></span>' : ''}<span>${label}</span></button>`;
-  const opts = need.rom || need.tr ? `<div class="ly-opts${SP.lyxOpen ? ' open' : ''}"><div class="ly-seg" role="group" aria-label="Translation">${seg('off', 'Off')}${need.tr ? seg('tr', 'Translation') : ''}${need.rom ? seg('rom', 'Romanization') : ''}</div><button class="ly-xbtn${mode !== 'off' ? ' on' : ''}" data-lyx-toggle aria-expanded="${!!SP.lyxOpen}" aria-label="Translation and romanization">${ic('translate')}</button></div>` : '';
+  const scLabel = X && X.trad === true ? '简体' : X && X.trad === false ? '繁體' : '简 / 繁';
+  const opts = need.rom || need.tr || need.sc ? `<div class="ly-opts${SP.lyxOpen ? ' open' : ''}"><div class="ly-seg" role="group" aria-label="Translation">${seg('off', 'Off')}${need.tr ? seg('tr', 'Translation') : ''}${need.rom ? seg('rom', 'Romanization') : ''}${need.sc ? seg('sc', scLabel) : ''}</div><button class="ly-xbtn${mode !== 'off' ? ' on' : ''}" data-lyx-toggle aria-expanded="${!!SP.lyxOpen}" aria-label="Translation and romanization">${ic('translate')}</button></div>` : '';
   const sideCls = l => l.side === 1 ? ' side-1' : l.side === 'c' ? ' side-c' : '';
-  if (L.lines.length) return `${status}<div class="ly" id="ly" data-nt>${L.lines.map((l, i) => `<p class="ly-line${sideCls(l)}${l.text ? '' : ' gap'}" data-ly-i="${i}">${singerTag(l)}${extra(i, 'rom')}<span class="ly-t">${lySegs(l.text || '♪')}</span>${extra(i, 'tr')}</p>`).join('')}</div>${tools}${opts}`;
-  return `${status}<div class="ly plain" data-nt>${L.plain.map((l, i) => `<p class="ly-line${sideCls(l)}">${singerTag(l)}${extra(i, 'rom')}${esc(l.text) || '&nbsp;'}${extra(i, 'tr')}</p>`).join('')}</div>${tools}${opts}`;
+  if (L.lines.length) return `${status}<div class="ly" id="ly" data-nt>${L.lines.map((l, i) => `<p class="ly-line${sideCls(l)}${l.text ? '' : ' gap'}" data-ly-i="${i}">${singerTag(l)}${extra(i, 'rom')}<span class="ly-t">${lySegs(shown(i) || l.text || '♪')}</span>${extra(i, 'tr')}</p>`).join('')}</div>${tools}${opts}`;
+  return `${status}<div class="ly plain" data-nt>${L.plain.map((l, i) => `<p class="ly-line${sideCls(l)}">${singerTag(l)}${extra(i, 'rom')}${esc(shown(i) || l.text) || '&nbsp;'}${extra(i, 'tr')}</p>`).join('')}</div>${tools}${opts}`;
 }
 function lyrSync(force) {
   const L = SP.lyr; if (!L.lines || !L.lines.length || spTab !== 'lyrics' || SP.editLyr) return;
@@ -4238,7 +4262,7 @@ document.addEventListener('click', async e => {
   const lx = e.target.closest('[data-lyx-mode]');
   if (lx) {
     const m = lx.dataset.lyxMode;
-    if (m === 'off') { LYX.tr = false; LYX.rom = false; } else LYX[m] = !LYX[m];
+    if (m === 'off') { LYX.tr = false; LYX.rom = false; LYX.sc = false; } else LYX[m] = !LYX[m];
     saveLyx();
     if (m !== 'off' && LYX[m]) lyxFetch(t, m);
     renderLyKeep();
