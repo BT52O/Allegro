@@ -1019,7 +1019,11 @@ try {
   await A.click('.nav-btn[data-nav="home"]'); await A.waitForTimeout(400);
   const tabsTxt = await A.$$eval('.home-tabs .ht', x => x.map(e => e.textContent));
   const font = await A.evaluate(() => { const st = getComputedStyle(document.body); return [st.fontFamily.split(',')[0], st.fontWeight, st.fontSize, !document.querySelector('#view .greet')]; });
-  await A.click('[data-home-tab="charts"]'); await A.waitForTimeout(400);
+  await A.click('[data-home-tab="charts"]'); await A.waitForTimeout(80);
+  const inkMid = await A.evaluate(() => { const i = document.querySelector('.ht-ink').getBoundingClientRect(), c = document.querySelector('.ht.on').getBoundingClientRect(); return Math.round(i.left - c.left); });
+  await A.waitForTimeout(500);
+  const inkEnd = await A.evaluate(() => { const i = document.querySelector('.ht-ink').getBoundingClientRect(), c = document.querySelector('.ht.on').getBoundingClientRect(); return [Math.round(i.left - c.left), Math.round(i.width - c.width)]; });
+  check(inkMid < -5 && inkEnd[0] === 0 && inkEnd[1] === 0, 'the red underline slides from the old tab to the new one', JSON.stringify({ inkMid, inkEnd }));
   const charts = await A.evaluate(() => [[...document.querySelectorAll('#view .sec-head h2')].map(e => e.textContent), document.querySelectorAll('#view .tr').length, document.querySelector('.ht.on').textContent]);
   await shot(A, 'home-charts');
   await A.click('[data-home-tab="new"]'); await A.waitForTimeout(400);

@@ -196,15 +196,15 @@ body.is-playing .li.grid.playing .spk { display: grid; }
 }
 #view > :not(.view-bg) { position: relative; z-index: 1; }
 /* Home's tabs: plain words, the current one underlined in red */
-.home-tabs { display: flex; flex-wrap: wrap; gap: 4px 30px; margin: 2px 0 -6px; }   /* not a scroll box, so the glow isn't cut off */
-.ht { position: relative; padding: 6px 0 12px; font: 500 1rem var(--f-body); color: var(--ink); white-space: nowrap; opacity: .9; }
-.ht:hover { opacity: 1; }
-.ht.on { color: color-mix(in srgb, var(--ink) 80%, var(--panel)); }
-.ht.on::after { content: ""; position: absolute; left: 0; right: 0; bottom: 2px; height: 3px; border-radius: 3px; background: #ec3449; box-shadow: 0 1px 5px rgba(236, 52, 73, .3); }
-/* a faint, even pink haze around the underline and the bottom of the word: one wide, very soft blur with no edges */
-.ht.on::before { content: ""; position: absolute; left: -14px; right: -14px; top: 30%; bottom: -12px; border-radius: 999px; pointer-events: none; z-index: -1;
+.home-tabs { position: relative; display: flex; flex-wrap: wrap; gap: 4px 30px; margin: 2px 0 -6px; isolation: isolate; }   /* not a scroll box, so the glow isn't cut off */
+.ht { position: relative; z-index: 1; padding: 6px 0 12px; font: 500 1rem var(--f-body); color: var(--ink); white-space: nowrap; }   /* every tab keeps the same color; only the sliding underline marks the current one */
+/* one underline that slides from word to word, carrying its soft pink glow */
+.ht-ink { position: absolute; left: 0; top: 0; width: 0; height: 3px; border-radius: 3px; background: #ec3449; box-shadow: 0 1px 5px rgba(236, 52, 73, .3); pointer-events: none; z-index: 0;
+  transition: transform .42s cubic-bezier(.3, .9, .25, 1), width .42s cubic-bezier(.3, .9, .25, 1); }
+.ht-ink.still { transition: none; }
+.ht-ink::before { content: ""; position: absolute; left: -14px; right: -14px; bottom: -12px; height: 42px; border-radius: 999px;
   background: radial-gradient(closest-side, rgba(236, 52, 73, .16), rgba(236, 52, 73, .07) 55%, rgba(236, 52, 73, 0)); filter: blur(10px); }
-.ht { isolation: isolate; }
+@media (prefers-reduced-motion: reduce) { .ht-ink { transition: none; } }
 .greet { margin: 4px 0 0; font: 800 clamp(1.8rem, 4.6cqi, 2.6rem)/1.05 var(--f-display); letter-spacing: -.03em; text-wrap: balance; }
 .sec { display: flex; flex-direction: column; gap: 10px; }
 .sec-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
@@ -2692,6 +2692,23 @@ function homeRows() {
     + shelf('shelf-history', 'Track History', al, { viewAll: 'history', empty: 'Albums, singles and EPs you play will show up here.' });
 }
 /* ---- Home's tabs: Home, New Releases, Charts, Podcasts (from your own library) ---- */
+// The underline slides from the tab you were on to the one you picked: each time Home is drawn it starts where it last
+// was and moves to the current tab.
+let htLast = null;
+function placeHomeInk(animate = true) {
+  const nav = $('#view .home-tabs'); if (!nav) { htLast = null; return; }
+  const ink = nav.querySelector('.ht-ink'), on = nav.querySelector('.ht.on'); if (!ink || !on) return;
+  const to = { x: on.offsetLeft, y: on.offsetTop + on.offsetHeight - 5, w: on.offsetWidth };
+  const set = p => { ink.style.transform = `translate(${p.x}px, ${p.y}px)`; ink.style.width = p.w + 'px'; };
+  ink.classList.add('still');
+  if (animate && htLast && (htLast.x !== to.x || htLast.w !== to.w)) {
+    set(htLast); void ink.offsetWidth;
+    ink.classList.remove('still'); set(to);
+  } else set(to);
+  htLast = to;
+}
+window.addEventListener('resize', () => placeHomeInk(false));
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => placeHomeInk(false));
 const HOME_TABS = [['home', 'Home'], ['new', 'New Releases'], ['charts', 'Charts'], ['podcasts', 'Podcasts']];
 const relKey = t => t.released || (t.year ? t.year + '-00-00' : '');
 function homeNew() {
@@ -2791,7 +2808,7 @@ const VIEWS = {
     const where = cloud.canWrite ? 'Songs you add are saved to your Allegro library online, so they play on any device where you sign in.' : 'Songs you add are saved in this browser.';
     const callout = (fileCount() ? '' : `<div class="callout"><div class="callout-ic">${ic('music')}</div><div><h3>Bring Your Own Music</h3><p>Everything here now is a generated demo. Upload your MP3s from Uploads in the menu. ${where}</p></div><button class="btn" data-action="add">${ic('upload')}Add Music</button></div>`) + localBanner();
     const tab = HOME_TABS.some(x => x[0] === v.tab) ? v.tab : 'home';
-    const tabs = `<nav class="home-tabs" role="tablist" aria-label="Home">${HOME_TABS.map(([k, l]) => `<button class="ht${k === tab ? ' on' : ''}" data-home-tab="${k}" role="tab" aria-selected="${k === tab}">${l}</button>`).join('')}</nav>`;
+    const tabs = `<nav class="home-tabs" role="tablist" aria-label="Home">${HOME_TABS.map(([k, l]) => `<button class="ht${k === tab ? ' on' : ''}" data-home-tab="${k}" role="tab" aria-selected="${k === tab}">${l}</button>`).join('')}<span class="ht-ink still" aria-hidden="true"></span></nav>`;
     if (tab === 'new') return tabs + homeNew();
     if (tab === 'charts') return tabs + homeCharts();
     if (tab === 'podcasts') return tabs + `<div class="empty">${ic('mic')}<h3>No podcasts yet</h3><p>Podcasts aren't available in Allegro yet.</p></div>`;
@@ -2988,7 +3005,7 @@ function render(scrollTop) {
   LISTS = {};
   const v = S.view;
   $('#view').innerHTML = (VIEWS[v.name] || VIEWS.home)(v);
-  syncSel();
+  syncSel(); placeHomeInk();
   const bg = $('#view .view-bg[data-tint-src]');
   if (bg) tintOf(bg.dataset.tintSrc).then(rgb => { if (rgb && bg.isConnected) bg.style.setProperty('--tint', rgb); });
   const isSearch = v.name === 'search';
@@ -5750,7 +5767,14 @@ document.addEventListener('click', e => {
     if (row.dataset.id === S.current) { toggle(); return; }
     playIds(L.ids, +row.dataset.i, L.ctx); return;
   }
-  const htab = T.closest('[data-home-tab]'); if (htab) { const k = htab.dataset.homeTab; if (S.view.name !== 'home' || (S.view.tab || 'home') !== k) go({ name: 'home', tab: k }); return; }
+  const htab = T.closest('[data-home-tab]');
+  if (htab) {
+    // switching tabs keeps the page in place (no page slide), so the underline can glide across to the new tab
+    const k = htab.dataset.homeTab; if (S.view.name === 'home' && (S.view.tab || 'home') === k) return;
+    closeMenu(); S.back = [S.view]; S.fwd = []; S.view = { name: 'home', tab: k };
+    render(); $('#main').scrollTop = 0; savePlace();
+    return;
+  }
   const chip = T.closest('[data-chip]'); if (chip) { S.libTab = chip.dataset.chip; save(); S.view = { name: 'library', tab: S.libTab }; render(); return; }
   const ac = T.closest('[data-action]');
   if (ac) { if (ac.dataset.action === 'add') addMenu(ac); else if (ac.dataset.action === 'create') createMenu(ac); else if (ac.dataset.action === 'new-pl') newPlaylist(); else if (ac.dataset.action === 'upload-local') uploadLocal(ac); else if (ac.dataset.action === 'fill-info') fillMissingInfo(ac); return; }
