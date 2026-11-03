@@ -991,6 +991,22 @@ try {
   const vt = await (await A.$('#vtrack')).boundingBox();
   await A.mouse.click(vt.x + vt.width / 2, vt.y + vt.height * .75); await A.waitForTimeout(200);
   const vol = await A.evaluate(() => [document.getElementById('vol-wrap').classList.contains('open'), +document.getElementById('vtrack').getAttribute('aria-valuenow')]);
+  const volumePanel = await A.evaluate(() => {
+    const panel = document.getElementById('vol-pop'), speaker = document.getElementById('vol-btn');
+    const p = panel.getBoundingClientRect(), b = speaker.getBoundingClientRect();
+    const theme = document.documentElement.dataset.theme, sheetOpen = document.body.classList.contains('sheet-open');
+    const colors = () => [getComputedStyle(panel).backgroundColor, getComputedStyle(document.getElementById('vfill')).backgroundColor, getComputedStyle(document.getElementById('vknob')).backgroundColor];
+    try {
+      document.body.classList.remove('sheet-open'); document.documentElement.dataset.theme = 'light';
+      const light = colors();
+      document.documentElement.dataset.theme = 'dark'; const dark = colors();
+      document.documentElement.dataset.theme = 'light'; document.body.classList.add('sheet-open'); const nowPlaying = colors();
+      return { above: p.bottom + 16 < b.top, centered: Math.abs(p.x + p.width / 2 - b.x - b.width / 2) < 1, light, dark, nowPlaying };
+    } finally { document.documentElement.dataset.theme = theme; document.body.classList.toggle('sheet-open', sheetOpen); }
+  });
+  check(volumePanel.above && volumePanel.centered && volumePanel.light[0] !== volumePanel.dark[0] && volumePanel.light[1] !== volumePanel.dark[1] &&
+    volumePanel.dark[1] === 'rgb(255, 255, 255)' && volumePanel.dark[2] === volumePanel.dark[1] && JSON.stringify(volumePanel.nowPlaying) === JSON.stringify(volumePanel.dark),
+    'volume floats above the speaker with a white slider on a dark panel in dark mode and Now Playing', JSON.stringify(volumePanel));
   await shot(A, 'player-volume');
   await A.mouse.move(700, 300); await A.waitForTimeout(500);
   await A.waitForSelector('#q-badge:not([hidden])', { timeout: 8000 }).catch(() => {});
