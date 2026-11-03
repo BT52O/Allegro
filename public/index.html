@@ -541,10 +541,10 @@ button.pr-chip:hover { background: #e2e2e2; }
 /* Keep the speaker outside the floating panel, including on the dark Now Playing screen. */
 body.sheet-open #vol-wrap { --volume-panel: #242426; --volume-track: #3b3b3f; --volume-ink: #fff; }
 #vol-wrap.open .vol-btn { color: var(--volume-ink); }
-.vol-pop { bottom: calc(100% + 14px); width: 44px; height: 144px; padding: 22px 0 18px; display: flex; flex-direction: column; align-items: center; border-radius: 12px; background: var(--volume-panel); color: var(--volume-ink); box-shadow: 0 4px 12px rgba(0, 0, 0, .16); }
+.vol-pop { bottom: calc(100% + 14px); width: 44px; height: 144px; padding: 30px 0 18px; display: flex; flex-direction: column; align-items: center; border-radius: 12px; background: var(--volume-panel); color: var(--volume-ink); box-shadow: 0 4px 12px rgba(0, 0, 0, .16); }
 .vol-pop::before { content: ""; position: absolute; left: 50%; bottom: -4px; width: 8px; height: 8px; background: var(--volume-panel); transform: translateX(-50%) rotate(45deg); border-radius: 2px; }
 .vol-pop::after { height: 16px; } /* Keep hover alive between the panel and speaker. */
-.vol-pct { position: absolute; top: 5px; font: 500 .62rem var(--f-body); color: var(--volume-ink); font-variant-numeric: tabular-nums; opacity: 0; transition: opacity .2s; }
+.vol-pct { position: absolute; top: 10px; font: 500 .62rem var(--f-body); color: var(--volume-ink); font-variant-numeric: tabular-nums; opacity: 0; transition: opacity .2s; }
 .vol-pop.showpct .vol-pct { opacity: 1; }
 .vslot { position: relative; flex: 1; width: 44px; }
 .vtrack { position: absolute; inset: 0; cursor: pointer; touch-action: none; z-index: 1; }
