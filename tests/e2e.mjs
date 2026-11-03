@@ -1001,12 +1001,12 @@ try {
       const light = colors();
       document.documentElement.dataset.theme = 'dark'; const dark = colors();
       document.documentElement.dataset.theme = 'light'; document.body.classList.add('sheet-open'); const nowPlaying = colors();
-      return { above: p.bottom + 16 < b.top, centered: Math.abs(p.x + p.width / 2 - b.x - b.width / 2) < 1, light, dark, nowPlaying };
+      return { above: p.bottom + 6 < b.top, compact: p.width <= 48 && p.height <= 150, centered: Math.abs(p.x + p.width / 2 - b.x - b.width / 2) < 1, light, dark, nowPlaying };
     } finally { document.documentElement.dataset.theme = theme; document.body.classList.toggle('sheet-open', sheetOpen); }
   });
-  check(volumePanel.above && volumePanel.centered && volumePanel.light[0] !== volumePanel.dark[0] && volumePanel.light[1] !== volumePanel.dark[1] &&
+  check(volumePanel.above && volumePanel.compact && volumePanel.centered && volumePanel.light[0] !== volumePanel.dark[0] && volumePanel.light[1] !== volumePanel.dark[1] &&
     volumePanel.dark[1] === 'rgb(255, 255, 255)' && volumePanel.dark[2] === volumePanel.dark[1] && JSON.stringify(volumePanel.nowPlaying) === JSON.stringify(volumePanel.dark),
-    'volume floats above the speaker with a white slider on a dark panel in dark mode and Now Playing', JSON.stringify(volumePanel));
+    'compact volume popup floats above the speaker with a white slider in dark mode and Now Playing', JSON.stringify(volumePanel));
   await shot(A, 'player-volume');
   await A.mouse.move(700, 300); await A.waitForTimeout(500);
   await A.waitForSelector('#q-badge:not([hidden])', { timeout: 8000 }).catch(() => {});

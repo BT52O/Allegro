@@ -541,17 +541,17 @@ button.pr-chip:hover { background: #e2e2e2; }
 /* Keep the speaker outside the floating panel, including on the dark Now Playing screen. */
 body.sheet-open #vol-wrap { --volume-panel: #242426; --volume-track: #3b3b3f; --volume-ink: #fff; }
 #vol-wrap.open .vol-btn { color: var(--volume-ink); }
-.vol-pop { bottom: calc(100% + 32px); width: 64px; height: 198px; padding: 24px 0; display: flex; flex-direction: column; align-items: center; border-radius: 16px; background: var(--volume-panel); color: var(--volume-ink); box-shadow: none; filter: drop-shadow(0 12px 16px rgba(0, 0, 0, .24)); }
-.vol-pop::before { content: ""; position: absolute; left: 50%; bottom: -10px; width: 22px; height: 22px; background: var(--volume-panel); transform: translateX(-50%) rotate(45deg); border-radius: 4px; }
-.vol-pop::after { height: 34px; } /* Keep hover alive between the panel and speaker. */
-.vol-pct { position: absolute; top: 5px; font: 700 .72rem var(--f-body); color: var(--volume-ink); font-variant-numeric: tabular-nums; opacity: 0; transition: opacity .2s; }
+.vol-pop { bottom: calc(100% + 14px); width: 44px; height: 144px; padding: 22px 0 18px; display: flex; flex-direction: column; align-items: center; border-radius: 12px; background: var(--volume-panel); color: var(--volume-ink); box-shadow: 0 4px 12px rgba(0, 0, 0, .16); }
+.vol-pop::before { content: ""; position: absolute; left: 50%; bottom: -4px; width: 8px; height: 8px; background: var(--volume-panel); transform: translateX(-50%) rotate(45deg); border-radius: 2px; }
+.vol-pop::after { height: 16px; } /* Keep hover alive between the panel and speaker. */
+.vol-pct { position: absolute; top: 5px; font: 500 .62rem var(--f-body); color: var(--volume-ink); font-variant-numeric: tabular-nums; opacity: 0; transition: opacity .2s; }
 .vol-pop.showpct .vol-pct { opacity: 1; }
 .vslot { position: relative; flex: 1; width: 44px; }
 .vtrack { position: absolute; inset: 0; cursor: pointer; touch-action: none; z-index: 1; }
-.vtrack:focus-visible { outline: 2px solid var(--volume-ink); outline-offset: 4px; border-radius: 6px; }
-.vtrack::before { content: ""; position: absolute; left: 50%; top: 0; bottom: 0; width: 8px; margin-left: -4px; border-radius: 4px; background: var(--volume-track); }
-.vtrack i { position: absolute; left: 50%; bottom: 0; width: 8px; margin-left: -4px; height: var(--v, 80%); border-radius: 4px; background: var(--volume-ink); }
-.vtrack b { position: absolute; left: 50%; bottom: var(--v, 80%); width: 24px; height: 8px; margin: 0 0 -4px -12px; border-radius: 4px; background: var(--volume-ink); box-shadow: 0 2px 8px rgba(0, 0, 0, .18); }
+.vtrack:focus-visible { outline: 2px solid var(--volume-ink); outline-offset: -4px; border-radius: 6px; }
+.vtrack::before { content: ""; position: absolute; left: 50%; top: 0; bottom: 0; width: 4px; margin-left: -2px; border-radius: 2px; background: var(--volume-track); }
+.vtrack i { position: absolute; left: 50%; bottom: 0; width: 4px; margin-left: -2px; height: var(--v, 80%); border-radius: 2px; background: var(--volume-ink); }
+.vtrack b { position: absolute; left: 50%; bottom: var(--v, 80%); width: 16px; height: 6px; margin: 0 0 -3px -8px; border-radius: 3px; background: var(--volume-ink); }
 .q-badge { height: 34px; padding: 0 14px; border-radius: 999px; font: 700 .76rem var(--f-body); white-space: nowrap; background: #17171a; color: #e7e7ea; border: 1px solid rgba(255, 255, 255, .14); font-variant-numeric: tabular-nums; }
 .q-badge.lossless { color: #7fd8d0; border-color: rgba(127, 216, 208, .35); }
 .q-badge.hires { color: #f2c14e; border-color: rgba(242, 193, 78, .4); box-shadow: inset 0 0 12px rgba(242, 193, 78, .08); }
