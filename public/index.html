@@ -38,6 +38,7 @@
   --scrim: rgba(0, 0, 0, .38);
   --shadow: 0 14px 40px -14px rgba(0, 0, 0, .3);
   --volume-panel: #ececee; --volume-track: #cfcfd3; --volume-ink: #111;
+  --brand-gradient: linear-gradient(180deg, #e32636, #fff);
   --f-display: 'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
   --f-nav: var(--f-display);
   --f-body: 'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
@@ -105,7 +106,11 @@ img { display: block; }
   font: 500 var(--nf)/1 var(--f-nav); color: var(--ink); text-align: left; letter-spacing: -.02em; border-radius: 10px;
 }
 .logo .clef, .nav-btn .ic { width: var(--icn); height: var(--icn); flex: none; }
-.logo .clef { font: 400 calc(var(--icn) * .64)/1 var(--f-clef); display: grid; place-items: center; overflow: visible; }
+.logo .clef { font: 400 calc(var(--icn) * .64)/1 var(--f-clef); display: grid; grid-template-rows: minmax(0, 1fr); place-items: center; overflow: visible; }
+.brand-gradient { background-image: var(--brand-gradient); -webkit-background-clip: text; background-clip: text; color: transparent; -webkit-text-fill-color: transparent; }
+/* The music font extends past its compact layout box; give its gradient the full glyph height. */
+.clef .brand-gradient { display: block; line-height: normal; }
+@media (forced-colors: active) { .brand-gradient { background: none; color: CanvasText; -webkit-text-fill-color: CanvasText; } }
 .nav-btn .ic { stroke-width: 1.6; }
 .nav-btn:hover, .logo:hover { background: var(--hover); }
 .nav-btn.active .ic { stroke-width: 2.2; }
@@ -1291,7 +1296,7 @@ body.touch-input .has-pen::after { display: none; }
 <div class="shell" id="shell">
   <aside class="side">
     <div class="side-edge" id="side-toggle" role="button" aria-label="Collapse Sidebar" aria-expanded="true" tabindex="0"></div>
-    <button class="logo" data-nav="home" aria-label="Allegro home"><span class="clef" aria-hidden="true">&#x1D11E;</span><span>Allegro</span></button>
+    <button class="logo" data-nav="home" aria-label="Allegro home"><span class="clef" aria-hidden="true"><span class="brand-gradient">&#x1D11E;</span></span><span class="brand-gradient">Allegro</span></button>
     <div class="box nav-box">
       <div class="nav-inner">
         <nav aria-label="Main">
@@ -1317,7 +1322,7 @@ body.touch-input .has-pen::after { display: none; }
 
   <main class="main box" id="main">
     <div class="topbar">
-      <button class="tb-logo" data-nav="home" aria-label="Allegro home"><span class="clef" aria-hidden="true">&#x1D11E;</span>Allegro</button>
+      <button class="tb-logo" data-nav="home" aria-label="Allegro home"><span class="clef" aria-hidden="true"><span class="brand-gradient">&#x1D11E;</span></span><span class="brand-gradient">Allegro</span></button>
       <div class="tb-nav" id="tb-nav">
         <button class="circ" id="nav-back" aria-label="Go back"><i data-ic="back"></i></button>
         <button class="circ fwd" id="nav-fwd" aria-label="Go forward"><i data-ic="fwd"></i></button>
@@ -1414,7 +1419,7 @@ body.touch-input .has-pen::after { display: none; }
 
 <div class="gate" id="gate" hidden>
   <form class="gate-card" id="gate-form" novalidate>
-    <div class="gate-logo"><span class="clef" aria-hidden="true">&#x1D11E;</span>Allegro</div>
+    <div class="gate-logo"><span class="clef" aria-hidden="true"><span class="brand-gradient">&#x1D11E;</span></span><span class="brand-gradient">Allegro</span></div>
     <p class="gate-msg" id="gate-msg">Enter your password to open your music.</p>
     <label class="field" id="gate-setup" hidden>Setup Code<input id="gate-code" autocomplete="one-time-code" spellcheck="false"></label>
     <label class="field">Password<input type="password" id="gate-pw" autocomplete="current-password"></label>
