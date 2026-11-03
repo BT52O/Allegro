@@ -5,12 +5,12 @@ These notes keep us from stepping on each other. Read them before changing anyth
 
 ## Who works where
 
-- **Claude** commits straight to `main` (every push runs the tests and deploys).
-- **ChatGPT / Codex** works on its own branch and opens a **pull request** into `main`. The tests run on the pull
-  request too; the owner merges it once they pass. Nothing on a branch goes live until it is merged.
-- Before starting, pull the latest `main`. Before opening a pull request, merge or rebase on the latest `main` so it
-  includes the other agent's work.
-- Keep each change to one feature or fix. Small pull requests are easy to merge; big ones collide.
+- **Claude and ChatGPT / Codex** may commit and push directly to `main` after the required tests pass.
+  No pull request or manual merge is needed unless the owner explicitly requests one. Every push to `main`
+  runs the GitHub Actions tests and deploys only if those tests pass.
+- Before starting, pull the latest `main`. Before pushing, fetch and integrate the latest `main` so the other
+  agent's work is preserved. If integration changes the tested code, rerun the relevant tests. Never force-push `main`.
+- Keep each change to one feature or fix. Small commits are easier to review and less likely to collide.
 - If a task touches the same area someone else is changing (an open pull request, or recent commits), say so to the
   owner instead of guessing.
 
