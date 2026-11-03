@@ -107,10 +107,11 @@ img { display: block; }
   font: 500 var(--nf)/1 var(--f-nav); color: var(--ink); text-align: left; letter-spacing: -.02em; border-radius: 10px;
 }
 .logo .clef, .nav-btn .ic { width: var(--icn); height: var(--icn); flex: none; }
-.logo .clef { font: 400 calc(var(--icn) * .64)/1 var(--f-clef); display: grid; grid-template-rows: minmax(0, 1fr); place-items: center; overflow: visible; }
-.brand-gradient { background-image: var(--brand-gradient); -webkit-background-clip: text; background-clip: text; color: transparent; -webkit-text-fill-color: transparent; filter: drop-shadow(var(--brand-shadow)); }
-/* The music font extends past its compact layout box; give its gradient the full glyph height. */
-.clef .brand-gradient { display: block; line-height: normal; }
+.logo .clef { height: auto; font: 400 calc(var(--icn) * .64)/1 var(--f-clef); display: grid; place-items: center; overflow: visible; }
+/* One background spans the note, gap, and name, so the gradient never restarts between them. */
+.brand-gradient { display: inline-flex; flex: none; align-items: center; gap: inherit; background-image: var(--brand-gradient); -webkit-background-clip: text; background-clip: text; color: transparent; -webkit-text-fill-color: transparent; filter: drop-shadow(var(--brand-shadow)); }
+/* Include the music font's full height in the shared gradient. */
+.brand-glyph { display: block; line-height: normal; }
 @media (forced-colors: active) { .brand-gradient { background: none; color: CanvasText; -webkit-text-fill-color: CanvasText; filter: none; } }
 .nav-btn .ic { stroke-width: 1.6; }
 .nav-btn:hover, .logo:hover { background: var(--hover); }
@@ -902,7 +903,7 @@ img { -webkit-user-drag: none; user-select: none; }
   .shell { grid-template-columns: 64px minmax(0, 1fr); }
   .side { --pl: 0px; } .nav-box { padding: 8px; }
   .logo, .nav-btn, .side > .logo { justify-content: center; padding: 0; }
-  .logo > span:not(.clef), .nav-btn span { display: none; }
+  .logo .brand-name, .nav-btn span { display: none; }
   .nav-btn .ic { display: block; }
   .sl-head, .sl-chips, .sl-tools, .li-text, .li .spk { display: none !important; }
   .side-lib { padding: 8px 4px; }
@@ -1017,8 +1018,10 @@ body.resizing-side, body.resizing-side * { cursor: col-resize !important; -webki
 .logo, .nav-btn, .sl-head h2, .li-name, .li-sub span { white-space: nowrap; }
 .li { padding-left: 4px; }
 /* words: fade out quickly when collapsing, fade in after the panel has opened */
-.logo > span:not(.clef), .nav-btn span, .li-text, .li .spk { transition: opacity .22s ease-out .14s; }
-.side-collapsed .logo > span:not(.clef), .side-collapsed .nav-btn span, .side-collapsed .li-text, .side-collapsed .li .spk { opacity: 0; transition: opacity .1s ease-out; pointer-events: none; }
+.logo .brand-name, .nav-btn span, .li-text, .li .spk { transition: opacity .22s ease-out .14s; }
+.side-collapsed .logo .brand-name, .side-collapsed .nav-btn span, .side-collapsed .li-text, .side-collapsed .li .spk { opacity: 0; transition: opacity .1s ease-out; pointer-events: none; }
+/* The shared text background paints through transparent letters, so crop it to the note when collapsed. */
+.side-collapsed .logo .brand-gradient { clip-path: inset(-4px calc(100% - var(--icn)) -4px -4px); }
 /* panel header folds away so the list slides up smoothly */
 .sl-head, .sl-tools { max-height: 52px; overflow: hidden; transition: max-height .4s cubic-bezier(.32, .72, 0, 1), opacity .22s ease-out .14s, padding .4s cubic-bezier(.32, .72, 0, 1); }
 .side-collapsed .sl-head, .side-collapsed .sl-tools { max-height: 0; opacity: 0; padding-top: 0; padding-bottom: 0; transition: max-height .4s cubic-bezier(.32, .72, 0, 1), opacity .1s ease-out, padding .4s cubic-bezier(.32, .72, 0, 1); }
@@ -1039,7 +1042,7 @@ body.resizing-side, body.resizing-side * { cursor: col-resize !important; -webki
 .side-collapsed .li.grid .li-text { display: none; }
 @media (max-width: 1080px) { .side-edge { display: none; } }
 @media (max-width: 759px) { .shell.side-collapsed, .shell.side-collapsed.q-open { grid-template-columns: minmax(0, 1fr); } }
-@media (prefers-reduced-motion: reduce) { .shell, .sl-head, .sl-tools, .li-text, .nav-btn span, .logo > span { transition: none !important; } }
+@media (prefers-reduced-motion: reduce) { .shell, .sl-head, .sl-tools, .li-text, .nav-btn span, .logo .brand-name { transition: none !important; } }
 
 /* ---------- drag to reorder ---------- */
 .tl { position: relative; }
@@ -1297,7 +1300,7 @@ body.touch-input .has-pen::after { display: none; }
 <div class="shell" id="shell">
   <aside class="side">
     <div class="side-edge" id="side-toggle" role="button" aria-label="Collapse Sidebar" aria-expanded="true" tabindex="0"></div>
-    <button class="logo" data-nav="home" aria-label="Allegro home"><span class="clef" aria-hidden="true"><span class="brand-gradient">&#x1D11E;</span></span><span class="brand-gradient">Allegro</span></button>
+    <button class="logo" data-nav="home" aria-label="Allegro home"><span class="brand-gradient"><span class="clef" aria-hidden="true"><span class="brand-glyph">&#x1D11E;</span></span><span class="brand-name">Allegro</span></span></button>
     <div class="box nav-box">
       <div class="nav-inner">
         <nav aria-label="Main">
@@ -1323,7 +1326,7 @@ body.touch-input .has-pen::after { display: none; }
 
   <main class="main box" id="main">
     <div class="topbar">
-      <button class="tb-logo" data-nav="home" aria-label="Allegro home"><span class="clef" aria-hidden="true"><span class="brand-gradient">&#x1D11E;</span></span><span class="brand-gradient">Allegro</span></button>
+      <button class="tb-logo" data-nav="home" aria-label="Allegro home"><span class="brand-gradient"><span class="clef" aria-hidden="true"><span class="brand-glyph">&#x1D11E;</span></span><span class="brand-name">Allegro</span></span></button>
       <div class="tb-nav" id="tb-nav">
         <button class="circ" id="nav-back" aria-label="Go back"><i data-ic="back"></i></button>
         <button class="circ fwd" id="nav-fwd" aria-label="Go forward"><i data-ic="fwd"></i></button>
@@ -1420,7 +1423,7 @@ body.touch-input .has-pen::after { display: none; }
 
 <div class="gate" id="gate" hidden>
   <form class="gate-card" id="gate-form" novalidate>
-    <div class="gate-logo"><span class="clef" aria-hidden="true"><span class="brand-gradient">&#x1D11E;</span></span><span class="brand-gradient">Allegro</span></div>
+    <div class="gate-logo"><span class="brand-gradient"><span class="clef" aria-hidden="true"><span class="brand-glyph">&#x1D11E;</span></span><span class="brand-name">Allegro</span></span></div>
     <p class="gate-msg" id="gate-msg">Enter your password to open your music.</p>
     <label class="field" id="gate-setup" hidden>Setup Code<input id="gate-code" autocomplete="one-time-code" spellcheck="false"></label>
     <label class="field">Password<input type="password" id="gate-pw" autocomplete="current-password"></label>
