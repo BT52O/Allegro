@@ -37,6 +37,7 @@
   --tint-def: 170 170 170;
   --scrim: rgba(0, 0, 0, .38);
   --shadow: 0 14px 40px -14px rgba(0, 0, 0, .3);
+  --volume-panel: #ececee; --volume-track: #cfcfd3; --volume-ink: #111;
   --f-display: 'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
   --f-nav: var(--f-display);
   --f-body: 'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
@@ -49,6 +50,7 @@
   --bg: #0b0b0c; --panel: #161618; --nav: #2a2a2d; --raise: #1f1f22; --chip: #26262a; --hover: rgba(255, 255, 255, .07);
   --ink: #f1f1f2; --muted: #a2a2a8; --line: #2d2d31; --accent: #f1f1f2; --accent-ink: #111111; --gold: #8c8c8c;
   --tint-def: 70 70 76; --scrim: rgba(0, 0, 0, .62); --shadow: 0 14px 40px -14px rgba(0, 0, 0, .85); color-scheme: dark;
+  --volume-panel: #242426; --volume-track: #3b3b3f; --volume-ink: #fff;
 }
 [data-theme="dark"] .storage-note { background: #3a1517; color: #ffb4b0; border-color: #5c2226; }
 [data-theme="dark"] .storage-bar { background: #5c2226; } [data-theme="dark"] .storage-bar i { background: #ff8a80; }
@@ -536,20 +538,20 @@ button.pr-chip:hover { background: #e2e2e2; }
 .spd-pitch input:checked + .sw { background: #2fbf71; }
 .spd-pitch input:checked + .sw::after { transform: translateX(12px); }
 .spd-pitch input:focus-visible + .sw { outline: 2px solid #111; outline-offset: 2px; }
-/* volume, after the picture: a tall card that reaches down around the speaker, holding a rounded slot that points
-   down at it; inside, a thin line fills from the bottom, with a flat bar to drag */
-#vol-wrap .vol-btn { position: relative; z-index: 37; }
-#vol-wrap.open .vol-btn { color: #111; }
-.vol-pop { bottom: -8px; width: 52px; height: 236px; padding: 14px 0 56px; display: flex; flex-direction: column; align-items: center; border-radius: 16px; }
-.vol-pct { height: 18px; font: 700 .72rem var(--f-body); color: #111; font-variant-numeric: tabular-nums; opacity: 0; transition: opacity .2s; }
+/* Keep the speaker outside the floating panel, including on the dark Now Playing screen. */
+body.sheet-open #vol-wrap { --volume-panel: #242426; --volume-track: #3b3b3f; --volume-ink: #fff; }
+#vol-wrap.open .vol-btn { color: var(--volume-ink); }
+.vol-pop { bottom: calc(100% + 32px); width: 64px; height: 198px; padding: 24px 0; display: flex; flex-direction: column; align-items: center; border-radius: 16px; background: var(--volume-panel); color: var(--volume-ink); box-shadow: none; filter: drop-shadow(0 12px 16px rgba(0, 0, 0, .24)); }
+.vol-pop::before { content: ""; position: absolute; left: 50%; bottom: -10px; width: 22px; height: 22px; background: var(--volume-panel); transform: translateX(-50%) rotate(45deg); border-radius: 4px; }
+.vol-pop::after { height: 34px; } /* Keep hover alive between the panel and speaker. */
+.vol-pct { position: absolute; top: 5px; font: 700 .72rem var(--f-body); color: var(--volume-ink); font-variant-numeric: tabular-nums; opacity: 0; transition: opacity .2s; }
 .vol-pop.showpct .vol-pct { opacity: 1; }
-.vslot { position: relative; flex: 1; width: 38px; margin-top: 4px; border-radius: 19px 19px 14px 14px; background: #ececee; }
-.vslot::after { content: ""; position: absolute; left: 50%; bottom: -8px; width: 16px; height: 16px; margin-left: -8px; background: #ececee; transform: rotate(45deg); border-radius: 3px; }
-.vtrack { position: absolute; left: 0; right: 0; top: 14px; bottom: 14px; cursor: pointer; touch-action: none; z-index: 1; }
-.vtrack:focus-visible { outline: 2px solid #111; outline-offset: 4px; border-radius: 6px; }
-.vtrack::before { content: ""; position: absolute; left: 50%; top: 0; bottom: 0; width: 4px; margin-left: -2px; border-radius: 2px; background: #cfcfd3; }
-.vtrack i { position: absolute; left: 50%; bottom: 0; width: 4px; margin-left: -2px; height: var(--v, 80%); border-radius: 2px; background: #111; }
-.vtrack b { position: absolute; left: 50%; bottom: var(--v, 80%); width: 18px; height: 5px; margin: 0 0 -2.5px -9px; border-radius: 3px; background: #111; }
+.vslot { position: relative; flex: 1; width: 44px; }
+.vtrack { position: absolute; inset: 0; cursor: pointer; touch-action: none; z-index: 1; }
+.vtrack:focus-visible { outline: 2px solid var(--volume-ink); outline-offset: 4px; border-radius: 6px; }
+.vtrack::before { content: ""; position: absolute; left: 50%; top: 0; bottom: 0; width: 8px; margin-left: -4px; border-radius: 4px; background: var(--volume-track); }
+.vtrack i { position: absolute; left: 50%; bottom: 0; width: 8px; margin-left: -4px; height: var(--v, 80%); border-radius: 4px; background: var(--volume-ink); }
+.vtrack b { position: absolute; left: 50%; bottom: var(--v, 80%); width: 24px; height: 8px; margin: 0 0 -4px -12px; border-radius: 4px; background: var(--volume-ink); box-shadow: 0 2px 8px rgba(0, 0, 0, .18); }
 .q-badge { height: 34px; padding: 0 14px; border-radius: 999px; font: 700 .76rem var(--f-body); white-space: nowrap; background: #17171a; color: #e7e7ea; border: 1px solid rgba(255, 255, 255, .14); font-variant-numeric: tabular-nums; }
 .q-badge.lossless { color: #7fd8d0; border-color: rgba(127, 216, 208, .35); }
 .q-badge.hires { color: #f2c14e; border-color: rgba(242, 193, 78, .4); box-shadow: inset 0 0 12px rgba(242, 193, 78, .08); }
