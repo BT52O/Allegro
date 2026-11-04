@@ -1042,6 +1042,8 @@ try {
     'at 96 kbps the song plays from its copy with a gold pill, and Max goes back to the original file', JSON.stringify({ q96, qMax }));
 
   // --- a reload comes back to the same song at the same second, never "Nothing Playing"
+  // start the second song fresh: if it's already playing, clicking it would only pause it
+  await A.locator('#view .tr').nth(0).locator('.t-name').click(); await A.waitForTimeout(600);
   await A.locator('#view .tr').nth(1).locator('.t-name').click();
   await A.waitForFunction(() => { const [m, x] = (document.querySelector('#player .t-cur').textContent || '0:00').split(':').map(Number); return m * 60 + x >= 3; }, null, { timeout: 10000 }).catch(() => {});
   await A.click('#player [data-act="toggle"]'); await A.waitForTimeout(300);
