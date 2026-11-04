@@ -23,7 +23,7 @@ this repo, and the rules for interface text, deleting, themes and phones.
 - `src/worker.js`: Cloudflare Worker for `/api/*`.
 - R2 bucket `allegro-music`, with these prefixes:
   - `audio/`: original files
-  - `audio-96/` and `audio-320/`: MP3 streaming copies (on the wip branch, see below)
+  - `audio-96/` and `audio-320/`: MP3 streaming copies (made in the browser, see `makeCopies`)
   - `cover/` and `cover-sm/` (600px)
   - `plcover/`, `arphoto/`
   - `lyrics/`, `lyrics-x/` (cached translations and romanizations)
@@ -84,38 +84,6 @@ grep -n FAIL /tmp/e2e.log
 - **Fonts and sizes:** the font is Roboto (`html{font-size:15px}`). Phones are under 760px.
 - **Editing scripts:** big edits work best as a Python script with `assert s.count(old) == 1` before each replace.
   - Check the app script after editing: extract the `<script>` contents and run `node --check` on them.
-
-## Work in progress (as of 2026-11-04)
-
-Branch **`wip/quality-and-resume`** is pushed but not merged. It contains:
-
-1. **Resume:**
-   - `lastSnap()` saves the queue and what the bar shows; `allegro.pos` saves the second.
-   - `tryRestoreLast()` restores both; `showResumePos()` draws the saved spot on the seek bar.
-   - `startCurrent` seeks to `resumeAt`.
-   - The bar never shows "Nothing Playing" while songs exist. Test passes.
-2. **Quality pill:** a glossy black pill. White means the original file, red means 320 kbps, gold means 96 kbps.
-   - It opens a Max / 320 kbps / 96 kbps picker (`setQual`, `drawQuality`, `playSrc`, `playingCopy`).
-3. **Streaming copies:**
-   - `makeCopies` downloads the original, decodes it with OfflineAudioContext, and encodes MP3 in a blob Web Worker
-     (`mp3Encode`).
-   - It PUTs the result to `/api/songs/:id/audio-96|audio-320`, then re-PUTs the meta. The Worker sets
-     `meta.q96`/`meta.q320` from the R2 heads.
-   - Copies are made only on screens 760px and wider, and skipped when the original is already that small
-     (`copyNeeded`).
-   - "Prepare All Songs" in the popup backfills the library.
-   - Copy creation passes its test.
-4. **The badge no longer disappears:**
-   - A failed header read is no longer cached.
-   - The MP3 frame scan checks up to 64KB and validates the next frame.
-   - The badge shows at 760–1080px widths, and is drawn for a restored song before play.
-
-**Still failing:** "at 96 kbps the song plays from its copy with a gold pill". After the copy for `tagged.mp3` is made,
-playing it again shows `128 kbps` (the original).
-- The suspects:
-  - the `audio` `error` handler, which falls back to the original and clears `t.meta.q96` if the copy fails to play;
-  - or `t.meta.q96` not being set on the track object that `startCurrent` uses.
-- Instrument `startCurrent` and the error handler, fix the bug, run the full suite, then merge to `main`.
 
 ## Open offers the owner hasn't answered (don't build unless asked)
 
