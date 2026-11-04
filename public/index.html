@@ -559,12 +559,11 @@ body.sheet-open #vol-wrap { --volume-panel: #242426; --volume-track: #3b3b3f; --
 .vtrack::before { content: ""; position: absolute; left: 50%; top: 0; bottom: 0; width: 4px; margin-left: -2px; border-radius: 2px; background: var(--volume-track); }
 .vtrack i { position: absolute; left: 50%; bottom: 0; width: 4px; margin-left: -2px; height: var(--v, 80%); border-radius: 2px; background: var(--volume-ink); }
 .vtrack b { position: absolute; left: 50%; bottom: var(--v, 80%); width: 16px; height: 6px; margin: 0 0 -3px -8px; border-radius: 3px; background: var(--volume-ink); }
-/* the quality pill: glossy black with a soft glow in the middle. White for your original file, gold for 96 kbps, red for 320 kbps */
-.q-badge { --qg: 255, 255, 255; --qa: .13; --qt: #f4f4f5; position: relative; height: 34px; padding: 0 18px; border-radius: 999px; font: 500 .82rem var(--f-body); letter-spacing: .01em; white-space: nowrap; color: var(--qt); font-variant-numeric: tabular-nums;
+/* the quality pill: glossy black with a soft glow in the middle. Red for Max (your original file), gold for 96 kbps */
+.q-badge { --qg: 236, 62, 76; --qa: .24; --qt: #ff5e6a; position: relative; display: inline-flex; align-items: center; justify-content: center; line-height: 1; height: 34px; padding: 0 18px; border-radius: 999px; font: 500 .82rem var(--f-body); letter-spacing: .01em; white-space: nowrap; color: var(--qt); font-variant-numeric: tabular-nums;
   background: radial-gradient(60% 75% at 50% 55%, rgba(var(--qg), var(--qa)), rgba(var(--qg), 0) 100%), linear-gradient(#1d1d20, #0e0e10);
   border: 1px solid #050506; box-shadow: inset 0 1px 0 rgba(255, 255, 255, .12), inset 0 0 0 1px rgba(var(--qg), .1), 0 1px 3px rgba(0, 0, 0, .35); transition: filter .15s, color .2s; }
 .q-badge.q96 { --qg: 236, 186, 62; --qa: .22; --qt: #f5c548; }
-.q-badge.q320 { --qg: 236, 62, 76; --qa: .24; --qt: #ff5e6a; }
 .q-badge.making::after { content: ""; position: absolute; right: 7px; top: 50%; width: 4px; height: 4px; margin-top: -2px; border-radius: 50%; background: var(--qt); animation: qbPulse 1.2s ease-in-out infinite; }
 @keyframes qbPulse { 50% { opacity: .25; } }
 .q-badge:hover { filter: brightness(1.18); }
@@ -580,9 +579,6 @@ body.sheet-open #vol-wrap { --volume-panel: #242426; --volume-track: #3b3b3f; --
 .qb-opt b { display: block; font-size: .88rem; }
 .qb-opt small { display: block; color: #6b6b70; font-size: .74rem; line-height: 1.35; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .qb-opt .q-badge { height: 22px; padding: 0 9px; font-size: .66rem; pointer-events: none; }
-.qb-pop dl { display: grid; grid-template-columns: auto 1fr; gap: 6px 14px; margin: 12px 0 0; padding-top: 12px; border-top: 1px solid #ececef; }
-.qb-pop dt { color: #666; }
-.qb-pop dd { margin: 0; text-align: right; font-variant-numeric: tabular-nums; }
 .qb-pop p { margin: 10px 0 0 2px; color: #666; font-size: .78rem; line-height: 1.45; }
 .qb-fill { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 12px; padding-top: 12px; border-top: 1px solid #ececef; color: #666; font-size: .76rem; line-height: 1.4; }
 .qb-fill .pr-chip { flex: none; }
@@ -1652,7 +1648,7 @@ const I18N = [
   ["Couldn't make a smaller copy of this song, so it plays as is.", '无法为这首歌制作较小的副本，所以直接播放原文件。', '無法為這首歌製作較小的副本，所以直接播放原檔案。'],
   ['This song plays at its original quality until it has a smaller copy. On a computer, open this menu and choose Prepare All Songs.', '在有较小的副本之前，这首歌会以原始音质播放。请在电脑上打开此菜单并选择“准备所有歌曲”。', '在有較小的副本之前，這首歌會以原始音質播放。請在電腦上打開此選單並選擇「準備所有歌曲」。'],
   ['Making a smaller copy of this song soon. Until then it plays as is.', '稍后会为这首歌制作较小的副本，在此之前直接播放原文件。', '稍後會為這首歌製作較小的副本，在此之前直接播放原檔案。'],
-  ["Make the 320 and 96 kbps copies for every song now, so they're ready on your phone.", '现在为每首歌制作 320 和 96 kbps 副本，让手机上随时可用。', '現在為每首歌製作 320 和 96 kbps 副本，讓手機上隨時可用。'],
+  ["Make the 96 kbps copy of every song now, so it's ready on your phone.", '现在为每首歌制作 96 kbps 副本，让手机上随时可用。', '現在為每首歌製作 96 kbps 副本，讓手機上隨時可用。'],
   ['Prepare All Songs', '准备所有歌曲', '準備所有歌曲'], ['Preparing songs', '正在准备歌曲', '正在準備歌曲'], ['Stop', '停止', '停止'],
   ['Format', '格式', '格式'], ['Bit depth', '位深', '位元深度'], ['Sample rate', '采样率', '取樣率'], ['Bitrate', '码率', '位元率'], ['Channels', '声道', '聲道'], ['Mono', '单声道', '單聲道'], ['Stereo', '立体声', '立體聲'], ['File size', '文件大小', '檔案大小'],
   ['Playback Speed', '播放速度', '播放速度'], ['Preserve Pitch', '保持音调', '保持音調'],
@@ -6081,10 +6077,10 @@ function origLabel(info, t) {
   return (t && MIME_NAME[(t.mime || '').toLowerCase()]) || 'Max';
 }
 
-/* ---- streaming quality: Max plays your original file; 320 and 96 kbps play smaller MP3 copies.
+/* ---- streaming quality: Max plays your original file; 96 kbps plays a smaller MP3 copy.
    Each copy is made once, in the browser (LAME compiled to WebAssembly, in a background worker), and stored next to the
    original, so any device can stream it. Making one means downloading the original, so it only happens on a computer. */
-const QUALS = ['max', '320', '96'];
+const QUALS = ['max', '96'];
 let QUAL = 'max';
 try { const q = localStorage.getItem('allegro.quality'); if (QUALS.includes(q)) QUAL = q; } catch (e) {}
 const COPY = { queue: [], busy: null, all: false, done: 0, total: 0, failed: new Set(), skip: new Set() };
@@ -6094,8 +6090,8 @@ const canMakeCopies = () => innerWidth >= 760 && !(navigator.connection && navig
 const copyNeeded = (info, q) => !info || info.lossless || !(info.kbps && info.kbps <= +q * 1.1);
 const hasCopy = (t, q) => !!(t && t.kind === 'cloud' && t.meta && t.meta['q' + q]);
 function playSrc(t) { return t && QUAL !== 'max' && hasCopy(t, QUAL) ? audioUrl(t.id) + '?q=' + QUAL : t && t.url; }
-const playingCopy = () => { const m = (audio.getAttribute('src') || '').match(/[?&]q=(96|320)$/); return m ? m[1] : ''; };
-const wantsCopy = t => t && t.kind === 'cloud' && t.meta && (t.duration || 0) < 20 * 60 && !COPY.failed.has(t.id) && ['320', '96'].some(q => !hasCopy(t, q) && !COPY.skip.has(t.id + ':' + q));
+const playingCopy = () => { const m = (audio.getAttribute('src') || '').match(/[?&]q=(96)$/); return m ? m[1] : ''; };
+const wantsCopy = t => t && t.kind === 'cloud' && t.meta && (t.duration || 0) < 20 * 60 && !COPY.failed.has(t.id) && ['96'].some(q => !hasCopy(t, q) && !COPY.skip.has(t.id + ':' + q));
 
 let encWorker = null, encSeq = 0;
 const encJobs = new Map();
@@ -6131,7 +6127,7 @@ onmessage = async e => {
 async function makeCopies(id) {
   const t = tk(id); if (!wantsCopy(t)) return;
   const info = await audioInfo(t);
-  const qs = ['320', '96'].filter(q => !hasCopy(t, q) && !COPY.skip.has(id + ':' + q));
+  const qs = ['96'].filter(q => !hasCopy(t, q) && !COPY.skip.has(id + ':' + q));
   const todo = qs.filter(q => copyNeeded(info, q));
   qs.filter(q => !todo.includes(q)).forEach(q => COPY.skip.add(id + ':' + q));
   try { localStorage.setItem('allegro.qskip', JSON.stringify([...COPY.skip].slice(-5000))); } catch (e) {}
@@ -6166,7 +6162,7 @@ async function runCopies() {
   }
   COPY.busy = null; COPY.all = false; drawQuality();
 }
-// at 320 or 96 kbps, the song that's playing and the one after it get their copies first
+// at 96 kbps, the song that's playing and the one after it get their copies first
 function copiesForNow() {
   if (QUAL === 'max' || !canMakeCopies() || !S.current) return;
   queueCopies([S.current, S.queue[S.qi + 1]].filter(Boolean), true);
@@ -6197,9 +6193,7 @@ async function drawQuality() {
   b.className = 'q-badge' + (cp ? ' q' + cp : small ? ' q' + QUAL : '') + (COPY.busy === t.id ? ' making' : '');
   b.hidden = false;
   b.setAttribute('aria-label', 'Streaming quality: ' + b.textContent);
-  const row = (k, v) => v ? `<dt>${k}</dt><dd data-nt>${esc(String(v))}</dd>` : '';
   const opt = (q, name, sub, subNt) => `<button class="qb-opt" role="radio" aria-checked="${QUAL === q}" data-qset="${q}"><span class="qb-dot"></span><span><b${q === 'max' ? '' : ' data-nt'}>${name}</b><small>${sub ? `<span>${sub}</span>` : ''}${subNt ? `<span data-nt>${sub ? ', ' : ''}${esc(subNt)}</span>` : ''}</small></span><span class="q-badge${q === 'max' ? '' : ' q' + q}" data-nt>${q === 'max' ? esc(origLabel(info, t)) : q + ' kbps'}</span></button>`;
-  const origBits = info ? [info.lossless && info.bits && info.rate ? `${info.bits}-bit ${khz(info.rate)}` : info.kbps ? info.kbps + ' kbps' : '', info.codec].filter(Boolean).join(' ') : '';
   let note;
   if (QUAL === 'max') note = 'Plays your original file, exactly as you uploaded it.';
   else if (cp) note = 'Playing a smaller copy of your file to save data.';
@@ -6209,12 +6203,10 @@ async function drawQuality() {
   else if (COPY.failed.has(t.id)) note = "Couldn't make a smaller copy of this song, so it plays as is.";
   else if (!canMakeCopies()) note = 'This song plays at its original quality until it has a smaller copy. On a computer, open this menu and choose Prepare All Songs.';
   else note = 'Making a smaller copy of this song soon. Until then it plays as is.';
-  const det = cp ? row('Format', 'MP3') + row('Bitrate', cp + ' kbps')
-    : info ? row('Format', info.codec) + row('Bit depth', info.bits && info.bits + '-bit') + row('Sample rate', info.rate && khz(info.rate)) + row('Bitrate', info.kbps && (info.vbr ? '~' : '') + info.kbps + ' kbps') + row('Channels', info.ch && (info.ch === 1 ? 'Mono' : info.ch === 2 ? 'Stereo' : info.ch)) + row('File size', info.size && (info.size / 1048576).toFixed(1) + ' MB') : '';
   const missing = canMakeCopies() ? [...S.tracks.values()].filter(wantsCopy).length : 0;
   const fill = !canMakeCopies() ? '' : COPY.all ? `<div class="qb-fill"><span data-nt>${esc(tr('Preparing songs') + ': ' + Math.min(COPY.done + 1, COPY.total) + ' / ' + COPY.total)}</span><button class="pr-chip" data-qfill="stop">Stop</button></div>`
-    : missing ? `<div class="qb-fill"><span>Make the 320 and 96 kbps copies for every song now, so they're ready on your phone.</span><button class="pr-chip" data-qfill="go">Prepare All Songs</button></div>` : '';
-  $('#qb-pop').innerHTML = `<h4>Streaming Quality</h4><div class="qb-opts" role="radiogroup" aria-label="Streaming quality">${opt('max', 'Max', 'Your original file', origBits)}${opt('320', '320 kbps', 'High quality MP3')}${opt('96', '96 kbps', 'Data saver MP3')}</div><p>${note}</p>${det ? `<dl>${det}</dl>` : ''}${fill}`;
+    : missing ? `<div class="qb-fill"><span>Make the 96 kbps copy of every song now, so it's ready on your phone.</span><button class="pr-chip" data-qfill="go">Prepare All Songs</button></div>` : '';
+  $('#qb-pop').innerHTML = `<h4>Streaming Quality</h4><div class="qb-opts" role="radiogroup" aria-label="Streaming quality">${opt('max', 'Max', 'Your original file')}${opt('96', '96 kbps', 'Data saver MP3')}</div><p>${note}</p>${fill}`;
 }
 const openQb = prPop($('#qb-wrap'), { hover: false });
 $('#q-badge').addEventListener('click', () => openQb(!$('#qb-wrap').classList.contains('open')));
