@@ -1011,10 +1011,50 @@ try {
   await A.mouse.move(700, 300); await A.waitForTimeout(500);
   await A.waitForSelector('#q-badge:not([hidden])', { timeout: 8000 }).catch(() => {});
   const qb = await A.evaluate(() => document.getElementById('q-badge').hidden ? null : document.getElementById('q-badge').textContent);
-  check(spd[0] && spd[1] === '1.25x' && spd[2] && spd[3] === false && spd[4].rate === 1.25 && vol[0] && Math.abs(vol[1] - 25) <= 3 && /^MP3 \d+ kbps$/.test(qb || ''),
+  check(spd[0] && spd[1] === '1.25x' && spd[2] && spd[3] === false && spd[4].rate === 1.25 && vol[0] && Math.abs(vol[1] - 25) <= 3 && /^\d+ kbps$/.test(qb || ''),
     'the player bar has playback speed (with Preserve Pitch), a tall volume slider and the file quality', JSON.stringify({ spd, vol, qb }));
   await A.evaluate(() => { const r = document.getElementById('spd'); }); await A.hover('#vol-btn'); await A.waitForTimeout(400);
   { const v2 = await (await A.$('#vtrack')).boundingBox(); await A.mouse.click(v2.x + v2.width / 2, v2.y + v2.height * .2); } await A.mouse.move(700, 300); await A.waitForTimeout(300);
+
+  // --- the quality pill: glossy black, and a choice of Max, 320 kbps or 96 kbps; a 96 kbps copy is made in the browser and played next time
+  const pill = await A.evaluate(() => { const b = document.getElementById('q-badge'), st = getComputedStyle(b); return [b.className, st.backgroundImage.includes('radial-gradient'), st.borderRadius, st.color]; });
+  await A.click('#q-badge'); await A.waitForTimeout(350);
+  const qOpts = await A.evaluate(() => [...document.querySelectorAll('#qb-pop .qb-opt')].map(o => [o.dataset.qset, o.getAttribute('aria-checked'), o.querySelector('.q-badge').className]));
+  await shot(A, 'quality-pop');
+  await A.click('[data-qset="96"]'); await A.waitForTimeout(300);
+  let copied = null;
+  for (let i = 0; i < 60 && !copied; i++) { await A.waitForTimeout(500); copied = await A.evaluate(async () => { const l = await (await fetch('/api/library')).json(); return (l.songs.find(x => x.q96) || {}).id || null; }); }
+  const copyRes = copied && await A.evaluate(async id => { const r = await fetch('/api/audio/' + encodeURIComponent(id) + '?q=96'), b = new Uint8Array(await r.arrayBuffer()); return [r.status, r.headers.get('content-type'), b.length, b[0] === 0xFF || String.fromCharCode(b[0], b[1], b[2]) === 'ID3']; }, copied);
+  check(pill[0] === 'q-badge' && pill[1] && parseFloat(pill[2]) > 100 && qOpts.map(o => o[0]).join() === 'max,320,96' && qOpts[0][1] === 'true' && /q320/.test(qOpts[1][2]) && /q96/.test(qOpts[2][2]) && copyRes && copyRes[0] === 200 && copyRes[1] === 'audio/mpeg' && copyRes[2] > 1000 && copyRes[3],
+    'the quality pill is a glossy black pill; choosing 96 kbps makes an MP3 copy and stores it', JSON.stringify({ pill, qOpts, copied, copyRes }));
+  await A.mouse.click(700, 300); await A.waitForTimeout(300);
+  // clicking the song that is already playing only pauses it, so play another song first, then come back to the copied one
+  await A.locator(`#view .tr:not([data-id="${copied}"]) .t-name`).first().click(); await A.waitForTimeout(800);
+  await A.click(`#view .tr[data-id="${copied}"] .t-name`);
+  await A.waitForFunction(() => document.getElementById('q-badge').textContent === '96 kbps', null, { timeout: 8000 }).catch(() => {});
+  const q96 = await A.evaluate(() => [document.getElementById('q-badge').textContent, document.getElementById('q-badge').className]);
+  await shot(A, 'quality-96');
+  await A.click('#q-badge'); await A.waitForTimeout(300); await A.click('[data-qset="max"]'); await A.waitForTimeout(1200);
+  const qMax = await A.evaluate(() => [document.getElementById('q-badge').textContent, document.getElementById('q-badge').className, localStorage.getItem('allegro.quality')]);
+  await A.mouse.click(700, 300); await A.waitForTimeout(300);
+  check(q96[0] === '96 kbps' && /\bq96\b/.test(q96[1]) && /^\d+ kbps$/.test(qMax[0]) && qMax[0] !== '96 kbps' && qMax[1] === 'q-badge' && qMax[2] === 'max',
+    'at 96 kbps the song plays from its copy with a gold pill, and Max goes back to the original file', JSON.stringify({ q96, qMax }));
+
+  // --- a reload comes back to the same song at the same second, never "Nothing Playing"
+  await A.locator('#view .tr').nth(1).locator('.t-name').click();
+  await A.waitForFunction(() => { const [m, x] = (document.querySelector('#player .t-cur').textContent || '0:00').split(':').map(Number); return m * 60 + x >= 3; }, null, { timeout: 10000 }).catch(() => {});
+  await A.click('#player [data-act="toggle"]'); await A.waitForTimeout(300);
+  const rsBefore = await A.evaluate(() => [document.getElementById('p-title').textContent, document.querySelector('#player .t-cur').textContent]);
+  await A.reload(); await A.waitForTimeout(150);
+  const rsEarly = await A.evaluate(() => document.getElementById('p-title').textContent);
+  await A.waitForTimeout(2500);
+  const rsAfter = await A.evaluate(() => [document.getElementById('p-title').textContent, document.querySelector('#player .t-cur').textContent, +document.querySelector('#player .seek').value, !document.getElementById('q-badge').hidden]);
+  await A.click('#player [data-act="toggle"]'); await A.waitForTimeout(1200);
+  const resumed = await A.evaluate(() => document.querySelector('#player .t-cur').textContent);
+  await A.click('#player [data-act="toggle"]'); await A.waitForTimeout(200);
+  const sec = t => { const [m, x] = t.split(':').map(Number); return m * 60 + x; };
+  check(rsEarly !== 'Nothing Playing' && rsAfter[0] === rsBefore[0] && rsAfter[1] === rsBefore[1] && rsAfter[2] > 0 && rsAfter[3] && sec(rsBefore[1]) >= 2 && sec(resumed) >= sec(rsBefore[1]),
+    'after a reload the bar shows the last song (with its quality pill) at the second it stopped, and play carries on from there', JSON.stringify({ rsBefore, rsEarly, rsAfter, resumed }));
 
   // --- the play queue floats under the search bar, lined up with it, and fades in and out
   await A.locator('#view .tr').first().locator('.t-name').click(); await A.waitForTimeout(800);

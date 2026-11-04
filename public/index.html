@@ -559,18 +559,34 @@ body.sheet-open #vol-wrap { --volume-panel: #242426; --volume-track: #3b3b3f; --
 .vtrack::before { content: ""; position: absolute; left: 50%; top: 0; bottom: 0; width: 4px; margin-left: -2px; border-radius: 2px; background: var(--volume-track); }
 .vtrack i { position: absolute; left: 50%; bottom: 0; width: 4px; margin-left: -2px; height: var(--v, 80%); border-radius: 2px; background: var(--volume-ink); }
 .vtrack b { position: absolute; left: 50%; bottom: var(--v, 80%); width: 16px; height: 6px; margin: 0 0 -3px -8px; border-radius: 3px; background: var(--volume-ink); }
-.q-badge { height: 34px; padding: 0 14px; border-radius: 999px; font: 700 .76rem var(--f-body); white-space: nowrap; background: #17171a; color: #e7e7ea; border: 1px solid rgba(255, 255, 255, .14); font-variant-numeric: tabular-nums; }
-.q-badge.lossless { color: #7fd8d0; border-color: rgba(127, 216, 208, .35); }
-.q-badge.hires { color: #f2c14e; border-color: rgba(242, 193, 78, .4); box-shadow: inset 0 0 12px rgba(242, 193, 78, .08); }
-.q-badge:hover { filter: brightness(1.15); }
-.qb-pop { width: 260px; padding: 16px 18px; right: 0; transform: translate(0, 8px); font-size: .85rem; }
+/* the quality pill: glossy black with a soft glow in the middle. White for your original file, gold for 96 kbps, red for 320 kbps */
+.q-badge { --qg: 255, 255, 255; --qa: .13; --qt: #f4f4f5; position: relative; height: 34px; padding: 0 18px; border-radius: 999px; font: 500 .82rem var(--f-body); letter-spacing: .01em; white-space: nowrap; color: var(--qt); font-variant-numeric: tabular-nums;
+  background: radial-gradient(60% 75% at 50% 55%, rgba(var(--qg), var(--qa)), rgba(var(--qg), 0) 100%), linear-gradient(#1d1d20, #0e0e10);
+  border: 1px solid #050506; box-shadow: inset 0 1px 0 rgba(255, 255, 255, .12), inset 0 0 0 1px rgba(var(--qg), .1), 0 1px 3px rgba(0, 0, 0, .35); transition: filter .15s, color .2s; }
+.q-badge.q96 { --qg: 236, 186, 62; --qa: .22; --qt: #f5c548; }
+.q-badge.q320 { --qg: 236, 62, 76; --qa: .24; --qt: #ff5e6a; }
+.q-badge.making::after { content: ""; position: absolute; right: 7px; top: 50%; width: 4px; height: 4px; margin-top: -2px; border-radius: 50%; background: var(--qt); animation: qbPulse 1.2s ease-in-out infinite; }
+@keyframes qbPulse { 50% { opacity: .25; } }
+.q-badge:hover { filter: brightness(1.18); }
+.qb-pop { width: 300px; padding: 16px 16px 14px; right: 0; transform: translate(0, 8px); font-size: .85rem; }
 .pr-wrap.open .qb-pop { transform: none; }
-.qb-pop h4 { margin: 0 0 10px; font-size: .95rem; }
-.qb-pop dl { display: grid; grid-template-columns: auto 1fr; gap: 6px 14px; margin: 0; }
+.qb-pop h4 { margin: 0 0 10px 2px; font-size: .95rem; }
+.qb-opts { display: flex; flex-direction: column; gap: 2px; margin: 0 -6px; }
+.qb-opt { display: grid; grid-template-columns: 18px minmax(0, 1fr) auto; align-items: center; gap: 10px; padding: 8px 8px; border-radius: 10px; text-align: left; color: #111; }
+.qb-opt:hover { background: #f1f1f3; }
+.qb-opt .qb-dot { width: 16px; height: 16px; border-radius: 50%; border: 2px solid #c4c4c8; display: grid; place-items: center; }
+.qb-opt[aria-checked="true"] .qb-dot { border-color: #111; }
+.qb-opt[aria-checked="true"] .qb-dot::after { content: ""; width: 8px; height: 8px; border-radius: 50%; background: #111; }
+.qb-opt b { display: block; font-size: .88rem; }
+.qb-opt small { display: block; color: #6b6b70; font-size: .74rem; line-height: 1.35; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.qb-opt .q-badge { height: 22px; padding: 0 9px; font-size: .66rem; pointer-events: none; }
+.qb-pop dl { display: grid; grid-template-columns: auto 1fr; gap: 6px 14px; margin: 12px 0 0; padding-top: 12px; border-top: 1px solid #ececef; }
 .qb-pop dt { color: #666; }
 .qb-pop dd { margin: 0; text-align: right; font-variant-numeric: tabular-nums; }
-.qb-pop p { margin: 12px 0 0; color: #666; font-size: .78rem; line-height: 1.45; }
-@media (max-width: 1250px) { .q-badge { padding: 0 10px; font-size: .7rem; } }
+.qb-pop p { margin: 10px 0 0 2px; color: #666; font-size: .78rem; line-height: 1.45; }
+.qb-fill { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 12px; padding-top: 12px; border-top: 1px solid #ececef; color: #666; font-size: .76rem; line-height: 1.4; }
+.qb-fill .pr-chip { flex: none; }
+@media (max-width: 1250px) { .q-badge { padding: 0 13px; font-size: .76rem; } }
 .p-mini-play, .p-mini-prog { display: none; }
 
 input[type="range"] { -webkit-appearance: none; appearance: none; flex: 1; min-width: 0; height: 20px; background: transparent; cursor: pointer; margin: 0; --pct: 0%; }
@@ -912,7 +928,7 @@ img { -webkit-user-drag: none; user-select: none; }
   .li.grid .li-art { width: 40px; }
   .queue-panel { width: 290px; }
   .player { grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr) auto; }
-  #qb-wrap { display: none; }
+  #qb-wrap > .q-badge { height: 30px; padding: 0 10px; font-size: .7rem; }
 }
 /* ---------- sign-in ---------- */
 .gate { position: fixed; inset: 0; z-index: 60; display: grid; place-items: center; background: var(--bg); padding: 24px max(16px, env(safe-area-inset-right, 0px)) 24px max(16px, env(safe-area-inset-left, 0px)); }
@@ -1626,10 +1642,24 @@ const I18N = [
   ['Write a comment…', '写下你的评论…', '寫下你的評論…'], ['Write a comment', '写下你的评论', '寫下你的評論'], ['Post', '发布', '發佈'], ['You', '我', '我'], ['No comments yet. Write the first one.', '还没有评论，来写第一条吧。', '還沒有評論，來寫第一則吧。'], ['Comment deleted', '评论已删除', '評論已刪除'], ['Like', '赞', '讚'], ['Delete', '删除', '刪除'],
   ['Nothing here yet. Add your own notes, the story behind the song, or the credits.', '这里还没有内容。添加你的笔记、歌曲背后的故事或制作信息。', '這裡還沒有內容。加入你的筆記、歌曲背後的故事或製作資訊。'], ['Upload this song to add notes and credits.', '上传这首歌后即可添加笔记和制作信息。', '上傳這首歌後即可加入筆記和製作資訊。'],
   ['The story behind the song, what it means to you, anything you like.', '歌曲背后的故事、它对你的意义，写什么都可以。', '歌曲背後的故事、它對你的意義，寫什麼都可以。'], ['Show song details and lyrics', '显示歌曲详情和歌词', '顯示歌曲詳情和歌詞'], ['Saved', '已保存', '已儲存'], ['About this song', '关于这首歌', '關於這首歌'],
-  ['Saved Online · MP3, M4A, WAV, FLAC, OGG', '在线保存 · MP3、M4A、WAV、FLAC、OGG', '線上儲存 · MP3、M4A、WAV、FLAC、OGG'], ['Saved in This Browser · MP3, M4A, WAV, FLAC, OGG', '保存在此浏览器 · MP3、M4A、WAV、FLAC、OGG', '儲存在此瀏覽器 · MP3、M4A、WAV、FLAC、OGG']
+  ['Saved Online · MP3, M4A, WAV, FLAC, OGG', '在线保存 · MP3、M4A、WAV、FLAC、OGG', '線上儲存 · MP3、M4A、WAV、FLAC、OGG'], ['Saved in This Browser · MP3, M4A, WAV, FLAC, OGG', '保存在此浏览器 · MP3、M4A、WAV、FLAC、OGG', '儲存在此瀏覽器 · MP3、M4A、WAV、FLAC、OGG'],
+  ['Streaming Quality', '音质', '音質'], ['Streaming quality', '音质', '音質'], ['Max', '最高', '最高'], ['Your original file', '你的原始文件', '你的原始檔案'], ['High quality MP3', '高音质 MP3', '高音質 MP3'], ['Data saver MP3', '省流量 MP3', '省流量 MP3'],
+  ['Plays your original file, exactly as you uploaded it.', '播放你的原始文件，与上传时完全相同。', '播放你的原始檔案，與上傳時完全相同。'],
+  ['Playing a smaller copy of your file to save data.', '正在播放较小的副本以节省流量。', '正在播放較小的副本以節省流量。'],
+  ["This song's file is already this size or smaller, so it plays as is.", '这首歌的文件已经不大于此音质，所以直接播放原文件。', '這首歌的檔案已經不大於此音質，所以直接播放原檔案。'],
+  ['Making a smaller copy of this song. It plays from the next time.', '正在为这首歌制作较小的副本，下次播放时生效。', '正在為這首歌製作較小的副本，下次播放時生效。'],
+  ['The smaller copy is ready. It plays from the next time.', '较小的副本已准备好，下次播放时生效。', '較小的副本已準備好，下次播放時生效。'],
+  ["Couldn't make a smaller copy of this song, so it plays as is.", '无法为这首歌制作较小的副本，所以直接播放原文件。', '無法為這首歌製作較小的副本，所以直接播放原檔案。'],
+  ['This song plays at its original quality until it has a smaller copy. On a computer, open this menu and choose Prepare All Songs.', '在有较小的副本之前，这首歌会以原始音质播放。请在电脑上打开此菜单并选择“准备所有歌曲”。', '在有較小的副本之前，這首歌會以原始音質播放。請在電腦上打開此選單並選擇「準備所有歌曲」。'],
+  ['Making a smaller copy of this song soon. Until then it plays as is.', '稍后会为这首歌制作较小的副本，在此之前直接播放原文件。', '稍後會為這首歌製作較小的副本，在此之前直接播放原檔案。'],
+  ["Make the 320 and 96 kbps copies for every song now, so they're ready on your phone.", '现在为每首歌制作 320 和 96 kbps 副本，让手机上随时可用。', '現在為每首歌製作 320 和 96 kbps 副本，讓手機上隨時可用。'],
+  ['Prepare All Songs', '准备所有歌曲', '準備所有歌曲'], ['Preparing songs', '正在准备歌曲', '正在準備歌曲'], ['Stop', '停止', '停止'],
+  ['Format', '格式', '格式'], ['Bit depth', '位深', '位元深度'], ['Sample rate', '采样率', '取樣率'], ['Bitrate', '码率', '位元率'], ['Channels', '声道', '聲道'], ['Mono', '单声道', '單聲道'], ['Stereo', '立体声', '立體聲'], ['File size', '文件大小', '檔案大小'],
+  ['Playback Speed', '播放速度', '播放速度'], ['Preserve Pitch', '保持音调', '保持音調'],
 ];
 const pickL = (h, t) => LANG === 'zh-Hant' ? t : h;
 const PAT = [
+  [/^Streaming quality: (.+)$/, m => pickL(`音质：${m[1]}`, `音質：${m[1]}`)],
   [/^(\d+) songs?$/, m => pickL(`${m[1]} 首歌曲`, `${m[1]} 首歌曲`)], [/^(\d+) playlists?$/, m => pickL(`${m[1]} 个歌单`, `${m[1]} 個歌單`)],
   [/^(\d+) folders?$/, m => pickL(`${m[1]} 个文件夹`, `${m[1]} 個資料夾`)], [/^(\d+) albums?$/, m => pickL(`${m[1]} 张专辑`, `${m[1]} 張專輯`)], [/^(\d+) lists?$/, m => pickL(`${m[1]} 个列表`, `${m[1]} 個清單`)],
   [/^(\d+) min (\d+) sec$/, m => `${m[1]} 分 ${m[2]} 秒`], [/^(\d+) hr (\d+) min$/, m => pickL(`${m[1]} 小时 ${m[2]} 分`, `${m[1]} 小時 ${m[2]} 分`)], [/^(\d+) sec$/, m => `${m[1]} 秒`],
@@ -1850,6 +1880,23 @@ try {
     S.last = p.last || null;
   }
 } catch (e) {}
+/* What a reload needs to come back to the same song: the queue, the place in it, and enough to draw the bar
+   before the library has loaded. The exact second lives in its own small key (allegro.pos), written often. */
+function lastSnap() {
+  const t = tk(S.current);
+  if (!t) return S.last;
+  const q = S.queue.length > 3000 ? S.queue.slice(Math.max(0, S.qi - 1000), S.qi + 2000) : S.queue.slice(), qi = q.indexOf(S.current);
+  return { ctx: S.context && S.context.key, ctxName: S.context && S.context.name, id: S.current, queue: qi < 0 ? [S.current] : q, qi: Math.max(0, qi),
+    title: t.title, artist: t.artist, cover: t.cover && !t.cover.startsWith('data:') && !t.cover.startsWith('blob:') ? t.cover : '', dur: t.duration || 0 };
+}
+const POS_KEY = 'allegro.pos';
+let resumeAt = null;   // { id, t }: where to start the restored song when play is pressed
+try { const p = JSON.parse(localStorage.getItem(POS_KEY) || 'null'); if (p && p.id && p.t >= 0) resumeAt = p; } catch (e) {}
+function curPos() {
+  if (resumeAt && resumeAt.id === S.current && (!audio.getAttribute('src') || audio.getAttribute('src') === SILENT)) return resumeAt.t;
+  return audio.getAttribute('src') && audio.getAttribute('src') !== SILENT ? audio.currentTime || 0 : 0;
+}
+function savePos() { if (!S.current) return; try { localStorage.setItem(POS_KEY, JSON.stringify({ id: S.current, t: Math.round(curPos() * 10) / 10 })); } catch (e) {} }
 let saveTimer;
 function save() {
   clearTimeout(saveTimer);
@@ -1858,7 +1905,7 @@ function save() {
       localStorage.setItem(STORE_KEY, JSON.stringify({
         playlists: S.playlists, liked: S.liked, libOrder: S.libOrder, recent: S.recent, history: S.history, artistPics: S.artistPics, listCols: S.listCols, folders: S.folders, prefs: S.prefs, volume: S.volume, shuffle: S.shuffle, repeat: S.repeat,
         demoAdded: S.demoAdded, libTab: S.libTab, sort: S.sort, queueOpen: S.queueOpen, libSort: S.libSort, libView: S.libView, sideCollapsed: S.sideCollapsed,
-        last: S.current ? { ctx: S.context && S.context.key, id: S.current } : null
+        last: lastSnap()
       }));
     } catch (e) {}
     pushState();
@@ -2410,7 +2457,11 @@ async function startCurrent(autoplay) {
     if (token !== loadToken) return;
     setLoading(false);
   }
-  audio.src = t.url;
+  audio.src = playSrc(t);
+  if (resumeAt && resumeAt.id === id && resumeAt.t > 0) {
+    const at = resumeAt.t; resumeAt = null;
+    audio.addEventListener('loadedmetadata', () => { if (S.current === id && at < (audio.duration || Infinity) - 1) audio.currentTime = at; }, { once: true });
+  } else resumeAt = null;
   if (autoplay) {
     const p = audio.play();
     if (p && p.catch) p.catch(err => { if (err && err.name === 'NotAllowedError') toast('Tap play to start the music.'); });
@@ -3145,16 +3196,18 @@ function syncToggles() {
   $('#shell').classList.toggle('q-open', S.queueOpen);
 }
 function updateMeta() {
-  const t = tk(S.current);
-  $('#p-title').textContent = t ? t.title : 'Nothing Playing';
-  $('#p-artist').textContent = t ? t.artist : 'Pick a song to start';
+  const t = tk(S.current), L = !t && !restoredLast && S.last && S.last.title ? S.last : null;   // L: the saved song, drawn before the library arrives
+  $('#p-title').textContent = t ? t.title : L ? L.title : 'Nothing Playing';
+  $('#p-artist').textContent = t ? t.artist : L ? L.artist : 'Pick a song to start';
   const img = $('#p-cover-img');
-  if (t) { img.src = t.cover; img.hidden = false; } else img.hidden = true;
-  $$('.t-dur').forEach(e => { e.textContent = t ? fmt(t.duration) : '0:00'; });
+  if (t) { img.src = t.cover; img.hidden = false; } else if (L && L.cover) { img.src = L.cover; img.hidden = false; } else img.hidden = true;
+  $$('.t-dur').forEach(e => { e.textContent = t ? fmt(t.duration) : L ? fmt(L.dur) : '0:00'; });
+  if (L && resumeAt && resumeAt.id === L.id && L.dur) { $$('.t-cur').forEach(c => { c.textContent = fmt(resumeAt.t); }); $$('.seek').forEach(s => { s.value = Math.round(Math.min(1, resumeAt.t / L.dur) * 1000); setPct(s); }); }
   $$('.seek').forEach(s => { s.disabled = !t; });
   if (t) {
     $('#s-cover').src = t.ownCoverFull || t.cover;   // the full-size file, not the small copy lists use $('#s-title').textContent = t.title; $('#s-artist').textContent = t.artist;
     $('#s-ctx').textContent = S.context ? S.context.name : t.album;
+    Promise.resolve().then(drawQuality);
     if (!$('#sheet').hidden && SP.shownId !== t.id) { SP.shownId = t.id; SP.editWiki = SP.editLyr = false; SP.userScroll = 0; renderPanel(); }
     tintOf(t.cover).then(rgb => { if (rgb && tk(S.current) === t) { $('#sheet').style.setProperty('--tint', rgb); $('#sheet').style.setProperty('--bg-top', shade(rgb, .46)); $('#sheet').style.setProperty('--bg-bot', shade(rgb, .13, .25)); edgeTintOf(t.cover).then(e => { if (e && tk(S.current) === t) { for (const el of [$('#sheet'), $('#player')]) { el.style.setProperty('--deep', deepTint(e)); el.style.setProperty('--deep2', deepTint(e, .72)); } } }); $('#player').style.setProperty('--ptint', rgb); } });
   }
@@ -5586,7 +5639,7 @@ async function loadLibrary(first) {
   for (const t of [...S.tracks.values()]) if (t.kind === 'cloud' && !seen.has(t.id)) detachTrack(t.id);
   applyState(data.state);
   rebuild();
-  if (!cloud.songsLoaded) { cloud.songsLoaded = true; tryRestoreLast(); setTimeout(fillThumbs, 4000); }
+  if (!cloud.songsLoaded) { cloud.songsLoaded = true; bootDone.cloud = true; tryRestoreLast(); setTimeout(fillThumbs, 4000); }
   if (!S.renaming && $('#menu').hidden) render(); else renderSide();
   applyPlaceTop(true);
   updateMeta(); renderQueue(); renderSide(); syncLikes();
@@ -5644,23 +5697,45 @@ async function signOut() {
 }
 async function initCloud() {
   let s;
-  try { s = await api('session'); } catch (e) { toast("Can't reach Allegro right now. Check your connection."); return; }
+  try { s = await api('session'); } catch (e) { toast("Can't reach Allegro right now. Check your connection."); bootDone.cloud = true; tryRestoreLast(); return; }
   if (!s.signedIn) { showGate(s.needsSetup); return; }
   await loadLibrary(true);
+  if (!cloud.songsLoaded) { bootDone.cloud = true; tryRestoreLast(); }
   setInterval(() => { if (document.visibilityState === 'visible') loadLibrary(); }, 60000);
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') loadLibrary(); });
 }
 
 let restoredLast = false;
+const bootDone = { idb: false, cloud: false };
 function tryRestoreLast() {
-  if (restoredLast || !S.last || !audio.paused || loading) return;
-  if (S.current === S.last.id) { restoredLast = true; return; }
-  const c = ctxInfo(S.last.ctx);
-  if (!c || !c.ids.includes(S.last.id)) return;
-  S.queue = c.ids.slice(); S.qi = c.ids.indexOf(S.last.id); S.context = { key: c.key, name: c.name }; S.current = S.last.id;
-  audio.removeAttribute('src');
-  restoredLast = true;
-  updateMeta(); markPlaying(); renderQueue(); renderSide(); syncPlayIcons();
+  if (restoredLast || !audio.paused || loading || (audio.getAttribute('src') && audio.getAttribute('src') !== SILENT)) return;
+  const L = S.last;
+  if (L && tk(L.id)) {
+    if (S.current !== L.id) {
+      const c = ctxInfo(L.ctx), saved = Array.isArray(L.queue) ? L.queue.filter(id => S.tracks.has(id)) : [];
+      const q = saved.includes(L.id) ? saved : c && c.ids.includes(L.id) ? c.ids.slice() : [L.id];
+      S.queue = q; S.origQueue = null; S.qi = q.indexOf(L.id); S.current = L.id;
+      S.context = c ? { key: c.key, name: c.name } : L.ctx ? { key: L.ctx, name: L.ctxName || '' } : null;
+      audio.removeAttribute('src');
+    }
+    restoredLast = true;
+  } else if (bootDone.idb && bootDone.cloud) {
+    // the last song is gone (deleted, or signed out): fall back to the most recent song that still exists, then any album
+    restoredLast = true;
+    const h = S.history.find(e => tk(e.id) && tk(e.id).kind !== 'demo') || S.history.find(e => tk(e.id));
+    if (h) { S.queue = [h.id]; S.qi = 0; S.current = h.id; S.context = null; resumeAt = null; audio.removeAttribute('src'); }
+    else if (!S.current || !tk(S.current)) { const a = albumsSorted()[0]; if (a) { S.queue = a.ids.slice(); S.qi = 0; S.context = { key: 'album:' + a.key, name: a.name }; S.current = S.queue[0]; resumeAt = null; } }
+  } else return;
+  updateMeta(); markPlaying(); renderQueue(); renderSide(); syncPlayIcons(); showResumePos();
+}
+/* Draw the saved second on the seek bar before anything has loaded. */
+function showResumePos() {
+  const t = tk(S.current), d = (t && t.duration) || (S.last && S.last.id === S.current && S.last.dur) || 0;
+  if (!resumeAt || resumeAt.id !== S.current || !d) return;
+  const v = Math.round(Math.min(1, resumeAt.t / d) * 1000);
+  $$('.seek').forEach(s => { s.value = v; setPct(s); });
+  $$('.t-cur').forEach(c => { c.textContent = fmt(resumeAt.t); });
+  const mb = $('#mini-bar'); if (mb) mb.style.width = (resumeAt.t / d * 100) + '%';
 }
 
 /* ================= sheet ================= */
@@ -5878,7 +5953,12 @@ window.addEventListener('drop', e => e.preventDefault());
 let seeking = false;
 $$('.seek').forEach(s => {
   s.addEventListener('input', () => { seeking = true; setPct(s); const d = audio.duration || tk(S.current)?.duration; if (d) $$('.t-cur').forEach(c => { c.textContent = fmt(s.value / 1000 * d); }); });
-  s.addEventListener('change', () => { if (audio.duration) audio.currentTime = s.value / 1000 * audio.duration; seeking = false; });
+  s.addEventListener('change', () => {
+    const live = audio.getAttribute('src') && audio.getAttribute('src') !== SILENT;
+    if (live && audio.duration) audio.currentTime = s.value / 1000 * audio.duration;
+    else { const d = tk(S.current)?.duration; if (d && S.current) { resumeAt = { id: S.current, t: s.value / 1000 * d }; savePos(); } }
+    seeking = false;
+  });
 });
 /* ---- popups above the right side of the player bar: they open on hover, or on click/tap, and close when you move away ---- */
 function prPop(wrap, { hover = true } = {}) {
@@ -5957,10 +6037,13 @@ function parseAudioHead(u, total, dur, startAt = 0) {
   if (off === 0 && s4(0).slice(0, 3) === 'ID3') off = 10 + ((u[6] & 127) << 21 | (u[7] & 127) << 14 | (u[8] & 127) << 7 | (u[9] & 127)) + (u[5] & 16 ? 10 : 0);
   if (off + 4 > u.length) return { need: off };
   if (s4(off) === 'fLaC') { const p = off + 8; return { codec: 'FLAC', lossless: true, rate: (u[p + 10] << 12) | (u[p + 11] << 4) | (u[p + 12] >> 4), bits: (((u[p + 12] & 1) << 4) | (u[p + 13] >> 4)) + 1, ch: ((u[p + 12] >> 1) & 7) + 1 }; }
-  for (let o = off; o < Math.min(u.length - 4, off + 4096); o++) {
+  for (let o = off; o < Math.min(u.length - 4, off + 65536); o++) {
     if (u[o] !== 0xFF || (u[o + 1] & 0xE0) !== 0xE0) continue;
     const ver = (u[o + 1] >> 3) & 3, layer = (u[o + 1] >> 1) & 3, bi = u[o + 2] >> 4, ri = (u[o + 2] >> 2) & 3;
     if (ver === 1 || layer !== 1 || bi === 0 || bi === 15 || ri === 3) continue;
+    // a real frame is followed by another one; random bytes in a padded tag aren't
+    const flen = Math.floor((ver === 3 ? 144000 : 72000) * MP3_KBPS[ver === 3 ? 1 : 2][bi] / MP3_RATE[ver][ri]) + ((u[o + 2] >> 1) & 1);
+    if (o + flen + 1 < u.length && (u[o + flen] !== 0xFF || (u[o + flen + 1] & 0xE0) !== 0xE0)) continue;
     const rate = MP3_RATE[ver][ri], head = String.fromCharCode(...u.subarray(o, Math.min(u.length, o + 200)));
     const vbr = head.includes('Xing') || head.includes('VBRI');
     return { codec: 'MP3', rate, kbps: vbr ? Math.round((total - off) * 8 / dur / 1000) || MP3_KBPS[ver === 3 ? 1 : 2][bi] : MP3_KBPS[ver === 3 ? 1 : 2][bi], vbr };
@@ -5978,36 +6061,178 @@ async function audioInfo(t) {
       const cr = r.headers.get('content-range'), total = cr ? +cr.split('/')[1] : +(r.headers.get('content-length') || 0);
       return { u: new Uint8Array(await r.arrayBuffer()), total };
     };
-    let { u, total } = await read(0, 131072);
+    let { u, total } = await read(0, 196608);
     let info = parseAudioHead(u, total, t.duration || audio.duration || 0);
-    if (info.need) { const more = await read(info.need, 8192); const pad = new Uint8Array(info.need + more.u.length); pad.set(more.u, info.need); info = parseAudioHead(pad, total, t.duration || audio.duration || 0, info.need); }
+    if (info.need) { const more = await read(info.need, 70000); const pad = new Uint8Array(info.need + more.u.length); pad.set(more.u, info.need); info = parseAudioHead(pad, total, t.duration || audio.duration || 0, info.need); }
     info.size = total;
     return info;
-  })().catch(() => null);
+  })().catch(() => { QINFO.delete(t.id); return null; });
   QINFO.set(t.id, p);
   return p;
 }
 const khz = r => (r / 1000).toFixed(r % 1000 ? 1 : 0).replace(/\.0$/, '') + 'kHz';
+const MIME_NAME = { 'audio/flac': 'FLAC', 'audio/x-flac': 'FLAC', 'audio/mpeg': 'MP3', 'audio/mp3': 'MP3', 'audio/mp4': 'AAC', 'audio/aac': 'AAC', 'audio/wav': 'WAV', 'audio/x-wav': 'WAV', 'audio/ogg': 'Ogg', 'audio/webm': 'WebM' };
+// what the original file is, in a few words ("16-bit 48kHz", "320 kbps"); falls back to the file type so the pill never goes blank
+function origLabel(info, t) {
+  if (info && info.lossless && info.bits && info.rate) return `${info.bits}-bit ${khz(info.rate)}`;
+  if (info && info.lossless && info.codec) return info.codec;
+  if (info && info.kbps) return info.kbps + ' kbps';
+  if (info && info.codec) return info.codec;
+  return (t && MIME_NAME[(t.mime || '').toLowerCase()]) || 'Max';
+}
+
+/* ---- streaming quality: Max plays your original file; 320 and 96 kbps play smaller MP3 copies.
+   Each copy is made once, in the browser (LAME compiled to WebAssembly, in a background worker), and stored next to the
+   original, so any device can stream it. Making one means downloading the original, so it only happens on a computer. */
+const QUALS = ['max', '320', '96'];
+let QUAL = 'max';
+try { const q = localStorage.getItem('allegro.quality'); if (QUALS.includes(q)) QUAL = q; } catch (e) {}
+const COPY = { queue: [], busy: null, all: false, done: 0, total: 0, failed: new Set(), skip: new Set() };
+try { COPY.skip = new Set(JSON.parse(localStorage.getItem('allegro.qskip') || '[]')); } catch (e) {}
+const canMakeCopies = () => innerWidth >= 760 && !(navigator.connection && navigator.connection.saveData) && cloud.canWrite;
+// no copy when the original is already about that size or smaller: it would only sound worse
+const copyNeeded = (info, q) => !info || info.lossless || !(info.kbps && info.kbps <= +q * 1.1);
+const hasCopy = (t, q) => !!(t && t.kind === 'cloud' && t.meta && t.meta['q' + q]);
+function playSrc(t) { return t && QUAL !== 'max' && hasCopy(t, QUAL) ? audioUrl(t.id) + '?q=' + QUAL : t && t.url; }
+const playingCopy = () => { const m = (audio.getAttribute('src') || '').match(/[?&]q=(96|320)$/); return m ? m[1] : ''; };
+const wantsCopy = t => t && t.kind === 'cloud' && t.meta && (t.duration || 0) < 20 * 60 && !COPY.failed.has(t.id) && ['320', '96'].some(q => !hasCopy(t, q) && !COPY.skip.has(t.id + ':' + q));
+
+let encWorker = null, encSeq = 0;
+const encJobs = new Map();
+function mp3Encode(ch, rate, kbpsList) {
+  if (!encWorker) {
+    const lib = new URL('/vendor/wasm-media-encoders.min.js', location.href).href, wasm = new URL('/vendor/mp3.wasm', location.href).href;
+    const src = `importScripts(${JSON.stringify(lib)});
+let encP = null;
+onmessage = async e => {
+  const { id, ch, rate, kbpsList } = e.data;
+  try {
+    if (!encP) encP = fetch(${JSON.stringify(wasm)}).then(r => r.arrayBuffer()).then(b => WasmMediaEncoder.createEncoder('audio/mpeg', new Uint8Array(b)));
+    const enc = await encP, outs = [];
+    for (const kbps of kbpsList) {
+      enc.configure({ sampleRate: rate, channels: ch.length, bitrate: kbps });
+      const parts = []; let n = 0; const step = 1152 * 64;
+      const add = o => { if (o.length) { parts.push(o.slice()); n += o.length; } };
+      for (let o = 0; o < ch[0].length; o += step) add(enc.encode(ch.map(c => c.subarray(o, o + step))));
+      add(enc.finalize());
+      const all = new Uint8Array(n); let at = 0; for (const p of parts) { all.set(p, at); at += p.length; }
+      outs.push(all);
+    }
+    postMessage({ id, outs }, outs.map(o => o.buffer));
+  } catch (err) { postMessage({ id, error: String((err && err.message) || err) }); }
+};`;
+    encWorker = new Worker(URL.createObjectURL(new Blob([src], { type: 'text/javascript' })));
+    encWorker.onmessage = e => { const j = encJobs.get(e.data.id); if (!j) return; encJobs.delete(e.data.id); if (e.data.error) j.reject(new Error(e.data.error)); else j.resolve(e.data.outs); };
+    encWorker.onerror = () => { for (const j of encJobs.values()) j.reject(new Error('encoder')); encJobs.clear(); encWorker = null; };
+  }
+  const id = ++encSeq;
+  return new Promise((resolve, reject) => { encJobs.set(id, { resolve, reject }); encWorker.postMessage({ id, ch, rate, kbpsList }, ch.map(c => c.buffer)); });
+}
+async function makeCopies(id) {
+  const t = tk(id); if (!wantsCopy(t)) return;
+  const info = await audioInfo(t);
+  const qs = ['320', '96'].filter(q => !hasCopy(t, q) && !COPY.skip.has(id + ':' + q));
+  const todo = qs.filter(q => copyNeeded(info, q));
+  qs.filter(q => !todo.includes(q)).forEach(q => COPY.skip.add(id + ':' + q));
+  try { localStorage.setItem('allegro.qskip', JSON.stringify([...COPY.skip].slice(-5000))); } catch (e) {}
+  if (!todo.length) return;
+  const r = await fetch(audioUrl(id), { credentials: 'same-origin' });
+  if (!r.ok) throw new Error('download');
+  // decode straight to 44.1 or 48 kHz (MP3 tops out at 48 kHz); hi-res files are resampled on the way
+  const rate = info && info.rate && info.rate % 11025 === 0 ? 44100 : info && info.rate ? 48000 : 44100;
+  const ab = await new OfflineAudioContext(1, 1, rate).decodeAudioData(await r.arrayBuffer());
+  const ch = []; for (let i = 0; i < Math.min(2, ab.numberOfChannels); i++) { const a = new Float32Array(ab.length); ab.copyFromChannel(a, i); ch.push(a); }
+  const outs = await mp3Encode(ch, rate, todo.map(Number));
+  for (let i = 0; i < todo.length; i++) await api('songs/' + encodeURIComponent(id) + '/audio-' + todo[i], { method: 'PUT', headers: { 'content-type': 'audio/mpeg' }, body: new Blob([outs[i]], { type: 'audio/mpeg' }) });
+  const cur = tk(id); if (!cur) return;
+  const meta = { ...cur.meta }; delete meta.id; delete meta.size;   // the latest details, so nothing edited meanwhile is undone; the server sets the copy flags
+  cloudTrack(id, await api('songs/' + encodeURIComponent(id), { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify(meta) }));
+}
+function queueCopies(ids, front) {
+  ids = ids.filter(id => wantsCopy(tk(id)) && id !== COPY.busy);
+  COPY.queue = COPY.queue.filter(x => !ids.includes(x));
+  COPY.queue = front ? [...ids, ...COPY.queue] : [...COPY.queue, ...ids];
+  runCopies();
+}
+async function runCopies() {
+  if (COPY.busy) return;
+  while (COPY.queue.length && canMakeCopies()) {
+    const id = COPY.queue.shift(); COPY.busy = id; drawQuality();
+    while (userWaiting > 0) await new Promise(r => setTimeout(r, 400));
+    try { await makeCopies(id); } catch (e) { COPY.failed.add(id); }
+    COPY.busy = null; if (COPY.all) COPY.done++;
+    drawQuality();
+    await new Promise(r => setTimeout(r, 250));
+  }
+  COPY.busy = null; COPY.all = false; drawQuality();
+}
+// at 320 or 96 kbps, the song that's playing and the one after it get their copies first
+function copiesForNow() {
+  if (QUAL === 'max' || !canMakeCopies() || !S.current) return;
+  queueCopies([S.current, S.queue[S.qi + 1]].filter(Boolean), true);
+}
+function setQual(q) {
+  if (!QUALS.includes(q) || q === QUAL) return;
+  QUAL = q; try { localStorage.setItem('allegro.quality', q); } catch (e) {}
+  const t = tk(S.current), src = audio.getAttribute('src');
+  if (t && src && src !== SILENT) {
+    const want = playSrc(t);
+    if (want && want !== src) {   // switch files in place, at the same second
+      const at = audio.currentTime, playing = !audio.paused;
+      audio.src = want;
+      audio.addEventListener('loadedmetadata', () => { if (at) audio.currentTime = at; }, { once: true });
+      if (playing) audio.play().catch(() => {});
+    }
+  }
+  drawQuality(); copiesForNow();
+}
 async function drawQuality() {
   const b = $('#q-badge'), t = tk(S.current);
+  if (!t || t.kind === 'demo') { b.hidden = true; return; }
   const info = await audioInfo(t);
   if (tk(S.current) !== t) return;
-  if (!info || !(info.codec || info.kbps)) { b.hidden = true; return; }
-  const hires = info.lossless && ((info.bits || 16) > 16 || (info.rate || 44100) > 48000);
-  b.textContent = info.lossless && info.bits && info.rate ? `${info.bits}-bit ${khz(info.rate)}` : info.lossless ? info.codec : `${info.codec ? info.codec + ' ' : ''}${info.kbps ? info.kbps + ' kbps' : ''}`.trim();
-  b.className = 'q-badge' + (hires ? ' hires' : info.lossless ? ' lossless' : '');
+  const src = audio.getAttribute('src'), live = src && src !== SILENT;
+  const cp = live ? playingCopy() : QUAL !== 'max' && hasCopy(t, QUAL) ? QUAL : '', small = QUAL !== 'max' && !cp && info && !copyNeeded(info, QUAL);
+  b.textContent = cp ? cp + ' kbps' : origLabel(info, t);
+  b.className = 'q-badge' + (cp ? ' q' + cp : small ? ' q' + QUAL : '') + (COPY.busy === t.id ? ' making' : '');
   b.hidden = false;
-  const tier = hires ? 'Hi-Res Lossless' : info.lossless ? 'Lossless (CD quality)' : (info.kbps || 0) >= 256 ? 'High (lossy)' : (info.kbps || 0) >= 160 ? 'Medium (lossy)' : 'Low (lossy)';
-  const row = (k, v) => v ? `<dt>${k}</dt><dd>${esc(String(v))}</dd>` : '';
-  $('#qb-pop').innerHTML = `<h4>${tier}</h4><dl>${row('Format', info.codec)}${row('Bit depth', info.bits && info.bits + '-bit')}${row('Sample rate', info.rate && khz(info.rate))}${row('Bitrate', info.kbps && (info.vbr ? 'about ' : '') + info.kbps + ' kbps')}${row('Channels', info.ch && (info.ch === 1 ? 'Mono' : info.ch === 2 ? 'Stereo' : info.ch))}${row('File size', info.size && (info.size / 1048576).toFixed(1) + ' MB')}</dl><p>Allegro plays your original file, so this is exactly what you hear.</p>`;
+  b.setAttribute('aria-label', 'Streaming quality: ' + b.textContent);
+  const row = (k, v) => v ? `<dt>${k}</dt><dd data-nt>${esc(String(v))}</dd>` : '';
+  const opt = (q, name, sub, subNt) => `<button class="qb-opt" role="radio" aria-checked="${QUAL === q}" data-qset="${q}"><span class="qb-dot"></span><span><b${q === 'max' ? '' : ' data-nt'}>${name}</b><small>${sub ? `<span>${sub}</span>` : ''}${subNt ? `<span data-nt>${sub ? ', ' : ''}${esc(subNt)}</span>` : ''}</small></span><span class="q-badge${q === 'max' ? '' : ' q' + q}" data-nt>${q === 'max' ? esc(origLabel(info, t)) : q + ' kbps'}</span></button>`;
+  const origBits = info ? [info.lossless && info.bits && info.rate ? `${info.bits}-bit ${khz(info.rate)}` : info.kbps ? info.kbps + ' kbps' : '', info.codec].filter(Boolean).join(' ') : '';
+  let note;
+  if (QUAL === 'max') note = 'Plays your original file, exactly as you uploaded it.';
+  else if (cp) note = 'Playing a smaller copy of your file to save data.';
+  else if (small) note = "This song's file is already this size or smaller, so it plays as is.";
+  else if (COPY.busy === t.id) note = 'Making a smaller copy of this song. It plays from the next time.';
+  else if (hasCopy(t, QUAL)) note = 'The smaller copy is ready. It plays from the next time.';
+  else if (COPY.failed.has(t.id)) note = "Couldn't make a smaller copy of this song, so it plays as is.";
+  else if (!canMakeCopies()) note = 'This song plays at its original quality until it has a smaller copy. On a computer, open this menu and choose Prepare All Songs.';
+  else note = 'Making a smaller copy of this song soon. Until then it plays as is.';
+  const det = cp ? row('Format', 'MP3') + row('Bitrate', cp + ' kbps')
+    : info ? row('Format', info.codec) + row('Bit depth', info.bits && info.bits + '-bit') + row('Sample rate', info.rate && khz(info.rate)) + row('Bitrate', info.kbps && (info.vbr ? '~' : '') + info.kbps + ' kbps') + row('Channels', info.ch && (info.ch === 1 ? 'Mono' : info.ch === 2 ? 'Stereo' : info.ch)) + row('File size', info.size && (info.size / 1048576).toFixed(1) + ' MB') : '';
+  const missing = canMakeCopies() ? [...S.tracks.values()].filter(wantsCopy).length : 0;
+  const fill = !canMakeCopies() ? '' : COPY.all ? `<div class="qb-fill"><span data-nt>${esc(tr('Preparing songs') + ': ' + Math.min(COPY.done + 1, COPY.total) + ' / ' + COPY.total)}</span><button class="pr-chip" data-qfill="stop">Stop</button></div>`
+    : missing ? `<div class="qb-fill"><span>Make the 320 and 96 kbps copies for every song now, so they're ready on your phone.</span><button class="pr-chip" data-qfill="go">Prepare All Songs</button></div>` : '';
+  $('#qb-pop').innerHTML = `<h4>Streaming Quality</h4><div class="qb-opts" role="radiogroup" aria-label="Streaming quality">${opt('max', 'Max', 'Your original file', origBits)}${opt('320', '320 kbps', 'High quality MP3')}${opt('96', '96 kbps', 'Data saver MP3')}</div><p>${note}</p>${det ? `<dl>${det}</dl>` : ''}${fill}`;
 }
 const openQb = prPop($('#qb-wrap'), { hover: false });
 $('#q-badge').addEventListener('click', () => openQb(!$('#qb-wrap').classList.contains('open')));
-audio.addEventListener('loadedmetadata', drawQuality);
+$('#qb-pop').addEventListener('click', e => {
+  const o = e.target.closest('[data-qset]'); if (o) { setQual(o.dataset.qset); return; }
+  const f = e.target.closest('[data-qfill]');
+  if (f && f.dataset.qfill === 'go') { const ids = [...S.tracks.values()].filter(wantsCopy).map(t => t.id); COPY.all = true; COPY.done = 0; COPY.total = ids.length; queueCopies(ids); drawQuality(); }
+  else if (f) { COPY.queue = []; COPY.all = false; drawQuality(); }
+});
+audio.addEventListener('loadedmetadata', () => { drawQuality(); copiesForNow(); });
+addEventListener('beforeunload', e => { if (COPY.all && COPY.queue.length) e.preventDefault(); });
 
 audio.addEventListener('play', syncPlayIcons);
 audio.addEventListener('playing', () => { if (pendingHistory && pendingHistory === S.current && audio.getAttribute('src') !== SILENT) { const id = pendingHistory; pendingHistory = null; recordPlay(id); } });
-audio.addEventListener('pause', () => { syncPlayIcons(); save(); });
+audio.addEventListener('pause', () => { syncPlayIcons(); save(); savePos(); });
+audio.addEventListener('seeked', savePos);
+addEventListener('pagehide', () => { savePos(); try { const j = JSON.parse(localStorage.getItem(STORE_KEY) || '{}'); j.last = lastSnap(); localStorage.setItem(STORE_KEY, JSON.stringify(j)); } catch (e) {} });
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') savePos(); });
 audio.addEventListener('ended', () => next(true));
 audio.addEventListener('loadedmetadata', () => { const t = tk(S.current); if (t && isFinite(audio.duration) && audio.getAttribute('src') !== SILENT) { t.duration = audio.duration; $$('.t-dur').forEach(e => { e.textContent = fmt(audio.duration); }); } });
 let lastPos = 0;
@@ -6021,9 +6246,12 @@ audio.addEventListener('timeupdate', () => {
     $('#mini-bar').style.width = (audio.currentTime / d * 100) + '%';
   }
   const now = Date.now();
-  if (now - lastPos > 1000) { lastPos = now; try { if ('mediaSession' in navigator && navigator.mediaSession.setPositionState && d) navigator.mediaSession.setPositionState({ duration: d, position: Math.min(audio.currentTime, d), playbackRate: 1 }); } catch (e) {} }
+  if (now - lastPos > 1000) { lastPos = now; savePos(); try { if ('mediaSession' in navigator && navigator.mediaSession.setPositionState && d) navigator.mediaSession.setPositionState({ duration: d, position: Math.min(audio.currentTime, d), playbackRate: 1 }); } catch (e) {} }
 });
-audio.addEventListener('error', () => { const t = tk(S.current); if (t && audio.getAttribute('src') && audio.getAttribute('src') !== SILENT) toast(`Couldn't play ${t.title}. This browser may not support that file type.`); });
+audio.addEventListener('error', () => {
+  const t = tk(S.current), cp = playingCopy();
+  if (t && cp) { const at = audio.currentTime; if (t.meta) t.meta['q' + cp] = false; audio.src = t.url; audio.addEventListener('loadedmetadata', () => { if (at) audio.currentTime = at; }, { once: true }); audio.play().catch(() => {}); return; }
+  if (t && audio.getAttribute('src') && audio.getAttribute('src') !== SILENT) toast(`Couldn't play ${t.title}. This browser may not support that file type.`); });
 
 /* lock screen + headphone controls */
 function setMediaMeta(t) {
@@ -6053,19 +6281,22 @@ async function boot() {
   restorePlace();
   render(); renderQueue(); applyPlaceTop();
   tryRestoreLast();
-  if (!S.current) {
+  if (!S.current && !(S.last && S.last.title && !tk(S.last.id))) {
     const a = IDX.albums.get('Juniper Lane · Rain Day Sketches') || albumsSorted()[0];
     if (a) { S.queue = a.ids.slice(); S.qi = 0; S.context = { key: 'album:' + a.key, name: a.name }; if (S.shuffle) applyShuffle(); S.current = S.queue[S.qi]; }
     updateMeta(); markPlaying(); renderQueue(); renderSide(); syncPlayIcons();
   }
+  if (!S.current) updateMeta();
+  showResumePos();
 
   db = await idbOpen();
   initCloud();
   const saved = (await idbAll()).sort((a, b) => a.added - b.added);
   if (saved.length) {
     saved.forEach(rec => { if (rec && rec.blob && !S.tracks.has(rec.id)) addFileRecord(rec); });
-    rebuild(); if (!S.renaming) render(); tryRestoreLast();
+    rebuild(); if (!S.renaming) render();
   }
+  bootDone.idb = true; tryRestoreLast();
 
   // Render the demo songs in the background so they start instantly.
   const order = [S.current, ...S.queue, ...S.tracks.keys()].filter((id, i, a) => id && a.indexOf(id) === i && tk(id)?.kind === 'demo');

@@ -79,7 +79,7 @@ function cleanMeta(d) {
     title: str(d.title) || 'Untitled', artist: str(d.artist) || 'Unknown artist', albumArtist: str(d.albumArtist),
     album: str(d.album) || 'Unknown album', year: str(d.year, 10), trackNo: Number(d.trackNo) || 0, genre: str(d.genre, 80),
     duration: Number(d.duration) || 0, added: Number(d.added) || Date.now(), fileName: str(d.fileName),
-    mime: str(d.mime, 60), cover: !!d.cover, coverV: Number(d.coverV) || 0, coverSm: !!d.coverSm,
+    mime: str(d.mime, 60), cover: !!d.cover, coverV: Number(d.coverV) || 0, coverSm: !!d.coverSm, q96: !!d.q96, q320: !!d.q320,
     released: /^\d{4}(-\d{2}-\d{2})?$/.test(str(d.released, 10)) ? str(d.released, 10) : '',
     lyricist: str(d.lyricist, 200), composer: str(d.composer, 200), about: str(d.about, 4000),
     bpm: Number(d.bpm) > 0 && Number(d.bpm) < 1000 ? Math.round(Number(d.bpm) * 10) / 10 : 0, key: str(d.key, 12), tagsRead: !!d.tagsRead
@@ -454,7 +454,12 @@ async function api(request, env, path) {
   }
 
   let m = path.match(/^audio\/([^/]+)$/);
-  if (m && method === 'GET') return ID_RE.test(m[1]) ? serveObject(request, env, 'audio/' + m[1], true) : fail(404, 'Not found');
+  if (m && method === 'GET') {
+    if (!ID_RE.test(m[1])) return fail(404, 'Not found');
+    // ?q=96 or ?q=320 asks for the smaller MP3 copy made for that streaming quality
+    const q = new URL(request.url).searchParams.get('q');
+    return serveObject(request, env, (q === '96' || q === '320' ? 'audio-' + q + '/' : 'audio/') + m[1], true);
+  }
   m = path.match(/^cover\/([^/]+)$/);
   if (m && method === 'GET') {
     if (!ID_RE.test(m[1])) return fail(404, 'Not found');
@@ -481,12 +486,16 @@ async function api(request, env, path) {
     if (method === 'DELETE') { await env.BUCKET.delete('plcover/' + id); return json({ ok: true }); }
   }
 
-  m = path.match(/^songs\/([^/]+)(?:\/(audio|cover-sm|cover))?$/);
+  m = path.match(/^songs\/([^/]+)(?:\/(audio-96|audio-320|audio|cover-sm|cover))?$/);
   if (m) {
     const [, id, part] = m;
     if (!ID_RE.test(id)) return fail(400, 'Bad song id.');
     if (part === 'audio' && method === 'PUT') return putObject(request, env, 'audio/' + id, MAX_AUDIO, t => t.startsWith('audio/') || t === 'application/octet-stream' || t === 'video/mp4' || t === 'video/webm');
     if (part === 'cover' && method === 'PUT') return putObject(request, env, 'cover/' + id, MAX_COVER, t => /^image\/(jpeg|png|gif|webp)$/.test(t));
+    if ((part === 'audio-96' || part === 'audio-320') && method === 'PUT') {
+      if (!await env.BUCKET.head('audio/' + id)) return fail(409, 'Upload the song file first.');
+      return putObject(request, env, part + '/' + id, 120 * 1024 * 1024, t => t === 'audio/mpeg');
+    }
     if (part === 'cover-sm' && method === 'PUT') return putObject(request, env, 'cover-sm/' + id, 2 * 1024 * 1024, t => /^image\/(jpeg|png|webp)$/.test(t));
     if (!part && method === 'PUT') {
       const audio = await env.BUCKET.head('audio/' + id);
@@ -495,13 +504,16 @@ async function api(request, env, path) {
       const cover = meta.cover ? await env.BUCKET.head('cover/' + id) : null;
       if (!meta.cover) await env.BUCKET.delete(['cover/' + id, 'cover-sm/' + id]);   // photo removed, or the song never had one
       meta.cover = !!cover;
-      meta.size = audio.size + (cover ? cover.size : 0);
+      // the streaming copies count toward storage too, and the flags follow what is really in the bucket
+      const [c96, c320] = await Promise.all([env.BUCKET.head('audio-96/' + id), env.BUCKET.head('audio-320/' + id)]);
+      meta.q96 = !!c96; meta.q320 = !!c320;
+      meta.size = audio.size + (cover ? cover.size : 0) + (c96 ? c96.size : 0) + (c320 ? c320.size : 0);
       await env.DB.prepare('INSERT INTO songs (id, data, size, added) VALUES (?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET data = excluded.data, size = excluded.size')
         .bind(id, JSON.stringify(meta), meta.size, meta.added).run();
       return json({ id, ...meta });
     }
     if (!part && method === 'DELETE') {
-      await env.BUCKET.delete(['audio/' + id, 'cover/' + id, 'cover-sm/' + id, 'lyrics/' + id]);
+      await env.BUCKET.delete(['audio/' + id, 'audio-96/' + id, 'audio-320/' + id, 'cover/' + id, 'cover-sm/' + id, 'lyrics/' + id]);
       try { const xs = await env.BUCKET.list({ prefix: 'lyrics-x/' + id + '/' }); if (xs.objects.length) await env.BUCKET.delete(xs.objects.map(o => o.key)); } catch (e) {}
       await env.DB.prepare('DELETE FROM songs WHERE id = ?').bind(id).run();
       await env.DB.prepare('DELETE FROM song_comments WHERE song = ?').bind(id).run();
