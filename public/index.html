@@ -1640,7 +1640,6 @@ const I18N = [
   ['The story behind the song, what it means to you, anything you like.', '歌曲背后的故事、它对你的意义，写什么都可以。', '歌曲背後的故事、它對你的意義，寫什麼都可以。'], ['Show song details and lyrics', '显示歌曲详情和歌词', '顯示歌曲詳情和歌詞'], ['Saved', '已保存', '已儲存'], ['About this song', '关于这首歌', '關於這首歌'],
   ['Saved Online · MP3, M4A, WAV, FLAC, OGG', '在线保存 · MP3、M4A、WAV、FLAC、OGG', '線上儲存 · MP3、M4A、WAV、FLAC、OGG'], ['Saved in This Browser · MP3, M4A, WAV, FLAC, OGG', '保存在此浏览器 · MP3、M4A、WAV、FLAC、OGG', '儲存在此瀏覽器 · MP3、M4A、WAV、FLAC、OGG'],
   ['Streaming Quality', '音质', '音質'], ['Streaming quality', '音质', '音質'], ['Max', '最高', '最高'], ['Your original file', '你的原始文件', '你的原始檔案'], ['High quality MP3', '高音质 MP3', '高音質 MP3'], ['Data saver MP3', '省流量 MP3', '省流量 MP3'],
-  ['Plays your original file, exactly as you uploaded it.', '播放你的原始文件，与上传时完全相同。', '播放你的原始檔案，與上傳時完全相同。'],
   ['Playing a smaller copy of your file to save data.', '正在播放较小的副本以节省流量。', '正在播放較小的副本以節省流量。'],
   ["This song's file is already this size or smaller, so it plays as is.", '这首歌的文件已经不大于此音质，所以直接播放原文件。', '這首歌的檔案已經不大於此音質，所以直接播放原檔案。'],
   ['Making a smaller copy of this song. It plays from the next time.', '正在为这首歌制作较小的副本，下次播放时生效。', '正在為這首歌製作較小的副本，下次播放時生效。'],
@@ -6194,8 +6193,8 @@ async function drawQuality() {
   b.hidden = false;
   b.setAttribute('aria-label', 'Streaming quality: ' + b.textContent);
   const opt = (q, name, sub, subNt) => `<button class="qb-opt" role="radio" aria-checked="${QUAL === q}" data-qset="${q}"><span class="qb-dot"></span><span><b${q === 'max' ? '' : ' data-nt'}>${name}</b><small>${sub ? `<span>${sub}</span>` : ''}${subNt ? `<span data-nt>${sub ? ', ' : ''}${esc(subNt)}</span>` : ''}</small></span><span class="q-badge${q === 'max' ? '' : ' q' + q}" data-nt>${q === 'max' ? esc(origLabel(info, t)) : q + ' kbps'}</span></button>`;
-  let note;
-  if (QUAL === 'max') note = 'Plays your original file, exactly as you uploaded it.';
+  let note = '';
+  if (QUAL === 'max') note = '';
   else if (cp) note = 'Playing a smaller copy of your file to save data.';
   else if (small) note = "This song's file is already this size or smaller, so it plays as is.";
   else if (COPY.busy === t.id) note = 'Making a smaller copy of this song. It plays from the next time.';
@@ -6206,7 +6205,7 @@ async function drawQuality() {
   const missing = canMakeCopies() ? [...S.tracks.values()].filter(wantsCopy).length : 0;
   const fill = !canMakeCopies() ? '' : COPY.all ? `<div class="qb-fill"><span data-nt>${esc(tr('Preparing songs') + ': ' + Math.min(COPY.done + 1, COPY.total) + ' / ' + COPY.total)}</span><button class="pr-chip" data-qfill="stop">Stop</button></div>`
     : missing ? `<div class="qb-fill"><span>Make the 96 kbps copy of every song now, so it's ready on your phone.</span><button class="pr-chip" data-qfill="go">Prepare All Songs</button></div>` : '';
-  $('#qb-pop').innerHTML = `<h4>Streaming Quality</h4><div class="qb-opts" role="radiogroup" aria-label="Streaming quality">${opt('max', 'Max', 'Your original file')}${opt('96', '96 kbps', 'Data saver MP3')}</div><p>${note}</p>${fill}`;
+  $('#qb-pop').innerHTML = `<h4>Streaming Quality</h4><div class="qb-opts" role="radiogroup" aria-label="Streaming quality">${opt('max', 'Max', 'Your original file')}${opt('96', '96 kbps', 'Data saver MP3')}</div>${note ? `<p>${note}</p>` : ''}${fill}`;
 }
 const openQb = prPop($('#qb-wrap'), { hover: false });
 $('#q-badge').addEventListener('click', () => openQb(!$('#qb-wrap').classList.contains('open')));
