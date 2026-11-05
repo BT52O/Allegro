@@ -5125,16 +5125,21 @@ function drawSeArt() {
   $('#se-remove').hidden = $('#se-view').hidden = !src;
   alignSeActions();
 }
-// Remove Photo lines up with the Album box beside it (side-by-side layout only).
-// Find Info Online sits under the photo buttons, or right under the art when there is no photo.
+// Side-by-side layout: Remove Photo lines up with the Album box and Find Info Online with the Release Date box,
+// with View Full Image halfway between. With no photo, Find Info Online sits right under the art.
+// Measured with offsetTop so the dialog's opening animation (a scale) can't throw it off.
 function alignSeActions() {
-  const box = $('#se-actions'), album = $('#se-album');
-  box.style.marginTop = '';
-  if (!se || $('#se-remove').hidden || $('#song-edit').hidden || innerWidth <= 520) return;
-  const btn = box.firstElementChild, a = album.getBoundingClientRect(), b = btn.getBoundingClientRect();
-  box.style.marginTop = Math.max(0, Math.round((a.top + a.height / 2) - (b.top + b.height / 2))) + 'px';
+  const box = $('#se-actions'), rm = $('#se-remove');
+  box.style.marginTop = box.style.gap = '';
+  if (!se || rm.hidden || $('#song-edit').hidden || innerWidth <= 520) return;
+  const mid = el => el.offsetTop + el.offsetHeight / 2;
+  const a = mid($('#se-album')), d = mid($('#se-date'));
+  box.style.marginTop = Math.max(0, Math.round(a - mid(rm))) + 'px';
+  const gap = (d - a) / 2 - rm.offsetHeight;
+  if (gap >= 4) box.style.gap = gap + 'px';
 }
 window.addEventListener('resize', () => { if (se) alignSeActions(); });
+if (document.fonts) document.fonts.ready.then(() => { if (se) alignSeActions(); });
 function closeSe() {
   if (!se) return;
   if (se.preview) URL.revokeObjectURL(se.preview);
