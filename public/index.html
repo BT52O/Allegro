@@ -548,17 +548,17 @@ button.pr-chip:hover { background: #e2e2e2; }
 /* Keep the speaker outside the floating panel, including on the dark Now Playing screen. */
 body.sheet-open #vol-wrap { --volume-panel: #242426; --volume-track: #3b3b3f; --volume-ink: #fff; }
 #vol-wrap.open .vol-btn { color: var(--volume-ink); }
-.vol-pop { bottom: calc(100% + 14px); width: 44px; height: 144px; padding: 30px 0 18px; display: flex; flex-direction: column; align-items: center; border-radius: 12px; background: var(--volume-panel); color: var(--volume-ink); box-shadow: 0 4px 12px rgba(0, 0, 0, .16); }
+.vol-pop { bottom: calc(100% + 14px); width: 32px; height: 144px; padding: 30px 0 18px; display: flex; flex-direction: column; align-items: center; border-radius: 10px; background: var(--volume-panel); color: var(--volume-ink); box-shadow: 0 4px 12px rgba(0, 0, 0, .16); }
 .vol-pop::before { content: ""; position: absolute; left: 50%; bottom: -4px; width: 8px; height: 8px; background: var(--volume-panel); transform: translateX(-50%) rotate(45deg); border-radius: 2px; }
 .vol-pop::after { height: 16px; } /* Keep hover alive between the panel and speaker. */
 .vol-pct { position: absolute; top: 10px; font: 500 .62rem var(--f-body); color: var(--volume-ink); font-variant-numeric: tabular-nums; opacity: 0; transition: opacity .2s; }
 .vol-pop.showpct .vol-pct { opacity: 1; }
-.vslot { position: relative; flex: 1; width: 44px; }
+.vslot { position: relative; flex: 1; width: 32px; }
 .vtrack { position: absolute; inset: 0; cursor: pointer; touch-action: none; z-index: 1; }
 .vtrack:focus-visible { outline: 2px solid var(--volume-ink); outline-offset: -4px; border-radius: 6px; }
-.vtrack::before { content: ""; position: absolute; left: 50%; top: 0; bottom: 0; width: 4px; margin-left: -2px; border-radius: 2px; background: var(--volume-track); }
-.vtrack i { position: absolute; left: 50%; bottom: 0; width: 4px; margin-left: -2px; height: var(--v, 80%); border-radius: 2px; background: var(--volume-ink); }
-.vtrack b { position: absolute; left: 50%; bottom: var(--v, 80%); width: 16px; height: 6px; margin: 0 0 -3px -8px; border-radius: 3px; background: var(--volume-ink); }
+.vtrack::before { content: ""; position: absolute; left: 50%; top: 0; bottom: 0; width: 3px; margin-left: -1.5px; border-radius: 2px; background: var(--volume-track); }
+.vtrack i { position: absolute; left: 50%; bottom: 0; width: 3px; margin-left: -1.5px; height: var(--v, 80%); border-radius: 2px; background: var(--volume-ink); }
+.vtrack b { position: absolute; left: 50%; bottom: var(--v, 80%); width: 12px; height: 5px; margin: 0 0 -2.5px -6px; border-radius: 2.5px; background: var(--volume-ink); }
 /* the quality pill: glossy black with a soft glow in the middle. Red for Max (your original file), gold for 96 kbps */
 .q-badge { --qg: 236, 62, 76; --qa: .24; --qt: #ff5e6a; position: relative; display: inline-flex; align-items: center; justify-content: center; line-height: 1; height: 34px; padding: 0 18px; border-radius: 999px; font: 500 .82rem var(--f-body); letter-spacing: .01em; white-space: nowrap; color: var(--qt); font-variant-numeric: tabular-nums;
   background: radial-gradient(60% 75% at 50% 55%, rgba(var(--qg), var(--qa)), rgba(var(--qg), 0) 100%), linear-gradient(#1d1d20, #0e0e10);
@@ -5985,7 +5985,6 @@ vtrack.addEventListener('pointerdown', e => {
   vtrack.addEventListener('pointermove', mv); vtrack.addEventListener('pointerup', up); vtrack.addEventListener('pointercancel', up);
 });
 vtrack.addEventListener('keydown', e => { const k = { ArrowUp: .05, ArrowRight: .05, ArrowDown: -.05, ArrowLeft: -.05, PageUp: .2, PageDown: -.2 }[e.key]; if (k) { e.preventDefault(); setVol((S.muted ? 0 : S.volume) + k); } });
-$('#vol-wrap').addEventListener('wheel', e => { e.preventDefault(); setVol((S.muted ? 0 : S.volume) - Math.sign(e.deltaY) * .05); }, { passive: false });
 function syncVolIcon() { const b = $('#vol-btn'), m = S.muted || S.volume === 0; setIcon(b, m ? 'mute' : 'volume'); b.setAttribute('aria-label', m ? 'Unmute' : 'Mute'); }
 $('#vol-btn').addEventListener('click', () => { S.muted = !S.muted; applyVolume(); syncVolIcon(); drawVol(); });
 
