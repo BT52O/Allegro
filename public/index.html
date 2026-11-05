@@ -1003,10 +1003,10 @@ img { -webkit-user-drag: none; user-select: none; }
 @keyframes pop-in { from { opacity: 0; transform: translateY(10px) scale(.98); } }
 @media (max-width: 520px) { .modal-body { grid-template-columns: minmax(0, 1fr); } .pe-cover { width: 160px; } }
 /* song editor */
-.se-find { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-.se-find .pill-btn { display: inline-flex; align-items: center; gap: 6px; }
-.se-find .pill-btn .ic { width: 16px; height: 16px; }
-.se-status { font-size: .82rem; color: var(--muted); }
+.pe-actions .se-find { display: inline-flex; align-items: center; gap: 6px; }
+.pe-actions .se-find .ic { width: 15px; height: 15px; }
+.se-status { margin: 0; font-size: .82rem; color: var(--muted); }
+.se-status:empty { display: none; }
 .se-results { display: flex; flex-direction: column; gap: 2px; max-height: 236px; overflow-y: auto; margin: -4px 0 0; }
 .se-results[hidden] { display: none; }
 .se-hit { display: grid; grid-template-columns: 44px minmax(0, 1fr); gap: 10px; align-items: center; padding: 6px; border-radius: 8px; text-align: left; }
@@ -1509,7 +1509,7 @@ body.touch-input .has-pen::after { display: none; }
     <div class="modal-body">
       <div class="pe-left">
         <button type="button" class="pe-cover" id="se-cover" aria-label="Choose song art"><span class="pe-art" id="se-art"></span><span class="pe-hover"><i data-ic="edit"></i>Choose Photo</span></button>
-        <div class="pe-actions" id="se-actions"><button type="button" class="pill-btn" id="se-remove">Remove Photo</button><button type="button" class="pill-btn" id="se-view">View Full Image</button></div>
+        <div class="pe-actions" id="se-actions"><button type="button" class="pill-btn" id="se-remove">Remove Photo</button><button type="button" class="pill-btn" id="se-view">View Full Image</button><button type="button" class="pill-btn se-find" id="se-search"><i data-ic="search"></i>Find Info Online</button></div>
       </div>
       <div class="pe-fields">
         <label class="field">Song Name<input id="se-name" maxlength="200" autocomplete="off"></label>
@@ -1518,7 +1518,7 @@ body.touch-input .has-pen::after { display: none; }
         <label class="field">Release Date<input id="se-date" maxlength="20" autocomplete="off" placeholder="e.g. Oct 24, 2024"></label>
       </div>
     </div>
-    <div class="se-find"><button type="button" class="pill-btn" id="se-search"><i data-ic="search"></i>Find Info Online</button><span class="se-status" id="se-status" role="status"></span></div>
+    <p class="se-status" id="se-status" role="status"></p>
     <div class="se-results" id="se-results" hidden></div>
     <p class="gate-err" id="se-err" role="alert"></p>
     <div class="modal-foot"><button class="btn" type="submit" id="se-save">Save</button></div>
@@ -5122,14 +5122,15 @@ function drawSeArt() {
   const t = tk(se.id), src = seSrc();
   const fallback = t ? genCover(t.albumKey + '·' + se.id, t.coverStyle, t.hue) : '';
   $('#se-art').innerHTML = `<img src="${esc(src || fallback)}" alt="">`;
-  $('#se-actions').hidden = !src;
+  $('#se-remove').hidden = $('#se-view').hidden = !src;
   alignSeActions();
 }
 // Remove Photo lines up with the Album box beside it (side-by-side layout only).
+// Find Info Online sits under the photo buttons, or right under the art when there is no photo.
 function alignSeActions() {
   const box = $('#se-actions'), album = $('#se-album');
   box.style.marginTop = '';
-  if (!se || box.hidden || $('#song-edit').hidden || innerWidth <= 520) return;
+  if (!se || $('#se-remove').hidden || $('#song-edit').hidden || innerWidth <= 520) return;
   const btn = box.firstElementChild, a = album.getBoundingClientRect(), b = btn.getBoundingClientRect();
   box.style.marginTop = Math.max(0, Math.round((a.top + a.height / 2) - (b.top + b.height / 2))) + 'px';
 }

@@ -618,9 +618,9 @@ try {
   // edit a song by hand: name, artist, album and a cropped photo
   await A.click(`#view [data-edit-song="${tagged.id}"]`); await A.waitForTimeout(400);
   const seOpen = await A.isVisible('#song-edit');
-  const rowFit = await A.evaluate(() => { const r = document.getElementById('se-remove').getBoundingClientRect(), a = document.getElementById('se-album').getBoundingClientRect(), v = document.getElementById('se-view').getBoundingClientRect(), c = document.getElementById('se-cover').getBoundingClientRect();
-    return [Math.round((r.top + r.height / 2) - (a.top + a.height / 2)), Math.round(r.left - c.left), Math.round(v.top - r.bottom), Math.round(v.left - c.left)]; });
-  check(Math.abs(rowFit[0]) <= 2 && rowFit[1] === 0 && rowFit[3] === 0 && rowFit[2] >= 10, 'Remove Photo lines up with the Album box, buttons left-aligned and spaced apart', JSON.stringify(rowFit));
+  const rowFit = await A.evaluate(() => { const r = document.getElementById('se-remove').getBoundingClientRect(), a = document.getElementById('se-album').getBoundingClientRect(), v = document.getElementById('se-view').getBoundingClientRect(), c = document.getElementById('se-cover').getBoundingClientRect(), f = document.getElementById('se-search').getBoundingClientRect();
+    return [Math.round((r.top + r.height / 2) - (a.top + a.height / 2)), Math.round(r.left - c.left), Math.round(v.top - r.bottom), Math.round(v.left - c.left), Math.round(f.left - c.left), Math.round(f.top - v.bottom), Math.round(f.height - v.height)]; });
+  check(Math.abs(rowFit[0]) <= 2 && rowFit[1] === 0 && rowFit[3] === 0 && rowFit[2] >= 10 && rowFit[4] === 0 && rowFit[5] === rowFit[2] && rowFit[6] === 0, 'Remove Photo lines up with the Album box, and all three buttons are left-aligned, the same size and evenly spaced', JSON.stringify(rowFit));
   await A.fill('#se-name', 'Sunny Day'); await A.fill('#se-artist', 'Edited Artist'); await A.fill('#se-album', 'Edited Album');
   await A.fill('#se-date', 'someday'); await A.click('#se-save'); await A.waitForTimeout(300);
   const dateErr = (await A.textContent('#se-err')).includes('release date') && await A.isVisible('#song-edit');
