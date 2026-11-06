@@ -560,19 +560,23 @@ body.sheet-open #vol-wrap { --volume-panel: #242426; --volume-track: #3b3b3f; --
 .vtrack::before { content: ""; position: absolute; left: 50%; top: 0; bottom: 0; width: 3px; margin-left: -1.5px; border-radius: 2px; background: var(--volume-track); }
 .vtrack i { position: absolute; left: 50%; bottom: 0; width: 3px; margin-left: -1.5px; height: var(--v, 80%); border-radius: 2px; background: var(--volume-ink); }
 .vtrack b { position: absolute; left: 50%; bottom: var(--v, 80%); width: 12px; height: 5px; margin: 0 0 -2.5px -6px; border-radius: 2.5px; background: var(--volume-ink); }
-/* the quality pill: dark liquid glass. The bar behind shows through blurred, a bright rim catches light on the top
-   edge, and a soft glow sits in the middle. Red for Max (your original file), gold for 96 kbps */
-.q-badge { --qg: 236, 62, 76; --qa: .26; --qt: #ff5e6a; position: relative; isolation: isolate; display: inline-flex; align-items: center; justify-content: center; line-height: 1; height: 34px; padding: 0 18px; border-radius: 999px; font: 500 .82rem var(--f-body); letter-spacing: .01em; white-space: nowrap; color: var(--qt); font-variant-numeric: tabular-nums;
-  text-shadow: 0 0 10px rgba(var(--qg), .45);
-  background: radial-gradient(70% 90% at 50% 60%, rgba(var(--qg), var(--qa)), rgba(var(--qg), 0) 100%), linear-gradient(180deg, rgba(255, 255, 255, .14), rgba(255, 255, 255, .02) 48%, rgba(255, 255, 255, 0) 52%, rgba(255, 255, 255, .05)), rgba(22, 22, 26, var(--qbase, .52));
-  -webkit-backdrop-filter: blur(14px) saturate(180%); backdrop-filter: blur(14px) saturate(180%);
-  border: 0; box-shadow: inset 0 1px 1px rgba(255, 255, 255, .28), inset 0 -1px 1px rgba(255, 255, 255, .08), inset 0 0 14px rgba(var(--qg), .14), 0 6px 16px -4px rgba(0, 0, 0, .45), 0 1px 2px rgba(0, 0, 0, .3); transition: filter .15s, color .2s; }
-/* the glass rim: brightest along the top left, fading out underneath, like light bending through the edge */
-.q-badge::before { content: ""; position: absolute; inset: 0; z-index: -1; border-radius: inherit; padding: 1px; pointer-events: none;
-  background: linear-gradient(160deg, rgba(255, 255, 255, .55), rgba(255, 255, 255, .08) 38%, rgba(255, 255, 255, 0) 60%, rgba(var(--qg), .35));
+/* the quality pill: dark liquid glass. Mostly see-through: the bar behind shows through blurred and brightened, a
+   curved highlight sits on the top like light on a glass bead, a bright rim traces the edge, and a soft glow sits in
+   the middle. Red for Max (your original file), gold for 96 kbps */
+.q-badge { --qg: 236, 62, 76; --qa: .22; --qt: #ff5e6a; position: relative; isolation: isolate; display: inline-flex; align-items: center; justify-content: center; line-height: 1; height: 34px; padding: 0 18px; border-radius: 999px; font: 500 .82rem var(--f-body); letter-spacing: .01em; white-space: nowrap; color: var(--qt); font-variant-numeric: tabular-nums;
+  text-shadow: 0 0 12px rgba(var(--qg), .5), 0 1px 2px rgba(0, 0, 0, .55);
+  background: radial-gradient(120% 75% at 50% -12%, rgba(255, 255, 255, .34), rgba(255, 255, 255, .06) 55%, rgba(255, 255, 255, 0) 70%),
+    radial-gradient(85% 55% at 50% 118%, rgba(255, 255, 255, .16), rgba(255, 255, 255, 0) 70%),
+    radial-gradient(70% 90% at 50% 60%, rgba(var(--qg), var(--qa)), rgba(var(--qg), 0) 100%),
+    rgba(18, 18, 22, var(--qbase, .3));
+  -webkit-backdrop-filter: blur(10px) saturate(170%); backdrop-filter: blur(10px) saturate(170%);
+  border: 0; box-shadow: inset 0 1px 0 rgba(255, 255, 255, .55), inset 0 -1px 0 rgba(255, 255, 255, .18), inset 0 0 0 .5px rgba(255, 255, 255, .14), inset 0 -10px 14px -10px rgba(255, 255, 255, .16), inset 0 0 16px rgba(var(--qg), .16), 0 8px 20px -6px rgba(0, 0, 0, .5), 0 1px 2px rgba(0, 0, 0, .25); transition: filter .15s, color .2s; }
+/* the glass rim: brightest across the top, clear down the sides, catching a little light again along the bottom */
+.q-badge::before { content: ""; position: absolute; inset: 0; z-index: -1; border-radius: inherit; padding: 1.25px; pointer-events: none;
+  background: linear-gradient(170deg, rgba(255, 255, 255, .9), rgba(255, 255, 255, .25) 30%, rgba(255, 255, 255, 0) 52%, rgba(255, 255, 255, .08) 75%, rgba(var(--qg), .55));
   -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0); }
 /* on a light page thin glass turns grey and the text fades, so the tint is denser there */
-:root:not([data-theme="dark"]) .q-badge { --qbase: .8; }
+:root:not([data-theme="dark"]) .q-badge { --qbase: .78; }
 .q-badge.q96 { --qg: 236, 186, 62; --qa: .22; --qt: #f5c548; }
 @media (prefers-reduced-transparency: reduce) { .q-badge { -webkit-backdrop-filter: none; backdrop-filter: none; background: radial-gradient(70% 90% at 50% 60%, rgba(var(--qg), var(--qa)), rgba(var(--qg), 0) 100%), linear-gradient(#26262b, #121215); } }
 .q-badge.making::after { content: ""; position: absolute; right: 7px; top: 50%; width: 4px; height: 4px; margin-top: -2px; border-radius: 50%; background: var(--qt); animation: qbPulse 1.2s ease-in-out infinite; }
