@@ -5,7 +5,8 @@
   "scripts": {
     "dev": "wrangler d1 migrations apply allegro --local && wrangler dev",
     "deploy": "wrangler d1 migrations apply allegro --remote && wrangler deploy",
-    "test": "node tests/e2e.mjs"
+    "test": "node tests/e2e.mjs",
+    "check": "node tests/check.mjs"
   },
   "devDependencies": {
     "playwright": "1.64.0",

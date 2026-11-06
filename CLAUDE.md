@@ -47,6 +47,10 @@ this repo, and the rules for interface text, deleting, themes and phones.
 
 ## Tests
 
+- **Pick the right check.** Wording, translations and CSS only: run `npm run check` (half a second) and push.
+  Anything that changes behavior: run the full suite below. GitHub runs both before every deploy anyway.
+  `npm run check` parses the app script and the Worker and validates the `I18N` table (three strings per row,
+  trailing commas, no duplicates, no em dashes).
 - `tests/e2e.mjs` uses Playwright and `wrangler dev`. A mock server stands in for every outside service: LRCLIB,
   transcribe, LLM, search, Deezer and art.
 - It writes `.wrangler-test.jsonc` (the config without `"ai"`, which would need remote auth) and passes `TRANSCRIBE_URL`,

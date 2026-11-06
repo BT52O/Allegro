@@ -34,7 +34,9 @@ and D1 database `allegro` (`songs`, `kv`, `playlist_versions`, `song_comments`).
 
 - **Never put secrets in the repo, a commit, a pull request or a chat.** Keys live in Cloudflare (Worker secrets) and
   GitHub (Actions secrets) only.
-- **Tests must pass.** Run `npm test` (it starts a local Worker and a headless Chromium). Every new feature gets a
+- **Tests must pass.** Small changes (wording, translations, CSS only) need just `npm run check` (a few seconds:
+  script syntax and the translation table). Anything that changes behavior needs the full `npm test`. GitHub runs
+  both before every deploy, so nothing reaches the live site untested. Run `npm test` (it starts a local Worker and a headless Chromium). Every new feature gets a
   check in `tests/e2e.mjs`; when you change behavior on purpose, update the check that covers it.
 - Keep `public/index.html` a single self-contained file. Libraries go in `public/vendor/` (not from a CDN at runtime).
 - **Interface text:** Title Case for buttons and headings, sentence case for messages, and no em dashes anywhere the
@@ -52,5 +54,6 @@ and D1 database `allegro` (`songs`, `kv`, `playlist_versions`, `song_comments`).
 npm install
 printf 'SETUP_CODE=dev-code\nSESSION_SECRET=dev-secret\n' > .dev.vars
 npm run dev          # http://127.0.0.1:8787
-npm test             # the full end-to-end suite (about 8 minutes)
+npm run check        # fast check for wording, translation and CSS changes (seconds)
+npm test             # the full end-to-end suite (several minutes)
 ```
