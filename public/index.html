@@ -1003,7 +1003,8 @@ img { -webkit-user-drag: none; user-select: none; }
 @keyframes pop-in { from { opacity: 0; transform: translateY(10px) scale(.98); } }
 @media (max-width: 520px) { .modal-body { grid-template-columns: minmax(0, 1fr); } .pe-cover { width: 160px; } }
 /* song editor */
-.pe-actions .se-find { display: inline-flex; align-items: center; gap: 6px; }
+/* the search glyph has empty space on its left, so the left padding is a little smaller to keep icon + text centered */
+.pe-actions .se-find { display: inline-flex; align-items: center; gap: 6px; padding-left: 13.5px; }
 .pe-actions .se-find .ic { width: 15px; height: 15px; }
 .se-status { margin: 0; font-size: .82rem; color: var(--muted); }
 .se-status:empty { display: none; }
@@ -5125,17 +5126,17 @@ function drawSeArt() {
   $('#se-remove').hidden = $('#se-view').hidden = !src;
   alignSeActions();
 }
-// Side-by-side layout: Remove Photo lines up with the Album box and Find Info Online with the Release Date box,
-// with View Full Image halfway between. With no photo, Find Info Online sits right under the art.
+// Side-by-side layout: Remove Photo is centered on the Album box, Find Info Online's bottom lines up with the
+// Release Date box's bottom, and View Full Image sits halfway between. With no photo, Find Info Online sits right under the art.
 // Measured with offsetTop so the dialog's opening animation (a scale) can't throw it off.
 function alignSeActions() {
   const box = $('#se-actions'), rm = $('#se-remove');
   box.style.marginTop = box.style.gap = '';
   if (!se || rm.hidden || $('#song-edit').hidden || innerWidth <= 520) return;
-  const mid = el => el.offsetTop + el.offsetHeight / 2;
-  const a = mid($('#se-album')), d = mid($('#se-date'));
+  const mid = el => el.offsetTop + el.offsetHeight / 2, date = $('#se-date'), h = rm.offsetHeight;
+  const a = mid($('#se-album')), f = date.offsetTop + date.offsetHeight - $('#se-search').offsetHeight / 2;
   box.style.marginTop = Math.max(0, Math.round(a - mid(rm))) + 'px';
-  const gap = (d - a) / 2 - rm.offsetHeight;
+  const gap = (f - a) / 2 - h;
   if (gap >= 4) box.style.gap = gap + 'px';
 }
 window.addEventListener('resize', () => { if (se) alignSeActions(); });

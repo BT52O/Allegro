@@ -648,8 +648,8 @@ try {
   await shot(A, 'editor-search');
   await A.click('#se-results .se-hit >> nth=0').catch(() => {});
   await shot(A, 'editor-filled');
-  const lineUp = await A.evaluate(() => { const mid = id => { const r = document.getElementById(id).getBoundingClientRect(); return r.top + r.height / 2; }; return [mid('se-remove') - mid('se-album'), mid('se-search') - mid('se-date'), (mid('se-remove') + mid('se-search')) / 2 - mid('se-view')].map(Math.round); });
-  check(lineUp.every(v => Math.abs(v) <= 1), 'Edit Song buttons line up with the Album and Release Date boxes', JSON.stringify(lineUp));
+  const lineUp = await A.evaluate(() => { const box = id => document.getElementById(id).getBoundingClientRect(), mid = id => box(id).top + box(id).height / 2; return [mid('se-remove') - mid('se-album'), box('se-search').bottom - box('se-date').bottom, (mid('se-remove') + mid('se-search')) / 2 - mid('se-view')].map(Math.round); });
+  check(lineUp.every(v => Math.abs(v) <= 1), 'Edit Song: Remove Photo centers on Album, Find Info Online bottom matches Release Date', JSON.stringify(lineUp));
   const filled = [await A.inputValue('#se-name'), await A.inputValue('#se-artist'), await A.inputValue('#se-album'), await A.inputValue('#se-date')];
   await A.click('#se-save');
   await A.waitForFunction(() => document.getElementById('song-edit').hidden, null, { timeout: 10000 }).catch(() => {});
