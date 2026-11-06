@@ -825,14 +825,14 @@ try {
   const demoTagsOn = await A.$$eval('#view .demo-tag', x => x.length);
   check(demoOff[0] && demoOff[1] === 'false' && demoTagsOff === 0 && demoTagsOn > 0, 'Show Demo Songs hides and brings back the demo songs, saved online', JSON.stringify({ demoOff, demoTagsOff, demoTagsOn }));
   await A.click('#acct-btn'); await A.waitForTimeout(250); await A.click('#menu .mi:has-text("Settings")'); await A.waitForTimeout(400);
-  // Breathing Album Cover: off at first; on makes the Now Playing cover zoom in and out (playing or paused), saved on this device only
-  const breatheAnim = () => A.evaluate(() => [document.documentElement.classList.contains('breathe'), getComputedStyle(document.getElementById('s-cover')).animationName, getComputedStyle(document.getElementById('s-cover')).animationPlayState, localStorage.getItem('allegro.breathe')]);
+  // Breathing Album Cover: off at first; on makes the Now Playing cover zoom in, rest 1s, and zoom out (17s, playing or paused), saved on this device only
+  const breatheAnim = () => A.evaluate(() => [document.documentElement.classList.contains('breathe'), getComputedStyle(document.getElementById('s-cover')).animationName, getComputedStyle(document.getElementById('s-cover')).animationPlayState, getComputedStyle(document.getElementById('s-cover')).animationDuration, localStorage.getItem('allegro.breathe')]);
   const breathe0 = await A.evaluate(() => document.querySelector('#set-breathe').getAttribute('aria-checked'));
   await A.click('#set-breathe'); await A.waitForTimeout(200);
   const breatheOn = [await A.evaluate(() => document.querySelector('#set-breathe').getAttribute('aria-checked')), ...await breatheAnim()];
   await A.click('#set-breathe'); await A.waitForTimeout(200);
   const breatheOff = await breatheAnim();
-  check(breathe0 === 'false' && breatheOn.join('|') === 'true|true|s-breathe|running|1' && breatheOff.join('|') === 'false|none|running|0', 'Breathing Album Cover turns the slow zoom on the Now Playing cover on and off', JSON.stringify({ breathe0, breatheOn, breatheOff }));
+  check(breathe0 === 'false' && breatheOn.join('|') === 'true|true|s-breathe|running|17s|1' && breatheOff.join('|') === 'false|none|running|0s|0', 'Breathing Album Cover turns the slow zoom on the Now Playing cover on and off', JSON.stringify({ breathe0, breatheOn, breatheOff }));
   await A.fill('#pw-cur', 'wrong password!'); await A.fill('#pw-new', 'brand new pass 1'); await A.fill('#pw-new2', 'brand new pass 1');
   await A.click('#pw-save'); await A.waitForFunction(() => document.getElementById('pw-msg').textContent.trim(), null, { timeout: 8000 }).catch(() => {});
   const pwBad = await A.textContent('#pw-msg');

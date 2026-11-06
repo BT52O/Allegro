@@ -642,8 +642,9 @@ input[type="range"]:disabled { opacity: .4; cursor: default; }
   background: linear-gradient(to bottom, rgba(0, 0, 0, 0) 55%, rgba(0, 0, 0, .07) 80%, rgba(0, 0, 0, .17) 95%, rgba(0, 0, 0, .2) 100%); } }
 /* Breathing cover (Settings > Appearance): the picture slowly zooms in and back out inside its frame, playing or
    paused. It moves the picture rather than the frame, so it never fights the pointer tilt on .s-art. */
-@keyframes s-breathe { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.07); } }
-html.breathe .s-art img { animation: s-breathe 16s ease-in-out infinite; }
+/* 8s in, a 1s rest while zoomed in, 8s back out: 17s in all, so the rest runs from 8/17 to 9/17 of the way */
+@keyframes s-breathe { 0%, 100% { transform: scale(1); } 47.06%, 52.94% { transform: scale(1.07); } }
+html.breathe .s-art img { animation: s-breathe 17s ease-in-out infinite; }
 @media (prefers-reduced-motion: reduce) { html.breathe .s-art img { animation: none; } }
 /* Now Playing panel: Wiki, Lyrics, Comments */
 /* No background blur on the panel: behind it is only a smooth gradient, and a blurred panel made Chrome draw visible
