@@ -875,6 +875,18 @@ try {
   await A.click('[data-theme-opt="light"]'); await A.waitForTimeout(300);
   const backEn = await A.evaluate(() => [document.querySelector('.nav-btn[data-nav="home"] span').textContent, document.documentElement.dataset.theme]);
   check(zht[0] === '首頁' && zht[1] === '設定' && backEn.join() === 'Home,light', '繁體中文 works too, and switching back restores English and light mode', JSON.stringify({ zht, backEn }));
+  // Changing the language happens on the spot, so a song that's playing keeps playing (a page reload used to stop it).
+  await A.click('.nav-btn[data-nav="uploads"]'); await A.waitForTimeout(500);
+  await A.click(`#view .tr[data-id="${tagged.id}"] .t-name`);
+  await A.waitForFunction(() => document.body.classList.contains('is-playing'), null, { timeout: 8000 }).catch(() => {});
+  await A.evaluate(() => { window.__sameLoad = 1; });
+  await A.click('#acct-btn'); await A.waitForTimeout(250); await A.click('#menu .mi:has-text("Settings")'); await A.waitForTimeout(400);
+  await A.click('[data-lang-opt="zh-Hans"]'); await A.waitForTimeout(400);
+  const liveZh = await A.evaluate(() => [window.__sameLoad === 1, document.body.classList.contains('is-playing'), document.querySelector('.nav-btn[data-nav="home"] span').textContent, document.querySelector('#view h1').textContent, document.querySelector('#player [data-act="toggle"]').getAttribute('aria-label')]);
+  await A.click('[data-lang-opt="en"]'); await A.waitForTimeout(400);
+  const liveEn = await A.evaluate(() => [window.__sameLoad === 1, document.body.classList.contains('is-playing'), document.querySelector('.nav-btn[data-nav="home"] span').textContent, document.querySelector('#view h1').textContent, document.querySelector('#search-input').placeholder, document.querySelector('#side-list .li-create .li-name').textContent, document.querySelector('#player [data-act="toggle"]').getAttribute('aria-label'), document.documentElement.lang]);
+  check(liveZh.join() === 'true,true,首页,设置,暂停' && liveEn.join() === 'true,true,Home,Settings,Search,Create,Pause,en', 'switching language keeps the song playing and changes the words in place', JSON.stringify({ liveZh, liveEn }));
+  if (await A.evaluate(() => document.body.classList.contains('is-playing'))) await A.click('#player [data-act="toggle"]');
 
   // --- Now Playing: tilting cover, and Wiki / Lyrics / Comments on the right
   await A.click('.nav-btn[data-nav="uploads"]'); await A.waitForTimeout(500);
