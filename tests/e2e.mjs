@@ -1086,6 +1086,21 @@ try {
   check(rsEarly !== 'Nothing Playing' && rsAfter[0] === rsBefore[0] && rsAfter[1] === rsBefore[1] && rsAfter[2] > 0 && rsAfter[3] && sec(rsBefore[1]) >= 2 && sec(resumed) >= sec(rsBefore[1]),
     'after a reload the bar shows the last song (with its quality pill) at the second it stopped, and play carries on from there', JSON.stringify({ rsBefore, rsEarly, rsAfter, resumed }));
 
+  // --- the old shuffle slot is now "play from the start", and the repeat button cycles off > all > one > shuffle
+  const rsAt = await A.evaluate(() => document.querySelector('#player .t-cur').textContent);
+  await A.click('#player [data-act="restart"]');
+  await A.waitForFunction(() => document.querySelector('#player .t-cur').textContent === '0:00', null, { timeout: 5000 }).catch(() => {});
+  const rsZero = await A.evaluate(() => [document.querySelector('#player .t-cur').textContent, document.body.classList.contains('is-playing'), !document.querySelector('#player [data-act="shuffle"]'), !document.querySelector('#sheet [data-act="shuffle"]')]);
+  for (let k = 0; k < 4 && await A.getAttribute('#player [data-act="repeat"]', 'aria-label') !== 'Repeat off'; k++) await A.click('#player [data-act="repeat"]');
+  const modes = [];
+  for (let k = 0; k < 4; k++) {
+    await A.click('#player [data-act="repeat"]'); await A.waitForTimeout(80);
+    modes.push(await A.evaluate(() => { const b = document.querySelector('#player [data-act="repeat"]'); return [b.getAttribute('aria-label'), b.classList.contains('on'), !b.querySelector('.one').hidden, b.querySelector('svg path').getAttribute('d').startsWith('M3 7h3')].join('|'); }));
+  }
+  check(sec(rsAt) >= 2 && rsZero[0] === '0:00' && !rsZero[1] && rsZero[2] && rsZero[3]
+    && modes.join(',') === 'Repeat all|true|false|false,Repeat one|true|true|false,Shuffle|true|false|true,Repeat off|false|false|false',
+    'play from the start goes back to 0:00 (still paused), and the repeat button cycles all, one, shuffle, off', JSON.stringify({ rsAt, rsZero, modes }));
+
   // --- the play queue floats under the search bar, lined up with it, and fades in and out
   await A.locator('#view .tr').first().locator('.t-name').click(); await A.waitForTimeout(800);
   const mainW = await A.evaluate(() => document.getElementById('main').getBoundingClientRect().width);

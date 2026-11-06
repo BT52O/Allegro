@@ -1388,7 +1388,7 @@ body.touch-input .has-pen::after { display: none; }
     </div>
     <div class="p-center">
       <div class="p-btns">
-        <button class="cbtn" data-act="shuffle" aria-label="Shuffle" aria-pressed="false"><i data-ic="shuffle"></i></button>
+        <button class="cbtn" data-act="restart" aria-label="Play from the start"><i data-ic="restart"></i></button>
         <button class="cbtn main-skip" data-act="prev" aria-label="Previous"><i data-ic="prev"></i></button>
         <button class="pbtn" data-act="toggle" aria-label="Play"><i data-ic="play"></i></button>
         <button class="cbtn main-skip" data-act="next" aria-label="Next"><i data-ic="next"></i></button>
@@ -1441,7 +1441,7 @@ body.touch-input .has-pen::after { display: none; }
       <div class="s-info"><div><h2 id="s-title"></h2><button class="link" id="s-artist"></button></div><button class="like" id="s-like" aria-label="Save to Liked Songs"><i data-ic="heart"></i></button></div>
       <div class="s-prog"><input type="range" class="seek" id="s-seek" min="0" max="1000" value="0" aria-label="Song position"><div class="s-times"><span class="t-cur">0:00</span><span class="t-dur">0:00</span></div></div>
       <div class="s-ctrls">
-        <button class="cbtn" data-act="shuffle" aria-label="Shuffle" aria-pressed="false"><i data-ic="shuffle"></i></button>
+        <button class="cbtn" data-act="restart" aria-label="Play from the start"><i data-ic="restart"></i></button>
         <button class="cbtn main-skip" data-act="prev" aria-label="Previous"><i data-ic="prev"></i></button>
         <button class="pbtn" data-act="toggle" aria-label="Play"><i data-ic="play"></i></button>
         <button class="cbtn main-skip" data-act="next" aria-label="Next"><i data-ic="next"></i></button>
@@ -1592,7 +1592,7 @@ const I18N = [
   ['All Albums', '所有专辑', '所有專輯'], ['All Artists', '所有艺人', '所有藝人'], ['Discography', '作品', '作品'], ['No songs match.', '没有匹配的歌曲。', '沒有符合的歌曲。'],
   ['Check the spelling, or search for a different song, artist or album.', '检查拼写，或搜索其他歌曲、艺人或专辑。', '檢查拼字，或搜尋其他歌曲、藝人或專輯。'],
   ['Play', '播放', '播放'], ['Pause', '暂停', '暫停'], ['Shuffle', '随机播放', '隨機播放'], ['Previous', '上一首', '上一首'], ['Next', '下一首', '下一首'],
-  ['Repeat off', '不循环', '不循環'], ['Repeat all', '列表循环', '列表循環'], ['Repeat one', '单曲循环', '單曲循環'], ['Queue', '播放队列', '播放佇列'], ['Volume', '音量', '音量'], ['Mute', '静音', '靜音'],
+  ['Repeat off', '不循环', '不循環'], ['Play from the start', '从头播放', '從頭播放'], ['Shuffle on', '随机播放已开启', '隨機播放已開啟'], ['Shuffle off', '随机播放已关闭', '隨機播放已關閉'], ['Repeating the queue', '列表循环', '列表循環'], ['Repeating this song', '单曲循环', '單曲循環'], ['Repeat all', '列表循环', '列表循環'], ['Repeat one', '单曲循环', '單曲循環'], ['Queue', '播放队列', '播放佇列'], ['Volume', '音量', '音量'], ['Mute', '静音', '靜音'],
   ['Now Playing', '正在播放', '正在播放'], ['Playing From', '播放来源', '播放來源'], ['Nothing Playing', '未在播放', '未在播放'], ['Pick a song to start', '请选择一首歌', '請選擇一首歌'],
   ['Play queue', '播放队列', '播放佇列'], ['History', '播放历史', '播放歷史'], ['Playing from:', '播放来源：', '播放來源：'], ['Next Up from:', '接下来播放：', '接下來播放：'], ['Clear', '清空', '清空'], ['Cleared the queue', '已清空播放队列', '已清空播放佇列'],
   ['Add the queue to a playlist', '将播放队列添加到歌单', '將播放佇列加入歌單'], ['Nothing in the queue yet', '播放队列还是空的', '播放佇列還是空的'], ['Close queue', '关闭播放队列', '關閉播放佇列'],
@@ -1787,6 +1787,7 @@ const STROKE = {
   fwd: '<path d="m9.5 5 7 7-7 7"/>',
   shuffle: '<path d="M3 7h3c4.5 0 6.5 10 11 10h3M3 17h3c1.7 0 3-1.4 4.2-3.3M13.8 10.3C15 8.4 16.3 7 18 7h2M17.5 4l3 3-3 3M17.5 14l3 3-3 3"/>',
   repeat: '<path d="M17 2.5l3 3-3 3M4 11.5v-2a4 4 0 0 1 4-4h12M7 21.5l-3-3 3-3M20 12.5v2a4 4 0 0 1-4 4H4"/>',
+  restart: '<path d="M12 5.5a7.5 7.5 0 1 1-5.3 2.2M14.5 3 12 5.5 14.5 8"/>',
   heart: '<path d="M12 20s-7.5-4.6-7.5-10.2A4.3 4.3 0 0 1 12 7.2a4.3 4.3 0 0 1 7.5 2.6C19.5 15.4 12 20 12 20z"/>',
   queue: '<path d="M4 6h12M4 11h12M4 16h7"/><path d="M15.5 14v6l5-3z"/>',
   volume: '<path d="M4 9.5h3.5L12 6v12l-4.5-3.5H4z"/><path d="M15.5 9.5a3.5 3.5 0 0 1 0 5M18 7a7 7 0 0 1 0 10"/>',
@@ -3234,10 +3235,13 @@ function syncLikes() {
 }
 function syncToggles() {
   $$('[data-act="shuffle"]').forEach(b => { b.classList.toggle('on', S.shuffle); b.setAttribute('aria-pressed', S.shuffle); });
+  // the player's one play-mode button: shuffle shows its own arrows, otherwise the repeat state (with a 1 for one song)
   $$('[data-act="repeat"]').forEach(b => {
-    b.classList.toggle('on', S.repeat !== 'off'); b.setAttribute('aria-pressed', S.repeat !== 'off');
-    b.setAttribute('aria-label', S.repeat === 'one' ? 'Repeat one' : S.repeat === 'all' ? 'Repeat all' : 'Repeat off');
-    const one = b.querySelector('.one'); if (one) one.hidden = S.repeat !== 'one';
+    const on = S.shuffle || S.repeat !== 'off';
+    b.classList.toggle('on', on); b.setAttribute('aria-pressed', on);
+    b.setAttribute('aria-label', S.shuffle ? 'Shuffle' : S.repeat === 'one' ? 'Repeat one' : S.repeat === 'all' ? 'Repeat all' : 'Repeat off');
+    if (b.dataset.mode !== (S.shuffle ? 'shuffle' : 'repeat')) { b.dataset.mode = S.shuffle ? 'shuffle' : 'repeat'; setIcon(b, b.dataset.mode); }
+    const one = b.querySelector('.one'); if (one) one.hidden = S.shuffle || S.repeat !== 'one';
   });
   $('#q-btn').classList.toggle('on', S.queueOpen); $('#q-btn').setAttribute('aria-pressed', S.queueOpen);
   const qp = $('#queue-panel'), was = qp.classList.contains('open');
@@ -5892,7 +5896,20 @@ document.addEventListener('click', e => {
     else if (a === 'next') next(false);
     else if (a === 'prev') prev();
     else if (a === 'shuffle') { S.shuffle = !S.shuffle; S.shuffle ? applyShuffle() : unshuffle(); syncToggles(); renderQueue(); save(); toast(S.shuffle ? 'Shuffle on' : 'Shuffle off'); }
-    else if (a === 'repeat') { S.repeat = S.repeat === 'off' ? 'all' : S.repeat === 'all' ? 'one' : 'off'; syncToggles(); renderQueue(); save(); toast(S.repeat === 'all' ? 'Repeating the queue' : S.repeat === 'one' ? 'Repeating this song' : 'Repeat off'); }
+    else if (a === 'repeat') {
+      // one button for the play mode: repeat off > repeat all > repeat one > shuffle > back to off
+      let msg;
+      if (S.shuffle) { S.shuffle = false; unshuffle(); S.repeat = 'off'; msg = 'Shuffle off'; }
+      else if (S.repeat === 'one') { S.repeat = 'off'; S.shuffle = true; applyShuffle(); msg = 'Shuffle on'; }
+      else { S.repeat = S.repeat === 'off' ? 'all' : 'one'; msg = S.repeat === 'all' ? 'Repeating the queue' : 'Repeating this song'; }
+      syncToggles(); renderQueue(); save(); toast(msg);
+    }
+    else if (a === 'restart') {
+      // back to 0:00 of the same song, playing or paused as it was; after a reload nothing has loaded yet, so move the saved second instead
+      if (!S.current) return;
+      const live = audio.getAttribute('src') && audio.getAttribute('src') !== SILENT;
+      if (live) audio.currentTime = 0; else { resumeAt = { id: S.current, t: 0 }; showResumePos(); savePos(); }
+    }
     else if (a === 'queue') {
       // with Now Playing open (and always on phones) the queue is a page of the panel; otherwise it floats under the search bar
       if (innerWidth < 760 || sheetOpen()) {
