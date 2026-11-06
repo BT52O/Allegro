@@ -1127,6 +1127,23 @@ try {
   check(tabsTxt.join('|') === 'Home|New Releases|Charts|Podcasts' && /Roboto/.test(font[0]) && font[1] === '500' && font[2] === '14px' && font[3] && charts[0].includes('Top Songs of All Time') && charts[1] > 0 && charts[2] === 'Charts' && fresh[0].includes('Newest Songs') && fresh[1] > 0,
     'Home has New Releases, Charts and Podcasts tabs instead of the greeting; the font is Roboto Medium at 14px', JSON.stringify({ tabsTxt, font, charts, fresh }));
 
+  // --- a playlist's own page shows its songs' full-size covers (as Now Playing does); lists keep the small copies
+  {
+    const song = (await lib(A)).songs.find(x => x.cover && x.coverSm);   // any upload with its own cover (earlier checks rename songs)
+    await A.click('.nav-btn[data-nav="library"]'); await A.waitForTimeout(400); await A.click('[data-chip="songs"]'); await A.waitForTimeout(400);
+    await A.click(`#view .tr[data-id="${song.id}"] .more`, { force: true }); await A.waitForTimeout(250);
+    await A.hover('#menu .mi:has-text("Add to Playlist")'); await A.waitForTimeout(450);
+    await A.click('#menu-fly [data-mf]:has-text("New Playlist")'); await A.waitForTimeout(500);
+    await A.fill('#pe-name', 'Sharp Covers'); await A.click('#pe-save'); await A.waitForTimeout(1200);
+    const pl = (await lib(A)).state.playlists.find(x => x.name === 'Sharp Covers');
+    if (pl) { await A.click(`#side-list [data-open="playlist:${pl.id}"]`); await A.waitForTimeout(800); }
+    const srcs = pl ? await A.evaluate(id => [document.querySelector('.pl-head .art img')?.getAttribute('src') || '', document.querySelector(`#side-list [data-open="playlist:${id}"] .li-art img`)?.getAttribute('src') || ''], pl.id) : [];
+    await shot(A, 'playlist-full-cover');
+    const coverPath = '/api/cover/' + encodeURIComponent(song.id) + '?';
+    check(!!pl && srcs[0].startsWith(coverPath) && !srcs[0].includes('s=1') && srcs[1].startsWith(coverPath) && srcs[1].includes('s=1'),
+      'a playlist page uses full-size song covers, like Now Playing; the sidebar keeps the small copy', JSON.stringify({ pl: !!pl, srcs }));
+  }
+
   // --- nothing is reachable without a session
   const anon = await (await browser.newContext()).newPage();
   check((await anon.goto(URL + 'api/library')).status() === 401, 'library needs sign-in');

@@ -2395,11 +2395,18 @@ function librarySorted() {
   return ids.sort(cmp);
 }
 const totalDur = ids => ids.reduce((s, id) => s + (tk(id)?.duration || 0), 0);
-function plCovers(ids) { const seen = []; for (const id of ids) { const c = tk(id)?.cover; if (c && !seen.includes(c)) seen.push(c); if (seen.length === 4) break; } return seen; }
+// The full-size cover file the now playing screen shows. Lists use the small 600px copy (t.cover) to load fast,
+// but a big picture made from that copy looks soft next to now playing.
+const bigCover = t => t.ownCoverFull || t.cover;
+// Up to 4 different covers from a playlist's songs. Duplicates are judged by the small copy, so two songs from one
+// album still count once; `big` hands back each song's full-size file instead.
+function plCovers(ids, big) { const seen = [], out = []; for (const id of ids) { const t = tk(id), c = t?.cover; if (c && !seen.includes(c)) { seen.push(c); out.push(big ? bigCover(t) : c); } if (seen.length === 4) break; } return out; }
 const plCoverUrl = p => '/api/playlist-cover/' + encodeURIComponent(p.id) + '?v=' + p.cover;
-function plArt(p) {
+// `big` is for the large spots (the playlist page and its edit dialog): full-size song covers, same as now playing.
+// A photo uploaded for the playlist is already kept at full size, so it needs nothing extra.
+function plArt(p, big) {
   if (p.cover) return `<img src="${esc(plCoverUrl(p))}" alt="">`;
-  const c = plCovers(p.ids);
+  const c = plCovers(p.ids, big);
   if (c.length >= 4) return `<div class="mosaic">${c.map(u => `<img src="${esc(u)}" alt="">`).join('')}</div>`;
   return `<img src="${esc(c[0] || genCover(p.id, 1, hash(p.id) % 360))}" alt="">`;
 }
@@ -3065,7 +3072,7 @@ const VIEWS = {
     const title = S.renaming === p.id ? `<input class="rename" id="rename-input" value="${esc(p.name)}" maxlength="80" aria-label="Playlist name">` : `<h1>${esc(p.name)}</h1>`;
     // Two columns: the playlist's cover, name and buttons on the left (they stay put as you scroll), songs on the right.
     const tint = p.cover ? plCoverUrl(p) : (plCovers(ids)[0] || genCover(p.id, 1, hash(p.id) % 360));
-    const side = `<header class="vhead editable pl-head"><div class="art has-pen" title="Edit Details">${plArt(p)}${penFor(p.id)}</div>
+    const side = `<header class="vhead editable pl-head"><div class="art has-pen" title="Edit Details">${plArt(p, true)}${penFor(p.id)}</div>
       <div class="vhead-text" data-type="Playlist">${title}${p.desc ? `<p class="desc">${esc(p.desc)}</p>` : ''}<div class="meta"><span>${plural(ids.length, 'song')}${ids.length ? ', ' + fmtLong(totalDur(ids)) : ''}</span></div></div>
       <div class="pl-btns"><button class="pill-play" data-ctx-play="${esc(key)}" aria-label="Play">${ic('play')}<span>Play</span></button><button class="pill-shuffle" data-shuffle-play="${esc(key)}">${ic('shuffle')}<span>Shuffle</span></button></div>
       <div class="pl-icons actions">
@@ -3235,7 +3242,7 @@ function updateMeta() {
   if (L && resumeAt && resumeAt.id === L.id && L.dur) { $$('.t-cur').forEach(c => { c.textContent = fmt(resumeAt.t); }); $$('.seek').forEach(s => { s.value = Math.round(Math.min(1, resumeAt.t / L.dur) * 1000); setPct(s); }); }
   $$('.seek').forEach(s => { s.disabled = !t; });
   if (t) {
-    $('#s-cover').src = t.ownCoverFull || t.cover;   // the full-size file, not the small copy lists use $('#s-title').textContent = t.title; $('#s-artist').textContent = t.artist;
+    $('#s-cover').src = bigCover(t);   // the full-size file, not the small copy lists use $('#s-title').textContent = t.title; $('#s-artist').textContent = t.artist;
     $('#s-ctx').textContent = S.context ? S.context.name : t.album;
     Promise.resolve().then(drawQuality);
     if (!$('#sheet').hidden && SP.shownId !== t.id) { SP.shownId = t.id; SP.editWiki = SP.editLyr = false; SP.userScroll = 0; renderPanel(); }
@@ -4705,7 +4712,7 @@ function editPlaylist(id, draft = null, onCreate = null) {
 }
 function drawPeArt() {
   const p = peList();
-  $('#pe-art').innerHTML = pe.preview ? `<img src="${pe.preview}" alt="">` : plArt(pe.remove ? { ...p, cover: null } : p);
+  $('#pe-art').innerHTML = pe.preview ? `<img src="${pe.preview}" alt="">` : plArt(pe.remove ? { ...p, cover: null } : p, true);
   const hasPhoto = !!(pe.preview || (p.cover && !pe.remove));
   $('#pe-actions').hidden = !hasPhoto;
 }
