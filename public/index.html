@@ -38,7 +38,8 @@
   --scrim: rgba(0, 0, 0, .38);
   --shadow: 0 14px 40px -14px rgba(0, 0, 0, .3);
   --volume-panel: #ececee; --volume-track: #cfcfd3; --volume-ink: #111;
-  --brand-gradient: linear-gradient(90deg, #e32636, #ff8a8a);
+  --brand-red: #e32636;   /* the red at the start of the logo gradient, also used for "on" switches in popups */
+  --brand-gradient: linear-gradient(90deg, var(--brand-red), #ff8a8a);
   --brand-shadow: 0 1px 1px rgba(0, 0, 0, .45);
   --f-display: 'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
   --f-nav: var(--f-display);
@@ -542,7 +543,7 @@ button.pr-chip:hover { background: #e2e2e2; }
 .spd-pitch input { position: absolute; opacity: 0; pointer-events: none; }
 .spd-pitch .sw { width: 30px; height: 18px; border-radius: 999px; background: #d4d4d8; position: relative; transition: background-color .2s; flex: none; }
 .spd-pitch .sw::after { content: ""; position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; border-radius: 50%; background: #fff; box-shadow: 0 1px 2px rgba(0, 0, 0, .25); transition: transform .2s; }
-.spd-pitch input:checked + .sw { background: #2fbf71; }
+.spd-pitch input:checked + .sw { background: var(--brand-red); }
 .spd-pitch input:checked + .sw::after { transform: translateX(12px); }
 .spd-pitch input:focus-visible + .sw { outline: 2px solid #111; outline-offset: 2px; }
 /* Keep the speaker outside the floating panel, including on the dark Now Playing screen. */
