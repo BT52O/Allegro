@@ -1010,6 +1010,8 @@ img { -webkit-user-drag: none; user-select: none; }
 .pe-cover:hover .pe-hover, .pe-cover:focus-visible .pe-hover { opacity: 1; }
 .pe-hover .ic { width: 30px; height: 30px; }
 .pe-fields { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.seg.se-type { display: flex; flex-wrap: nowrap; border-radius: 10px; border: 1px solid var(--line); }
+.se-type .seg-btn { flex: 1; height: 38px; border-radius: 8px; font-size: .95rem; }
 .pe-fields textarea { border-radius: 10px; border: 1px solid var(--line); background: var(--chip); padding: 10px 14px; font: 400 .95rem/1.4 var(--f-body); resize: vertical; min-height: 104px; }
 .pe-fields textarea:focus { outline: 2px solid var(--ink); outline-offset: 1px; background: var(--panel); }
 .pe-note { margin: 0; font-size: .8rem; color: var(--muted); }
@@ -1540,6 +1542,7 @@ body.touch-input .has-pen::after { display: none; }
         <label class="field">Artist<input id="se-artist" maxlength="200" autocomplete="off"></label>
         <label class="field">Album<input id="se-album" maxlength="200" autocomplete="off"></label>
         <label class="field">Release Date<input id="se-date" maxlength="20" autocomplete="off" placeholder="e.g. Oct 24, 2024"></label>
+        <div class="field"><span id="se-type-label">Release Type</span><div class="seg se-type" id="se-type" role="radiogroup" aria-labelledby="se-type-label"><button type="button" class="seg-btn" data-rtype="album" role="radio">Album</button><button type="button" class="seg-btn" data-rtype="ep" role="radio">EP</button><button type="button" class="seg-btn" data-rtype="single" role="radio">Single</button></div></div>
       </div>
     </div>
     <p class="se-status" id="se-status" role="status"></p>
@@ -1622,6 +1625,7 @@ const I18N = [
   ['Show Columns', '显示的列', '顯示的欄位'], ['Choose Columns', '选择列', '選擇欄位'], ['Played', '播放时间', '播放時間'],
   ['Upload Songs', '上传歌曲', '上傳歌曲'], ['Find Missing Info', '查找缺少的信息', '尋找缺少的資訊'], ['No Uploads Yet', '还没有上传', '還沒有上傳'], ['Choose Upload Songs to add your MP3s.', '选择“上传歌曲”来添加你的 MP3。', '選擇「上傳歌曲」來加入你的 MP3。'],
   ['Choose Audio Files', '选择音频文件', '選擇音訊檔案'], ['Choose a Whole Folder', '选择整个文件夹', '選擇整個資料夾'], ['Click a cover to edit a song', '点击封面编辑歌曲', '點擊封面編輯歌曲'],
+  ['Release Type', '发行类型', '發行類型'], ['Single', '单曲', '單曲'], ['EP', 'EP', 'EP'], ['EPs', 'EP', 'EP'], ['Singles', '单曲', '單曲'],
   ['Edit Song', '编辑歌曲', '編輯歌曲'], ['Song Name', '歌名', '歌名'], ['Release Date', '发行日期', '發行日期'], ['Find Info Online', '在线查找信息', '線上尋找資訊'], ['Searching…', '正在搜索…', '正在搜尋…'],
   ['Pick the right one to fill in the details and art.', '选择正确的一项来填入信息和封面。', '選擇正確的一項來填入資訊和封面。'], ['Type a song name first.', '请先输入歌名。', '請先輸入歌名。'],
   ['No matches. Check the spelling, or fill it in yourself.', '没有匹配结果。请检查拼写，或自己填写。', '沒有符合結果。請檢查拼字，或自行填寫。'],
@@ -1682,6 +1686,8 @@ const pickL = (h, t) => LANG === 'zh-Hant' ? t : h;
 const PAT = [
   [/^Streaming quality: (.+)$/, m => pickL(`音质：${m[1]}`, `音質：${m[1]}`)],
   [/^(\d+) songs?$/, m => pickL(`${m[1]} 首歌曲`, `${m[1]} 首歌曲`)], [/^(\d+) playlists?$/, m => pickL(`${m[1]} 个歌单`, `${m[1]} 個歌單`)],
+  [/^(\d{4}) · (Album|EP|Single)$/, m => `${m[1]} · ${m[2] === 'Album' ? pickL('专辑', '專輯') : m[2] === 'EP' ? 'EP' : pickL('单曲', '單曲')}`],
+  [/^(\d+) EPs?$/, m => pickL(`${m[1]} 张 EP`, `${m[1]} 張 EP`)], [/^(\d+) singles?$/, m => pickL(`${m[1]} 首单曲`, `${m[1]} 首單曲`)],
   [/^(\d+) folders?$/, m => pickL(`${m[1]} 个文件夹`, `${m[1]} 個資料夾`)], [/^(\d+) albums?$/, m => pickL(`${m[1]} 张专辑`, `${m[1]} 張專輯`)], [/^(\d+) lists?$/, m => pickL(`${m[1]} 个列表`, `${m[1]} 個清單`)],
   [/^(\d+) min (\d+) sec$/, m => `${m[1]} 分 ${m[2]} 秒`], [/^(\d+) hr (\d+) min$/, m => pickL(`${m[1]} 小时 ${m[2]} 分`, `${m[1]} 小時 ${m[2]} 分`)], [/^(\d+) sec$/, m => `${m[1]} 秒`],
   [/^(\d+) days ago$/, m => `${m[1]} 天前`], [/^(\d+) min ago$/, m => pickL(`${m[1]} 分钟前`, `${m[1]} 分鐘前`)],
@@ -2366,6 +2372,14 @@ function addFileRecord(rec) {
 }
 // "2030-10-19" → "Oct. 19, 2030" (short months get a period; March to July are written out).
 const AP_MONTHS = ['Jan.', 'Feb.', 'March', 'April', 'May', 'June', 'July', 'Aug.', 'Sept.', 'Oct.', 'Nov.', 'Dec.'];
+// Release types you can sort a song into. Songs you haven't sorted count as part of an album.
+const RTYPES = { album: 'Album', ep: 'EP', single: 'Single' };
+// An album's type is the one its songs were sorted into most often (Album when none were).
+function releaseTypeOf(ids) {
+  const n = {};
+  for (const id of ids) { const r = (tk(id) || {}).releaseType; if (RTYPES[r]) n[r] = (n[r] || 0) + 1; }
+  return Object.keys(n).sort((a, b) => n[b] - n[a])[0] || 'album';
+}
 const longDate = v => { const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(v || ''); return m ? `${AP_MONTHS[+m[2] - 1]} ${+m[3]}, ${m[1]}` : (v || ''); };
 function rebuild() {
   const albums = new Map(), artists = new Map(), genres = new Map();
@@ -2385,6 +2399,7 @@ function rebuild() {
   for (const al of albums.values()) {
     al.ids.sort((a, b) => { const x = S.tracks.get(a), y = S.tracks.get(b); return (x.trackNo || 999) - (y.trackNo || 999) || x.title.localeCompare(y.title); });
     if (!al.cover) al.cover = genCover(al.key, al.style ?? hash(al.key) % 5, al.hue ?? hash(al.key) % 360);
+    al.type = releaseTypeOf(al.ids);
   }
   for (const t of S.tracks.values()) t.cover = t.ownCover || albums.get(t.albumKey).cover;
   for (const ar of artists.values()) ar.cover = artistPhoto(ar.name);
@@ -3077,10 +3092,13 @@ const VIEWS = {
     const a = IDX.artists.get(v.key);
     if (!a) return notFound('That artist is no longer in your library.');
     const key = 'artist:' + a.name;
-    return head({ art: artistArt(a), round: true, type: 'Artist', title: `<h1>${esc(a.name)}</h1>`, tintSrc: a.cover, artistPen: cloud.canWrite ? a.name : null, meta: `<span>${plural(a.ids.length, 'song')} · ${plural(a.albums.length, 'album')}</span>` })
+    const rels = a.albums.map(k => IDX.albums.get(k)).filter(Boolean);
+    const groups = [['album', 'Albums', 'album'], ['ep', 'EPs', 'EP'], ['single', 'Singles', 'single']].map(([type, title, word]) => ({ type, title, word, list: rels.filter(r => r.type === type) })).filter(g => g.list.length);
+    const counts = groups.map(g => `<span>${plural(g.list.length, g.word)}</span>`).join(' · ');
+    return head({ art: artistArt(a), round: true, type: 'Artist', title: `<h1>${esc(a.name)}</h1>`, tintSrc: a.cover, artistPen: cloud.canWrite ? a.name : null, meta: `<span>${plural(a.ids.length, 'song')}</span>${counts ? ' · ' + counts : ''}` })
       + actions(key, `<button class="act-btn" data-ctx-more="${esc(key)}" aria-label="More options">${ic('more')}</button>`)
       + `<section class="sec"><div class="sec-head"><h2>Songs</h2></div>${trackList(a.ids, { key, name: a.name }, { noHead: true })}</section>`
-      + `<section class="sec"><div class="sec-head"><h2>Discography</h2></div><div class="cards">${a.albums.map(k => albumCard(IDX.albums.get(k))).join('')}</div></section>`;
+      + groups.map(g => `<section class="sec" data-release="${g.type}"><div class="sec-head"><h2>${g.title}</h2></div><div class="cards">${g.list.map(r => card('album:' + r.key, r.name, (r.year ? r.year + ' · ' : '') + RTYPES[r.type], `<img src="${esc(r.cover)}" alt="" loading="lazy">`)).join('')}</div></section>`).join('');
   },
   playlist(v) {
     const p = S.playlists.find(x => x.id === v.key);
@@ -5191,11 +5209,25 @@ function editSong(id) {
   $('#se-name').value = t.title; $('#se-artist').value = t.artist === 'Unknown artist' ? '' : t.artist; $('#se-album').value = t.album === 'Unknown album' ? '' : t.album; $('#se-date').value = showDate((t.meta && t.meta.released) || t.year);
   $('#se-err').textContent = ''; $('#se-status').textContent = ''; $('#se-results').hidden = true; $('#se-results').innerHTML = '';
   $('#se-save').disabled = false; $('#se-save').textContent = 'Save';
+  const al = IDX.albums.get(t.albumKey);
+  setSeType(RTYPES[t.releaseType] ? t.releaseType : al ? al.type : 'album');
   drawSeArt();
   $('#song-edit').hidden = false;
   alignSeActions();
   setTimeout(() => $('#se-name').focus(), 30);
 }
+function setSeType(v) {
+  if (se) se.type = v;
+  $$('#se-type [data-rtype]').forEach(b => { const on = b.dataset.rtype === v; b.classList.toggle('on', on); b.setAttribute('aria-checked', on); b.tabIndex = on ? 0 : -1; });
+}
+$('#se-type').addEventListener('click', e => { const b = e.target.closest('[data-rtype]'); if (b && se) setSeType(b.dataset.rtype); });
+// Arrow keys move between the three choices, like any radio group.
+$('#se-type').addEventListener('keydown', e => {
+  const step = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 }[e.key]; if (!step || !se) return;
+  e.preventDefault();
+  const keys = Object.keys(RTYPES), next = keys[(keys.indexOf(se.type) + step + keys.length) % keys.length];
+  setSeType(next); $(`#se-type [data-rtype="${next}"]`).focus();
+});
 function seSrc() {
   const t = tk(se.id);
   if (se.preview) return se.preview;
@@ -5288,7 +5320,7 @@ $('#song-edit-form').addEventListener('submit', async e => {
   const released = parseReleaseDate($('#se-date').value);
   if (released === null) { $('#se-err').textContent = 'Write the release date like Oct 24, 2024, 10/24/2024, or just 2024.'; $('#se-date').focus(); return; }
   $('#se-save').disabled = true; $('#se-err').textContent = ''; $('#se-save').textContent = 'Saving…';
-  const ch = { title, artist: artist || 'Unknown artist', album: album || 'Unknown album', ...se.extra, released, year: released.slice(0, 4) };
+  const ch = { title, artist: artist || 'Unknown artist', album: album || 'Unknown album', ...se.extra, released, year: released.slice(0, 4), releaseType: se.type || 'album' };
   // Keep the album together: if the album artist was just the old artist, it follows the new one.
   if (!('albumArtist' in se.extra) && t.albumArtist && t.albumArtist === t.artist) ch.albumArtist = '';
   try {
@@ -5644,7 +5676,7 @@ function cloudTrack(id, d) {
   Object.assign(t, {
     title: d.title || 'Untitled', artist: d.artist || 'Unknown artist', albumArtist: d.albumArtist || '', album: d.album || 'Unknown album',
     year: d.year || '', released: d.released || '', bpm: d.bpm || 0, key: d.key || '', trackNo: d.trackNo || 0, genre: d.genre || '', duration: d.duration, added: d.added || Date.now(),
-    fileName: d.fileName, size: d.size, mime: d.mime, ownCover: d.cover ? coverUrl(id) + '?' + (d.coverSm ? 's=1&' : '') + 'v=' + (d.coverV || 0) : null,
+    releaseType: RTYPES[d.releaseType] ? d.releaseType : '', fileName: d.fileName, size: d.size, mime: d.mime, ownCover: d.cover ? coverUrl(id) + '?' + (d.coverSm ? 's=1&' : '') + 'v=' + (d.coverV || 0) : null,
     ownCoverFull: d.cover ? coverUrl(id) + '?v=' + (d.coverV || 0) : null,
     hue: hash((d.album || '') + (d.artist || '')) % 360, coverStyle: hash(d.album || '') % 5, meta: JSON.parse(JSON.stringify(d))
   });

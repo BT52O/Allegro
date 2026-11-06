@@ -82,6 +82,7 @@ function cleanMeta(d) {
     mime: str(d.mime, 60), cover: !!d.cover, coverV: Number(d.coverV) || 0, coverSm: !!d.coverSm, q96: !!d.q96, q320: !!d.q320,
     released: /^\d{4}(-\d{2}-\d{2})?$/.test(str(d.released, 10)) ? str(d.released, 10) : '',
     lyricist: str(d.lyricist, 200), composer: str(d.composer, 200), about: str(d.about, 4000),
+    releaseType: ['album', 'ep', 'single'].includes(d.releaseType) ? d.releaseType : '',
     bpm: Number(d.bpm) > 0 && Number(d.bpm) < 1000 ? Math.round(Number(d.bpm) * 10) / 10 : 0, key: str(d.key, 12), tagsRead: !!d.tagsRead
   };
 }

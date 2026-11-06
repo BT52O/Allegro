@@ -625,6 +625,8 @@ try {
   await A.fill('#se-date', 'someday'); await A.click('#se-save'); await A.waitForTimeout(300);
   const dateErr = (await A.textContent('#se-err')).includes('release date') && await A.isVisible('#song-edit');
   await A.fill('#se-date', '4/11/2024');
+  const typeStart = await A.$eval('#se-type .seg-btn.on', b => b.dataset.rtype).catch(() => '');
+  await A.click('#se-type [data-rtype="ep"]');
   const artChooser = A.waitForEvent('filechooser');
   await A.click('#se-cover');
   await (await artChooser).setFiles(join(fixtures, 'wide.png')); await A.waitForTimeout(600);
@@ -636,6 +638,7 @@ try {
   const edImg = await A.$eval(`#view [data-edit-song="${tagged.id}"] img`, i => i.getAttribute('src')).catch(() => '');
   const edDims = await A.evaluate(src => new Promise(r => { const i = new Image(); i.onload = () => r([i.naturalWidth, i.naturalHeight]); i.onerror = () => r(null); i.src = src; }), edImg);
   check(!(await A.$('#se-bpm')) && !(await A.$('#se-key')), 'the song editor has no BPM or Key boxes');
+  check(typeStart === 'album' && ed.releaseType === 'ep', 'Release Type starts on Album and saves EP', JSON.stringify([typeStart, ed.releaseType]));
   check(dateErr && ed.released === '2024-04-11' && ed.year === '2024', 'release date is checked and saved from 4/11/2024 as 2024-04-11', JSON.stringify([dateErr, ed.released, ed.year]));
   check(seOpen && ed.title === 'Sunny Day' && ed.artist === 'Edited Artist' && ed.album === 'Edited Album' && ed.coverV > 0 && /[?&]v=/.test(edImg) && !!edDims && edDims[0] === edDims[1], 'editing a song saves its name, artist, album and new square art', JSON.stringify({ ed, edImg, edDims }));
   // Find Info Online in the editor fills everything in from the pick
@@ -651,6 +654,8 @@ try {
   const lineUp = await A.evaluate(() => { const box = id => document.getElementById(id).getBoundingClientRect(), mid = id => box(id).top + box(id).height / 2; return [mid('se-remove') - mid('se-album'), box('se-search').bottom - box('se-date').bottom, (mid('se-remove') + mid('se-search')) / 2 - mid('se-view')].map(Math.round); });
   check(lineUp.every(v => Math.abs(v) <= 1), 'Edit Song: Remove Photo centers on Album, Find Info Online bottom matches Release Date', JSON.stringify(lineUp));
   const filled = [await A.inputValue('#se-name'), await A.inputValue('#se-artist'), await A.inputValue('#se-album'), await A.inputValue('#se-date')];
+  const typeKept = await A.$eval('#se-type .seg-btn.on', b => b.dataset.rtype).catch(() => '');
+  await A.click('#se-type [data-rtype="single"]');
   await A.click('#se-save');
   await A.waitForFunction(() => document.getElementById('song-edit').hidden, null, { timeout: 10000 }).catch(() => {});
   data = await lib(A);
@@ -677,6 +682,9 @@ try {
   const noLabel = !(await A.$('.vhead .eyebrow'));
   const fromFont = await A.$eval('.s-from .eyebrow', e => [getComputedStyle(e).fontFamily, getComputedStyle(e).textTransform]);
   check(noLabel && fromFont[0].startsWith('Roboto') && fromFont[1] === 'none', 'page headers have no type label, and Playing From uses the site font', JSON.stringify(fromFont));
+  const rel = await A.$$eval('#view [data-release]', x => x.map(s => [s.dataset.release, s.querySelector('h2').textContent, [...s.querySelectorAll('.card-s')].map(c => c.textContent)]));
+  const arMeta = await A.textContent('.vhead .meta');
+  check(typeKept === 'ep' && hit.releaseType === 'single' && JSON.stringify(rel) === JSON.stringify([['single', 'Singles', ['2021 · Single']]]) && arMeta.includes('1 single') && !(await A.$('#view h2:text-is("Discography")')), 'a song sorted as a Single shows under Singles on the artist page', JSON.stringify({ typeKept, rt: hit.releaseType, rel, arMeta }));
   check(blankCard && arDim && arPen, 'artists start blank, and the artist picture dims and shows a pen on hover', JSON.stringify([blankCard, arDim, arPen]));
   const arChooser = A.waitForEvent('filechooser');
   await A.click('.vhead .art [data-artist-pen]');
