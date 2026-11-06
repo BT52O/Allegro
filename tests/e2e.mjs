@@ -99,12 +99,44 @@ async function waitForServer() {
 
 const browser = await chromium.launch({ args: ['--autoplay-policy=no-user-gesture-required'], ...(process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {}) });
 const pageErrors = [];
+// settle(page, ms) replaces fixed pauses: it returns as soon as the page has gone quiet (no requests in
+// flight, no song still starting, no short timers pending, no animations or transitions running), and never waits longer than ms.
+// Tracking only timers up to 2.5s skips the Undo window, toasts and slow fallbacks, which would never let it finish.
+// Use page.waitForTimeout only where time itself has to pass (a song playing, the Undo window running out).
+const QUIET = () => {
+  const S = window.__quiet = { net: 0, timers: new Set() };
+  const f = window.fetch;
+  window.fetch = function (...a) { S.net++; return f.apply(this, a).finally(() => { S.net--; }); };
+  const send = XMLHttpRequest.prototype.send;
+  XMLHttpRequest.prototype.send = function (...a) { S.net++; this.addEventListener('loadend', () => { S.net--; }, { once: true }); return send.apply(this, a); };
+  const play = HTMLMediaElement.prototype.play;   // a song asked to play counts as busy until it actually starts
+  HTMLMediaElement.prototype.play = function (...a) { const p = play.apply(this, a); if (p && p.finally) { S.net++; p.catch(() => {}).finally(() => { S.net--; }); } return p; };
+  const st = window.setTimeout, ct = window.clearTimeout;
+  window.setTimeout = function (fn, ms, ...rest) {
+    if (typeof fn !== 'function' || (+ms || 0) > 2500) return st.call(window, fn, ms, ...rest);
+    const id = st.call(window, function (...x) { S.timers.delete(id); return fn.apply(this, x); }, ms, ...rest);
+    S.timers.add(id); return id;
+  };
+  window.clearTimeout = function (id) { S.timers.delete(id); return ct.call(window, id); };
+};
+const isQuiet = () => { const S = window.__quiet; return !S || (S.net === 0 && S.timers.size === 0 && document.getAnimations().every(a => a.playState !== 'running' || a.effect?.getTiming().iterations === Infinity)); };
+async function settle(page, ms) {
+  const until = Date.now() + ms;
+  await page.waitForTimeout(Math.min(ms, 30));   // let whatever the last action started get going
+  let calm = 0;
+  while (Date.now() < until) {
+    calm = (await page.evaluate(isQuiet).catch(() => false)) ? calm + 1 : 0;   // throws while a page is navigating
+    if (calm >= 2) return;
+    await page.waitForTimeout(Math.max(1, Math.min(40, until - Date.now())));
+  }
+}
 async function device(viewport) {
   const page = await (await browser.newContext({ viewport })).newPage();
   page.on('pageerror', e => pageErrors.push(e.message));
+  await page.addInitScript(QUIET);
   await page.route(/fonts\.(googleapis|gstatic)\.com|itunes\.apple\.com/, r => r.abort());
   await page.goto(URL);
-  await page.waitForTimeout(800);
+  await settle(page, 800);
   return page;
 }
 const lib = page => page.evaluate(async () => (await fetch('/api/library')).json());
@@ -121,7 +153,7 @@ try {
     await A.fill('#gate-code', 'WRONG-CODE'); await A.fill('#gate-pw', PASSWORD); await A.fill('#gate-pw2', PASSWORD);
     await A.click('#gate-btn'); await A.waitForFunction(() => document.getElementById('gate-err').textContent.trim(), null, { timeout: 10000 }).catch(() => {});
     check((await A.textContent('#gate-err')).includes('not right'), 'wrong setup code is rejected');
-    await A.fill('#gate-code', SETUP_CODE); await A.click('#gate-btn'); await A.waitForTimeout(1500);
+    await A.fill('#gate-code', SETUP_CODE); await A.click('#gate-btn'); await settle(A, 1500);
     check(!(await A.isVisible('#gate')), 'setup with the right code signs you in');
   } else {
     console.log('SKIP  setup flow (a local .dev.vars already exists, so the setup code is unknown to the test)');
@@ -129,7 +161,7 @@ try {
 
   // --- upload
   await A.setInputFiles('#file-input', [join(fixtures, 'tagged.mp3'), join(fixtures, 'Some Band - Untagged Song.mp3')]);
-  await A.waitForTimeout(4000);
+  await settle(A, 4000);
   let data = await lib(A);
   const tagged = data.songs.find(s => s.title === '晴天');
   check(data.songs.length === 2, 'two songs uploaded', `(${data.songs.length})`);
@@ -146,8 +178,8 @@ try {
 
   // --- like a song on desktop
   await A.evaluate(() => document.querySelector('.tab[data-nav=library]').click());
-  await A.click('[data-chip="songs"]'); await A.waitForTimeout(300);
-  await A.click(`.tr[data-id="${tagged.id}"] [data-like]`, { force: true }); await A.waitForTimeout(1200);
+  await A.click('[data-chip="songs"]'); await settle(A, 300);
+  await A.click(`.tr[data-id="${tagged.id}"] [data-like]`, { force: true }); await settle(A, 1200);
   data = await lib(A);
   check(data.state && data.state.liked.includes(tagged.id), 'liking a song saves online');
 
@@ -156,57 +188,57 @@ try {
   check(await B.isVisible('#gate') && !(await B.isVisible('#gate-code')), 'second device asks for the password only');
   await B.fill('#gate-pw', 'not the password'); await B.click('#gate-btn'); await B.waitForFunction(() => document.getElementById('gate-err').textContent.trim(), null, { timeout: 10000 }).catch(() => {});
   check((await B.textContent('#gate-err')).includes('Wrong password'), 'wrong password is rejected');
-  await B.fill('#gate-pw', PASSWORD); await B.click('#gate-btn'); await B.waitForTimeout(2000);
-  await B.click('.tab[data-nav=library]'); await B.click('[data-chip="songs"]'); await B.waitForTimeout(400);
+  await B.fill('#gate-pw', PASSWORD); await B.click('#gate-btn'); await settle(B, 2000);
+  await B.click('.tab[data-nav=library]'); await B.click('[data-chip="songs"]'); await settle(B, 400);
   const names = await B.$$eval('.tr .t-name', x => x.map(e => e.textContent));
   check(names.includes('晴天') && names.includes('Untagged Song'), 'songs appear on the second device');
-  await B.click(`.tr[data-id="${tagged.id}"]`); await B.waitForTimeout(2000);
+  await B.click(`.tr[data-id="${tagged.id}"]`); await settle(B, 2000);
   check(await B.evaluate(() => document.body.classList.contains('is-playing')), 'an uploaded song plays on the second device');
   check(await B.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'phone layout has no sideways scroll');
   // phone Now Playing: cover across the top, fading into a deep color from the art, white text
-  await B.click('#p-cover'); await B.waitForTimeout(1200);
+  await B.click('#p-cover'); await settle(B, 1200);
   const npv = await B.evaluate(() => { const sh = document.getElementById('sheet'), art = document.querySelector('.s-art').getBoundingClientRect(); return [getComputedStyle(sh).backgroundImage, getComputedStyle(document.getElementById('s-title')).color, Math.round(art.width), innerWidth, Math.round(art.top), sh.style.getPropertyValue('--deep')]; });
   await shot(B, 'phone-now-playing');
-  await B.click('.sheet-top [data-act="sheet"]'); await B.waitForTimeout(400);
+  await B.click('.sheet-top [data-act="sheet"]'); await settle(B, 400);
   check(npv[1] === 'rgb(255, 255, 255)' && npv[2] === npv[3] && npv[4] === 0 && !!npv[5] && npv[0].includes(`rgb(${npv[5].trim().split(' ').join(', ')})`), 'phone Now Playing: cover edge to edge on top, deep color from the art, white text', JSON.stringify(npv));
-  await B.click('.tab[data-nav=home]'); await B.waitForTimeout(600);
+  await B.click('.tab[data-nav=home]'); await settle(B, 600);
   check((await B.$$eval('#shelf-history .card-t', x => x.map(e => e.textContent))).includes('Test Album'), 'Track History shows the album you just played');
-  await B.click('#shelf-history [data-open="history"]'); await B.waitForTimeout(600);
+  await B.click('#shelf-history [data-open="history"]'); await settle(B, 600);
   check((await B.$$eval('#view .tr .t-name', x => x.map(e => e.textContent)))[0] === '晴天', 'View all lists recently played songs, newest first');
   data = await lib(B);
   check(Array.isArray(data.state.history) && data.state.history[0] && data.state.history[0].id === tagged.id, 'play history saves online');
 
   // --- playlist: edit details and drag to reorder (desktop)
-  await A.click('#side-list [data-open="playlist:pl-example"]'); await A.waitForTimeout(700);
-  await A.click('.vhead h1'); await A.waitForTimeout(300);
+  await A.click('#side-list [data-open="playlist:pl-example"]'); await settle(A, 700);
+  await A.click('.vhead h1'); await settle(A, 300);
   const titleOpens = await A.isVisible('#pl-edit');
-  await A.click('.vhead .art', { position: { x: 30, y: 120 } }); await A.waitForTimeout(300);
+  await A.click('.vhead .art', { position: { x: 30, y: 120 } }); await settle(A, 300);
   check(!titleOpens && await A.isVisible('#pl-edit'), 'Edit Details opens from the cover only, not the title');
   await A.fill('#pe-name', 'Renamed In Test'); await A.fill('#pe-desc', 'From the e2e test');
-  await A.click('#pe-save'); await A.waitForTimeout(1200);
+  await A.click('#pe-save'); await settle(A, 1200);
   data = await lib(A);
   const pl = data.state.playlists.find(p => p.id === 'pl-example');
   check(pl && pl.name === 'Renamed In Test' && pl.desc === 'From the e2e test', 'playlist name and description save online');
   const firstSide = await A.$eval('#side-list .li', e => e.textContent.trim());
   const plCount = (await lib(A)).state.playlists.length;
-  await A.click('#side-list .li-create'); await A.waitForTimeout(300);
+  await A.click('#side-list .li-create'); await settle(A, 300);
   const createOpts = await A.$$eval('#menu .mi', x => x.map(e => e.textContent.trim()));
-  await A.click('#menu .mi:has-text("Playlist")'); await A.waitForTimeout(500);
+  await A.click('#menu .mi:has-text("Playlist")'); await settle(A, 500);
   const dlg = firstSide === 'Create' && createOpts.join('|') === 'Playlist|Folder' && await A.isVisible('#pl-edit') && (await A.textContent('#pe-title')) === 'Create Playlist' && (await A.textContent('#pe-save')) === 'Create';
-  await A.keyboard.press('Escape'); await A.waitForTimeout(800);
+  await A.keyboard.press('Escape'); await settle(A, 800);
   const notYet = (await lib(A)).state.playlists.length === plCount && (await A.$$('#side-list .li[data-open^="playlist:"]')).length === plCount;
   check(dlg && notYet, 'Create Playlist asks first, and closing it creates nothing');
-  await A.click('#side-list .li-create'); await A.waitForTimeout(300);
-  await A.click('#menu .mi:has-text("Playlist")'); await A.waitForTimeout(500);
+  await A.click('#side-list .li-create'); await settle(A, 300);
+  await A.click('#menu .mi:has-text("Playlist")'); await settle(A, 500);
   await A.fill('#pe-name', 'Made In Test');
-  await A.click('#pe-save'); await A.waitForTimeout(1200);
+  await A.click('#pe-save'); await settle(A, 1200);
   const made = (await lib(A)).state.playlists.some(p => p.name === 'Made In Test'), h1 = await A.textContent('#view h1');
   check(made && h1 === 'Made In Test', 'pressing Create makes the playlist and opens it', JSON.stringify({ made, h1, err: await A.textContent('#pe-err'), open: await A.isVisible('#pl-edit') }));
-  await A.evaluate(() => document.querySelector('.nav-btn[data-nav=library]').click()); await A.waitForTimeout(400);
-  await A.click('[data-chip="playlists"]'); await A.waitForTimeout(300);
+  await A.evaluate(() => document.querySelector('.nav-btn[data-nav=library]').click()); await settle(A, 400);
+  await A.click('[data-chip="playlists"]'); await settle(A, 300);
   const noCardPens = !(await A.$('#view .pl-pen')) && !(await A.$('#side-list .pl-pen'));
-  await A.click('#side-list [data-open="playlist:pl-example"]'); await A.waitForTimeout(600);
-  await A.hover('.vhead .art'); await A.waitForTimeout(300);
+  await A.click('#side-list [data-open="playlist:pl-example"]'); await settle(A, 600);
+  await A.hover('.vhead .art'); await settle(A, 300);
   const penVisible = await A.$eval('.vhead .pl-pen', e => getComputedStyle(e).opacity === '1');
   const plLayout = await A.evaluate(() => { const art = document.querySelector('.pl-head .art').getBoundingClientRect(), h = document.querySelector('.pl-head h1').getBoundingClientRect(), list = document.querySelector('.pl-main').getBoundingClientRect();
     return [h.top > art.bottom, list.left > art.right, [...document.querySelectorAll('.pl-btns button span')].map(e => e.textContent).join('|'), [...document.querySelectorAll('.pl-icons .pl-ic span')].map(e => e.textContent).join('|'), getComputedStyle(document.querySelector('.pl-head')).position]; });
@@ -215,49 +247,49 @@ try {
   check(noCardPens && penVisible, 'pen shows only on the playlist page cover');
   const chooser = A.waitForEvent('filechooser');
   await A.click('.vhead .pl-pen');
-  await (await chooser).setFiles(join(fixtures, 'wide.png')); await A.waitForTimeout(600);
+  await (await chooser).setFiles(join(fixtures, 'wide.png')); await settle(A, 600);
   const cropOpen = await A.isVisible('#cropper');
   const cb = await (await A.$('#crop-box')).boundingBox();
   await A.mouse.move(cb.x + cb.width / 2, cb.y + cb.height / 2); await A.mouse.down();
   await A.mouse.move(cb.x + cb.width / 2 - 80, cb.y + cb.height / 2, { steps: 6 }); await A.mouse.up();
   await A.$eval('#crop-zoom', el => { el.value = 1.5; el.dispatchEvent(new Event('input', { bubbles: true })); });
   const off = await A.$eval('#crop-img', i => i.style.transform);
-  await A.click('#crop-center'); await A.waitForTimeout(400);
+  await A.click('#crop-center'); await settle(A, 400);
   const centered = await A.$eval('#crop-img', i => { const m = i.style.transform.match(/translate\(([-\d.]+)px, ([-\d.]+)px\) scale\(([\d.]+)\)/); const V = document.getElementById('crop-box').clientWidth, s = +m[3]; return Math.abs(+m[1] - (V - i.naturalWidth * s) / 2) < 1 && Math.abs(+m[2] - (V - i.naturalHeight * s) / 2) < 1; });
   check(centered && off !== await A.$eval('#crop-img', i => i.style.transform), 'Center Image centers the photo');
-  await A.click('#crop-apply'); await A.waitForTimeout(1800);
+  await A.click('#crop-apply'); await settle(A, 1800);
   check(cropOpen && !(await A.isVisible('#cropper')), 'choosing a photo opens the crop window');
   data = await lib(A);
   const cv = data.state.playlists.find(p => p.id === 'pl-example').cover;
   const dims = cv ? await A.evaluate(c => new Promise(r => { const i = new Image(); i.onload = () => r([i.naturalWidth, i.naturalHeight]); i.onerror = () => r(null); i.src = '/api/playlist-cover/pl-example?v=' + c; }), cv) : null;
   check(!!dims && dims[0] === dims[1], 'pen uploads the cropped, square cover', JSON.stringify(dims));
-  await A.click('#side-list [data-open="playlist:pl-example"]'); await A.waitForTimeout(600);
-  await A.click('.vhead .art', { position: { x: 30, y: 120 } }); await A.waitForTimeout(400);
+  await A.click('#side-list [data-open="playlist:pl-example"]'); await settle(A, 600);
+  await A.click('.vhead .art', { position: { x: 30, y: 120 } }); await settle(A, 400);
   const bubbles = await A.$$eval('#pe-actions .pill-btn', x => x.filter(e => e.offsetParent).map(e => e.textContent));
   await A.click('#pe-view');
   const lbOk = await A.waitForFunction(() => { const i = document.getElementById('lightbox-img'); return !document.getElementById('lightbox').hidden && i.complete && i.naturalWidth > 0; }, null, { timeout: 10000 }).then(() => true, () => false);
-  await A.keyboard.press('Escape'); await A.waitForTimeout(400);
+  await A.keyboard.press('Escape'); await settle(A, 400);
   const lbClosed = !(await A.isVisible('#lightbox')) && await A.isVisible('#pl-edit');
-  await A.keyboard.press('Escape'); await A.waitForTimeout(300);
+  await A.keyboard.press('Escape'); await settle(A, 300);
   check(bubbles.join('|') === 'Remove Photo|View Full Image' && lbOk && lbClosed, 'Edit details has Remove photo and View full image buttons', JSON.stringify(bubbles));
   const before = await A.$$eval('#view .tl .tr', x => x.map(e => e.dataset.id));
   const r0 = await (await A.$('#view .tl .tr >> nth=0')).boundingBox(), r2 = await (await A.$('#view .tl .tr >> nth=2')).boundingBox();
   await A.mouse.move(r0.x + 20, r0.y + r0.height / 2); await A.mouse.down();   // grab by the number, clear of any links
   await A.mouse.move(r0.x + 30, r0.y + 30, { steps: 4 }); await A.mouse.move(r2.x + 40, r2.y + r2.height * .8, { steps: 8 });
-  await A.mouse.up(); await A.waitForTimeout(1200);
+  await A.mouse.up(); await settle(A, 1200);
   data = await lib(A);
   const order = data.state.playlists.find(p => p.id === 'pl-example').ids;
   check(order[2] === before[0] && order[0] === before[1], 'dragging a song reorders the playlist and saves', JSON.stringify(order.slice(0, 3)));
 
   // --- page breaks: + > Add a Page Break, after a chosen song, numbering restarts; rename; + > Add a Song
-  await A.click('#side-list [data-open="playlist:pl-example"]'); await A.waitForTimeout(500);
+  await A.click('#side-list [data-open="playlist:pl-example"]'); await settle(A, 500);
   const plRows = await A.$$eval('#view .tl .tr', x => x.map(e => e.dataset.id));
-  await A.click('.actions [data-pl-add]'); await A.waitForTimeout(250);
+  await A.click('.actions [data-pl-add]'); await settle(A, 250);
   const addOpts = await A.$$eval('#menu .mi', x => x.map(e => e.textContent.trim()));
-  await A.click('#menu .mi:has-text("Add a Page Break")'); await A.waitForTimeout(400);
+  await A.click('#menu .mi:has-text("Add a Page Break")'); await settle(A, 400);
   const bkDefault = await A.inputValue('#bk-name');
   await A.selectOption('#bk-after', plRows[2]);
-  await A.click('#bk-save'); await A.waitForTimeout(700);
+  await A.click('#bk-save'); await settle(A, 700);
   data = await lib(A);
   let plx = data.state.playlists.find(p => p.id === 'pl-example');
   const at = plx.ids.indexOf(plRows[2]), marker = plx.ids[at + 1] || '';
@@ -265,41 +297,41 @@ try {
   const bkHead = await A.$$eval('#view .pl-break h3', x => x.map(e => e.textContent));
   check((await A.$$eval('#view .tl-head', x => x.length)) === 1, 'with page breaks, the column header row shows only once, at the top');
   check(addOpts.join('|') === 'Add a Song|Add a Page Break' && bkDefault === 'Volume 2' && marker.startsWith('brk:') && bkHead.join() === 'Volume 2' && nums[2] === '3' && nums[3] === '1', 'a page break goes after the chosen song, is named, and numbering starts over', JSON.stringify({ addOpts, bkDefault, marker, bkHead, nums }));
-  await A.hover('#view .pl-break'); await A.click('#view .pl-break [data-break-more]'); await A.waitForTimeout(250);
-  await A.click('#menu .mi:has-text("Rename or Move")'); await A.waitForTimeout(400);
-  await A.fill('#bk-name', 'Disc Two'); await A.selectOption('#bk-after', plRows[0]); await A.click('#bk-save'); await A.waitForTimeout(700);
+  await A.hover('#view .pl-break'); await A.click('#view .pl-break [data-break-more]'); await settle(A, 250);
+  await A.click('#menu .mi:has-text("Rename or Move")'); await settle(A, 400);
+  await A.fill('#bk-name', 'Disc Two'); await A.selectOption('#bk-after', plRows[0]); await A.click('#bk-save'); await settle(A, 700);
   data = await lib(A); plx = data.state.playlists.find(p => p.id === 'pl-example');
   check(plx.breaks[marker.slice(4)] === 'Disc Two' && plx.ids.indexOf(marker) === plx.ids.indexOf(plRows[0]) + 1 && (await A.textContent('#view .pl-break h3')) === 'Disc Two', 'a page break can be renamed and moved');
   await shot(A, 'page-break');
-  await A.click('.actions [data-pl-add]'); await A.waitForTimeout(250);
-  await A.click('#menu .mi:has-text("Add a Song")'); await A.waitForTimeout(400);
-  await A.fill('#sp-q', 'Untagged'); await A.waitForTimeout(200);
+  await A.click('.actions [data-pl-add]'); await settle(A, 250);
+  await A.click('#menu .mi:has-text("Add a Song")'); await settle(A, 400);
+  await A.fill('#sp-q', 'Untagged'); await settle(A, 200);
   const spRows = await A.$$eval('#sp-list .sp-row b', x => x.map(e => e.textContent));
   const untaggedId = (await lib(A)).songs.find(x => x.title === 'Untagged Song').id;
   const already = plx.ids.includes(untaggedId);
   if (!already) await A.click('#sp-list [data-sp-add]');
-  await A.waitForTimeout(200);
+  await settle(A, 200);
   const addedLabel = await A.textContent('#sp-list [data-sp-add]');
-  await A.click('#sp-done'); await A.waitForTimeout(600);
+  await A.click('#sp-done'); await settle(A, 600);
   data = await lib(A); plx = data.state.playlists.find(p => p.id === 'pl-example');
   check(spRows.join() === 'Untagged Song' && addedLabel === 'Added' && plx.ids.includes(untaggedId) && !!(await A.$(`#view .tl .tr[data-id="${untaggedId}"]`)), 'Add a Song finds songs and adds them to the playlist', JSON.stringify({ spRows, addedLabel, already }));
-  await A.hover('#view .pl-break'); await A.click('#view .pl-break [data-break-more]'); await A.waitForTimeout(250);
-  await A.click('#menu .mi:has-text("Remove Page Break")'); await A.waitForTimeout(250); await A.click('#cf-yes'); await A.waitForTimeout(600);
+  await A.hover('#view .pl-break'); await A.click('#view .pl-break [data-break-more]'); await settle(A, 250);
+  await A.click('#menu .mi:has-text("Remove Page Break")'); await settle(A, 250); await A.click('#cf-yes'); await settle(A, 600);
   data = await lib(A); plx = data.state.playlists.find(p => p.id === 'pl-example');
   check(!plx.ids.some(x => x.startsWith('brk:')) && !(await A.$('#view .pl-break')), 'a page break can be removed');
 
   // --- folders: Create > Folder, name it, move a playlist in, and the folder page shows its playlists
   const foldersBefore = ((await lib(A)).state.folders || []).length;
-  await A.click('#side-list .li-create'); await A.waitForTimeout(300);
-  await A.click('#menu .mi:has-text("Folder")'); await A.waitForTimeout(500);
+  await A.click('#side-list .li-create'); await settle(A, 300);
+  await A.click('#menu .mi:has-text("Folder")'); await settle(A, 500);
   const fdDlg = await A.isVisible('#fd-edit') && (await A.textContent('#fd-title')) === 'Create Folder' && (await A.textContent('#fd-save')) === 'Create';
-  await A.keyboard.press('Escape'); await A.waitForTimeout(800);
+  await A.keyboard.press('Escape'); await settle(A, 800);
   const fdNotYet = ((await lib(A)).state.folders || []).length === foldersBefore && !(await A.$('#side-list .li[data-open^="folder:"]'));
   check(fdDlg && fdNotYet, 'Create Folder asks first, and closing it creates nothing');
-  await A.click('#side-list .li-create'); await A.waitForTimeout(300);
-  await A.click('#menu .mi:has-text("Folder")'); await A.waitForTimeout(500);
+  await A.click('#side-list .li-create'); await settle(A, 300);
+  await A.click('#menu .mi:has-text("Folder")'); await settle(A, 500);
   const renaming = await A.evaluate(() => document.activeElement && document.activeElement.id === 'fd-name');
-  await A.fill('#fd-name', '华语'); await A.keyboard.press('Enter'); await A.waitForTimeout(800);
+  await A.fill('#fd-name', '华语'); await A.keyboard.press('Enter'); await settle(A, 800);
   data = await lib(A);
   const fd = (data.state.folders || []).find(f => f.name === '华语');
   const fdSide = fd && await A.$eval(`#side-list .li[data-open="folder:${fd.id}"]`, e => [!!e.querySelector('.folder-art .ic'), e.textContent.includes('华语')]).catch(() => null);
@@ -312,26 +344,26 @@ try {
     const src = await (await A.$(`#side-list [data-open="playlist:${madeId}"]`)).boundingBox(), dst = await (await A.$(`#side-list [data-open="folder:${fd.id}"]`)).boundingBox();
     await A.mouse.move(src.x + 40, src.y + src.height / 2); await A.mouse.down();
     await A.mouse.move(src.x + 45, src.y + src.height / 2 + 12, { steps: 4 });
-    await A.mouse.move(dst.x + 60, dst.y + dst.height / 2, { steps: 10 }); await A.waitForTimeout(150);
+    await A.mouse.move(dst.x + 60, dst.y + dst.height / 2, { steps: 10 }); await settle(A, 150);
     const lit = await A.$eval(`#side-list [data-open="folder:${fd.id}"]`, e => e.classList.contains('drop-into'));
-    await A.mouse.up(); await A.waitForTimeout(800);
+    await A.mouse.up(); await settle(A, 800);
     data = await lib(A);
     check(lit && ((data.state.folders.find(f => f.id === fd.id) || {}).ids || []).includes(madeId), 'dragging a playlist onto a folder puts it inside', JSON.stringify({ lit }));
   }
   data = await lib(A);
   const inFolder = (data.state.folders.find(f => f.id === fd.id) || {}).ids || [];
   const goneFromSide = !(await A.$(`#side-list [data-open="playlist:${madeId}"]`));
-  await A.click(`#side-list [data-open="folder:${fd.id}"]`); await A.waitForTimeout(600);
+  await A.click(`#side-list [data-open="folder:${fd.id}"]`); await settle(A, 600);
   await shot(A, 'folder-page');
   const fdPage = [await A.textContent('#view h1'), await A.$$eval('#view .card .card-t', x => x.map(e => e.textContent)), await A.$$eval('#view input', x => x.length)];
   check(inFolder.includes(madeId) && goneFromSide && fdPage[0] === '华语' && fdPage[1].includes('Made In Test') && fdPage[2] === 0, 'moving a playlist into a folder files it there; the folder page shows its playlists, no search box', JSON.stringify({ inFolder, goneFromSide, fdPage }));
   // rearrange playlists inside the folder by dragging: put pl-example in too, then drag it in front
-  await A.click('#side-list [data-open="playlist:pl-example"]'); await A.waitForTimeout(500);
-  await A.click('.actions [data-ctx-more]'); await A.waitForTimeout(250);
-  await A.click('#menu .mi:has-text("Move to Folder")'); await A.waitForTimeout(250);
-  await A.click('#menu .mi:has-text("华语")'); await A.waitForTimeout(600);
-  await A.click(`#side-list [data-open="folder:${fd.id}"]`); await A.waitForTimeout(600);
-  await A.mouse.move(5, 5); await A.hover(`#side-list [data-open="folder:${fd.id}"]`); await A.waitForTimeout(600);
+  await A.click('#side-list [data-open="playlist:pl-example"]'); await settle(A, 500);
+  await A.click('.actions [data-ctx-more]'); await settle(A, 250);
+  await A.click('#menu .mi:has-text("Move to Folder")'); await settle(A, 250);
+  await A.click('#menu .mi:has-text("华语")'); await settle(A, 600);
+  await A.click(`#side-list [data-open="folder:${fd.id}"]`); await settle(A, 600);
+  await A.mouse.move(5, 5); await A.hover(`#side-list [data-open="folder:${fd.id}"]`); await settle(A, 600);
   const peek = await A.evaluate(() => { const p = document.getElementById('folder-pop'); return p && !p.hidden ? [p.querySelector('.fp-head b').textContent, [...p.querySelectorAll('.fp-row .fp-t b')].map(e => e.textContent)] : null; });
   await shot(A, 'folder-peek');
   {
@@ -339,7 +371,7 @@ try {
     const before = await A.$$eval('#folder-pop .fp-row', x => x.map(e => e.dataset.open));
     await A.mouse.move(r1.x + 60, r1.y + r1.height / 2); await A.mouse.down();
     await A.mouse.move(r1.x + 62, r1.y + r1.height / 2 - 10, { steps: 3 }); await A.mouse.move(r0.x + 60, r0.y + 6, { steps: 8 });
-    await A.mouse.up(); await A.waitForTimeout(700);
+    await A.mouse.up(); await settle(A, 700);
     const after = await A.$$eval('#folder-pop .fp-row', x => x.map(e => e.dataset.open));
     const savedFd = ((await lib(A)).state.folders.find(f => f.id === fd.id) || {}).ids || [];
     check(after[0] === before[1] && after[1] === before[0] && savedFd[0] === before[1].slice(9) && await A.isVisible('#folder-pop'), 'playlists can be dragged to rearrange inside the folder preview', JSON.stringify({ before, after, savedFd }));
@@ -347,9 +379,9 @@ try {
     const s0 = await (await A.$$('#folder-pop .fp-row'))[1].boundingBox(), s1 = await (await A.$$('#folder-pop .fp-row'))[0].boundingBox();
     await A.mouse.move(s0.x + 60, s0.y + s0.height / 2); await A.mouse.down();
     await A.mouse.move(s0.x + 62, s0.y + s0.height / 2 - 10, { steps: 3 }); await A.mouse.move(s1.x + 60, s1.y + 6, { steps: 8 });
-    await A.mouse.up(); await A.waitForTimeout(700);
+    await A.mouse.up(); await settle(A, 700);
   }
-  await A.mouse.move(700, 400); await A.waitForTimeout(500);
+  await A.mouse.move(700, 400); await settle(A, 500);
   const peekGone = await A.evaluate(() => document.getElementById('folder-pop').hidden);
   check(!!peek && peek[0] === '华语' && peek[1].includes('Made In Test') && peek[1].includes('Renamed In Test') && peekGone, 'hovering a folder shows the playlists inside it', JSON.stringify(peek));
   const cardsPerRow = await A.$$eval('#view .folder-cards .card', x => { const t = x[0].getBoundingClientRect().top; return x.filter(e => Math.abs(e.getBoundingClientRect().top - t) < 2).length; });
@@ -358,7 +390,7 @@ try {
     const c1 = await (await A.$('#view .folder-cards .card >> nth=1')).boundingBox(), c0 = await (await A.$('#view .folder-cards .card >> nth=0')).boundingBox();
     await A.mouse.move(c1.x + c1.width / 2, c1.y + 60); await A.mouse.down();
     await A.mouse.move(c1.x + c1.width / 2 - 20, c1.y + 60, { steps: 4 });
-    await A.mouse.move(c0.x + 20, c0.y + 60, { steps: 10 }); await A.mouse.up(); await A.waitForTimeout(800);
+    await A.mouse.move(c0.x + 20, c0.y + 60, { steps: 10 }); await A.mouse.up(); await settle(A, 800);
   }
   const fdOrder1 = await A.$$eval('#view .folder-cards .card', x => x.map(e => e.dataset.open));
   data = await lib(A);
@@ -369,21 +401,21 @@ try {
     const c = await (await A.$(sel)).boundingBox();
     await A.mouse.move(c.x + c.width / 2, c.y + 60); await A.mouse.down();
     await A.mouse.move(c.x + c.width / 2 - 20, c.y + 60, { steps: 4 });
-    await A.mouse.move(tx, ty, { steps: 12 }); await A.waitForTimeout(150);
-    await A.mouse.up(); await A.waitForTimeout(800);
+    await A.mouse.move(tx, ty, { steps: 12 }); await settle(A, 150);
+    await A.mouse.up(); await settle(A, 800);
   };
-  await A.click('#side-list .li-create'); await A.waitForTimeout(300);
-  await A.click('#menu .mi:has-text("Folder")'); await A.waitForTimeout(400);
-  await A.fill('#fd-name', 'Other Folder'); await A.keyboard.press('Enter'); await A.waitForTimeout(800);
+  await A.click('#side-list .li-create'); await settle(A, 300);
+  await A.click('#menu .mi:has-text("Folder")'); await settle(A, 400);
+  await A.fill('#fd-name', 'Other Folder'); await A.keyboard.press('Enter'); await settle(A, 800);
   const other = (await lib(A)).state.folders.find(f => f.name === 'Other Folder');
-  await A.mouse.move(5, 5); await A.hover(`#side-list [data-open="folder:${fd.id}"]`); await A.waitForTimeout(600);
-  await A.hover(`#side-list [data-open="folder:${other.id}"]`); await A.waitForTimeout(90);
+  await A.mouse.move(5, 5); await A.hover(`#side-list [data-open="folder:${fd.id}"]`); await settle(A, 600);
+  await A.hover(`#side-list [data-open="folder:${other.id}"]`); await settle(A, 90);
   const mid = await A.evaluate(() => { const p = document.getElementById('folder-pop'); return [p.classList.contains('moving'), !!p.querySelector('.fp-body.swap'), p.querySelector('.fp-head b').textContent]; });
-  await A.waitForTimeout(400);
-  await A.mouse.move(700, 600); await A.waitForTimeout(700);
+  await settle(A, 400);
+  await A.mouse.move(700, 600); await settle(A, 700);
   const closedPop = await A.evaluate(() => document.getElementById('folder-pop').hidden);
   check(mid[0] && mid[1] && mid[2] === 'Other Folder' && closedPop, 'moving between folders animates the preview over, and it fades away when you leave', JSON.stringify(mid));
-  await A.click(`#side-list [data-open="folder:${fd.id}"]`); await A.waitForTimeout(600);
+  await A.click(`#side-list [data-open="folder:${fd.id}"]`); await settle(A, 600);
   {
     const t = await (await A.$(`#side-list [data-open="folder:${other.id}"]`)).boundingBox();
     await dragCard('#view .folder-cards .card[data-open="playlist:pl-example"]', t.x + 80, t.y + t.height / 2);
@@ -398,22 +430,22 @@ try {
   const outNow = !data.state.folders.some(f => f.ids.includes(madeId)) && !!(await A.$(`#side-list [data-open="playlist:${madeId}"]`));
   check(movedOver && outNow, 'folder cards drag onto another folder, or back out into My Playlists', JSON.stringify({ movedOver, outNow }));
   // folders inside folders: + > New Folder Here, + > Add Playlists, a path back up, delete moves things up a level
-  await A.click(`#side-list [data-open="folder:${fd.id}"]`); await A.waitForTimeout(500);
-  await A.click('.folder-head [data-folder-add]'); await A.waitForTimeout(250);
+  await A.click(`#side-list [data-open="folder:${fd.id}"]`); await settle(A, 500);
+  await A.click('.folder-head [data-folder-add]'); await settle(A, 250);
   const fAddOpts = await A.$$eval('#menu .mi', x => x.map(e => e.textContent.trim()));
-  await A.click('#menu .mi:has-text("New Folder Here")'); await A.waitForTimeout(400);
-  await A.fill('#fd-name', 'Sub Folder'); await A.keyboard.press('Enter'); await A.waitForTimeout(800);
+  await A.click('#menu .mi:has-text("New Folder Here")'); await settle(A, 400);
+  await A.fill('#fd-name', 'Sub Folder'); await A.keyboard.press('Enter'); await settle(A, 800);
   data = await lib(A);
   const sub = data.state.folders.find(f => f.name === 'Sub Folder');
   const nestedOk = !!sub && data.state.folders.find(f => f.id === fd.id).ids.includes(sub.id) && !(await A.$(`#side-list [data-open="folder:${sub.id}"]`));
   const pathTxt = await A.textContent('.fd-path').catch(() => '');
-  await A.click('.folder-head [data-folder-add]'); await A.waitForTimeout(250);
-  await A.click('#menu .mi:has-text("Add Playlists")'); await A.waitForTimeout(400);
-  await A.fill('#fk-q', 'Renamed'); await A.waitForTimeout(200);
+  await A.click('.folder-head [data-folder-add]'); await settle(A, 250);
+  await A.click('#menu .mi:has-text("Add Playlists")'); await settle(A, 400);
+  await A.fill('#fk-q', 'Renamed'); await settle(A, 200);
   const pickLabel = await A.textContent('#fk-list [data-fk-add="pl-example"]').catch(() => '');
-  await A.click('#fk-list [data-fk-add="pl-example"]'); await A.waitForTimeout(300);
+  await A.click('#fk-list [data-fk-add="pl-example"]'); await settle(A, 300);
   const pickedLabel = await A.textContent('#fk-list [data-fk-add="pl-example"]').catch(() => '');
-  await A.click('#fk-done'); await A.waitForTimeout(600);
+  await A.click('#fk-done'); await settle(A, 600);
   data = await lib(A);
   const subNow = data.state.folders.find(f => f.id === sub.id), otherNow = data.state.folders.find(f => f.id === other.id);
   const subCards = await A.$$eval('#view .folder-cards .card', x => x.map(e => e.dataset.open));
@@ -421,76 +453,76 @@ try {
   check(fAddOpts.join('|') === 'Add Playlists|New Folder Here' && nestedOk && pathTxt.includes('华语'), 'a folder can hold folders, with a path back up', JSON.stringify({ fAddOpts, nestedOk, pathTxt }));
   check(pickLabel === 'Move Here' && pickedLabel === 'Added' && subNow.ids.includes('pl-example') && !otherNow.ids.includes('pl-example') && subCards.includes('playlist:pl-example'), 'the folder + button picks playlists to put inside', JSON.stringify({ pickLabel, pickedLabel, subNow }));
   // the preview of a folder opens a preview of each folder inside it, beside it
-  await A.mouse.move(5, 5); await A.hover(`#side-list [data-open="folder:${fd.id}"]`); await A.waitForTimeout(600);
-  await A.hover(`#folder-pop .fp-row[data-open="folder:${sub.id}"]`); await A.waitForTimeout(500);
+  await A.mouse.move(5, 5); await A.hover(`#side-list [data-open="folder:${fd.id}"]`); await settle(A, 600);
+  await A.hover(`#folder-pop .fp-row[data-open="folder:${sub.id}"]`); await settle(A, 500);
   const nest = await A.evaluate(() => { const p = [...document.querySelectorAll('.folder-pop.sub')].find(x => !x.hidden); return p ? [p.querySelector('.fp-head b').textContent, [...p.querySelectorAll('.fp-row')].map(r => r.dataset.open), Math.round(p.getBoundingClientRect().left - document.getElementById('folder-pop').getBoundingClientRect().right)] : null; });
   await shot(A, 'nested-peek');
-  await A.mouse.move(1000, 720); await A.waitForTimeout(600);
+  await A.mouse.move(1000, 720); await settle(A, 600);
   const nestGone = await A.evaluate(() => [...document.querySelectorAll('.folder-pop')].every(x => x.hidden));
   check(!!nest && nest[0] === 'Sub Folder' && nest[1].includes('playlist:pl-example') && nest[2] >= 0 && nestGone, 'hovering a folder inside a folder preview opens its own preview beside it', JSON.stringify({ nest, nestGone }));
-  await A.click('.fd-path .link'); await A.waitForTimeout(500);
+  await A.click('.fd-path .link'); await settle(A, 500);
   const parentCards = await A.$$eval('#view .folder-cards .card', x => x.map(e => e.dataset.open));
   // on a folder page, drop a playlist card onto a folder card to put it inside
-  await A.click('.folder-head [data-folder-add]'); await A.waitForTimeout(250);
-  await A.click('#menu .mi:has-text("Add Playlists")'); await A.waitForTimeout(400);
-  await A.click(`#fk-list [data-fk-add="${madeId}"]`); await A.waitForTimeout(300);
-  await A.click('#fk-done'); await A.waitForTimeout(600);
+  await A.click('.folder-head [data-folder-add]'); await settle(A, 250);
+  await A.click('#menu .mi:has-text("Add Playlists")'); await settle(A, 400);
+  await A.click(`#fk-list [data-fk-add="${madeId}"]`); await settle(A, 300);
+  await A.click('#fk-done'); await settle(A, 600);
   {
     const c = await (await A.$(`#view .folder-cards .card[data-open="playlist:${madeId}"]`)).boundingBox(), t = await (await A.$(`#view .folder-cards .card[data-open="folder:${sub.id}"]`)).boundingBox();
     await A.mouse.move(c.x + c.width / 2, c.y + 60); await A.mouse.down();
     await A.mouse.move(c.x + c.width / 2 - 20, c.y + 60, { steps: 4 });
-    await A.mouse.move(t.x + t.width / 2, t.y + t.height / 2, { steps: 12 }); await A.waitForTimeout(150);
+    await A.mouse.move(t.x + t.width / 2, t.y + t.height / 2, { steps: 12 }); await settle(A, 150);
     const lit = await A.$eval(`#view .folder-cards .card[data-open="folder:${sub.id}"]`, e => e.classList.contains('drop-into'));
-    await A.mouse.up(); await A.waitForTimeout(800);
+    await A.mouse.up(); await settle(A, 800);
     data = await lib(A);
     check(lit && data.state.folders.find(f => f.id === sub.id).ids.includes(madeId) && !data.state.folders.find(f => f.id === fd.id).ids.includes(madeId), 'on a folder page, dropping a playlist on a folder card puts it inside', JSON.stringify({ lit }));
   }
-  await A.click(`#view .card[data-open="folder:${sub.id}"]`); await A.waitForTimeout(500);
-  await A.click('.folder-head [data-folder-more]'); await A.waitForTimeout(250);
-  await A.click('#menu .mi:has-text("Delete Folder")'); await A.waitForTimeout(250); await A.click('#cf-yes'); await A.waitForTimeout(700);
+  await A.click(`#view .card[data-open="folder:${sub.id}"]`); await settle(A, 500);
+  await A.click('.folder-head [data-folder-more]'); await settle(A, 250);
+  await A.click('#menu .mi:has-text("Delete Folder")'); await settle(A, 250); await A.click('#cf-yes'); await settle(A, 700);
   data = await lib(A);
   check(parentCards.includes('folder:' + sub.id) && data.state.folders.find(f => f.id === fd.id).ids.includes('pl-example') && (await A.textContent('#view h1')) === '华语', 'deleting a folder inside a folder moves what it held up a level', JSON.stringify(parentCards));
-  await A.click(`#side-list [data-open="folder:${other.id}"]`); await A.waitForTimeout(500);
-  await A.click('.folder-head [data-folder-more]'); await A.waitForTimeout(250);
-  await A.click('#menu .mi:has-text("Delete Folder")'); await A.waitForTimeout(250); await A.click('#cf-yes'); await A.waitForTimeout(600);
-  await A.click(`#side-list [data-open="folder:${fd.id}"]`); await A.waitForTimeout(500);
-  await A.click('.folder-head [data-folder-more]'); await A.waitForTimeout(250);
-  await A.click('#menu .mi:has-text("Delete Folder")'); await A.waitForTimeout(250); await A.click('#cf-yes'); await A.waitForTimeout(600);
-  await A.click('#side-list [data-open="playlist:pl-example"]'); await A.waitForTimeout(500);
-  await A.click('#side-list [data-open="playlist:' + madeId + '"]'); await A.waitForTimeout(500);
+  await A.click(`#side-list [data-open="folder:${other.id}"]`); await settle(A, 500);
+  await A.click('.folder-head [data-folder-more]'); await settle(A, 250);
+  await A.click('#menu .mi:has-text("Delete Folder")'); await settle(A, 250); await A.click('#cf-yes'); await settle(A, 600);
+  await A.click(`#side-list [data-open="folder:${fd.id}"]`); await settle(A, 500);
+  await A.click('.folder-head [data-folder-more]'); await settle(A, 250);
+  await A.click('#menu .mi:has-text("Delete Folder")'); await settle(A, 250); await A.click('#cf-yes'); await settle(A, 600);
+  await A.click('#side-list [data-open="playlist:pl-example"]'); await settle(A, 500);
+  await A.click('#side-list [data-open="playlist:' + madeId + '"]'); await settle(A, 500);
   check(cardsPerRow >= 1, 'folder page shows its playlists as cards', String(cardsPerRow));
   // a fresh folder for the remove-from-folder check
-  await A.click('.actions [data-ctx-more]'); await A.waitForTimeout(250);
-  await A.click('#menu .mi:has-text("Move to Folder")'); await A.waitForTimeout(250);
-  await A.click('#menu .mi:has-text("New Folder")'); await A.waitForTimeout(400);
-  await A.fill('#fd-name', 'Second Folder'); await A.keyboard.press('Enter'); await A.waitForTimeout(800);
-  await A.click(`#view .card[data-open="playlist:${madeId}"]`); await A.waitForTimeout(500);
-  await A.click('.actions [data-ctx-more]'); await A.waitForTimeout(250);
-  await A.click('#menu .mi:has-text("Move to Folder")'); await A.waitForTimeout(250);
-  await A.click('#menu .mi:has-text("Remove from Folder")'); await A.waitForTimeout(600);
+  await A.click('.actions [data-ctx-more]'); await settle(A, 250);
+  await A.click('#menu .mi:has-text("Move to Folder")'); await settle(A, 250);
+  await A.click('#menu .mi:has-text("New Folder")'); await settle(A, 400);
+  await A.fill('#fd-name', 'Second Folder'); await A.keyboard.press('Enter'); await settle(A, 800);
+  await A.click(`#view .card[data-open="playlist:${madeId}"]`); await settle(A, 500);
+  await A.click('.actions [data-ctx-more]'); await settle(A, 250);
+  await A.click('#menu .mi:has-text("Move to Folder")'); await settle(A, 250);
+  await A.click('#menu .mi:has-text("Remove from Folder")'); await settle(A, 600);
   check(!!(await A.$(`#side-list [data-open="playlist:${madeId}"]`)), 'a playlist can be taken back out of its folder');
-  await A.click(`#side-list [data-open="playlist:pl-example"]`); await A.waitForTimeout(600);
+  await A.click(`#side-list [data-open="playlist:pl-example"]`); await settle(A, 600);
 
   // --- the Add to Playlist submenu stays where the menu opened
   for (const pos of ['first', 'last']) {
     const row = pos === 'first' ? '#view .tl .tr >> nth=0' : '#view .tl .tr >> nth=-1';
-    await A.click(`${row} >> .more`, { force: true }); await A.waitForTimeout(250);
+    await A.click(`${row} >> .more`, { force: true }); await settle(A, 250);
     await shot(A, 'submenu-' + pos);
     const m1 = await A.$eval('#menu', m => m.getBoundingClientRect().toJSON());
-    await A.click('#menu .mi:has-text("Add to Playlist")'); await A.waitForTimeout(250);
+    await A.click('#menu .mi:has-text("Add to Playlist")'); await settle(A, 250);
     const m2 = await A.$eval('#menu', m => m.getBoundingClientRect().toJSON());
     const same = Math.abs(m1.left - m2.left) < 1 && (Math.abs(m1.top - m2.top) < 1 || Math.abs(m1.bottom - m2.bottom) < 1);
     check(same, `Add to Playlist submenu grows from the same spot (${pos} song)`, JSON.stringify([Math.round(m1.top), Math.round(m1.bottom), Math.round(m2.top), Math.round(m2.bottom)]));
-    await A.keyboard.press('Escape'); await A.waitForTimeout(200);
+    await A.keyboard.press('Escape'); await settle(A, 200);
   }
 
   // --- back and forward go one page only
-  await A.click('.nav-btn[data-nav="home"]'); await A.waitForTimeout(400);
-  await A.click('.nav-btn[data-nav="search"]'); await A.waitForTimeout(400);
-  await A.click('.nav-btn[data-nav="library"]'); await A.waitForTimeout(400);
-  await A.click('#nav-back'); await A.waitForTimeout(400);
+  await A.click('.nav-btn[data-nav="home"]'); await settle(A, 400);
+  await A.click('.nav-btn[data-nav="search"]'); await settle(A, 400);
+  await A.click('.nav-btn[data-nav="library"]'); await settle(A, 400);
+  await A.click('#nav-back'); await settle(A, 400);
   const atExplore = (await A.textContent('#view h1')) === 'Explore', backOff = await A.$eval('#nav-back', b => b.disabled);
-  await A.click('#nav-fwd'); await A.waitForTimeout(400);
+  await A.click('#nav-fwd'); await settle(A, 400);
   const atLib = (await A.textContent('#view h1')) === 'My Library', fwdOff = await A.$eval('#nav-fwd', b => b.disabled);
   check(atExplore && backOff && atLib && fwdOff, 'back and forward go one page only');
 
@@ -498,7 +530,7 @@ try {
   const dragEdge = async toX => {
     const hb = await (await A.$('#side-toggle')).boundingBox(), x = hb.x + hb.width / 2, y = hb.y + hb.height / 2;
     await A.mouse.move(x, y); await A.mouse.down();
-    await A.mouse.move(toX, y, { steps: 8 }); await A.mouse.up(); await A.waitForTimeout(700);
+    await A.mouse.move(toX, y, { steps: 8 }); await A.mouse.up(); await settle(A, 700);
   };
   const sideX = (await (await A.$('.side')).boundingBox()).x;
   const w0 = Math.round((await (await A.$('.side')).boundingBox()).width);
@@ -511,63 +543,63 @@ try {
   await dragEdge(sideX + 300);
   const back = Math.round((await (await A.$('.side')).boundingBox()).width);
   check(rail === 64 && stillRail === 64 && back === w0 && Math.abs(ic0 - ic1) < 1, 'dragging the edge switches between full and collapsed only, icons stay put', JSON.stringify([w0, rail, back, Math.round(ic0), Math.round(ic1)]));
-  await A.dblclick('#side-toggle'); await A.waitForTimeout(700);
+  await A.dblclick('#side-toggle'); await settle(A, 700);
   const dbl = Math.round((await (await A.$('.side')).boundingBox()).width);
-  await A.dblclick('#side-toggle'); await A.waitForTimeout(700);
+  await A.dblclick('#side-toggle'); await settle(A, 700);
   check(dbl === 64 && Math.round((await (await A.$('.side')).boundingBox()).width) === w0, 'double-clicking the edge collapses and expands it');
   {
     const hb = await (await A.$('#side-toggle')).boundingBox(), y = hb.y + hb.height / 2, sx = hb.x + hb.width / 2;
     const widths = [];
     await A.mouse.move(sx, y); await A.mouse.down();
-    for (const x of [sideX + 30, sideX + 300, sideX + 30, sideX + 300]) { await A.mouse.move(x, y, { steps: 6 }); await A.waitForTimeout(600); widths.push(Math.round((await (await A.$('.side')).boundingBox()).width)); }
-    await A.mouse.up(); await A.waitForTimeout(500);
+    for (const x of [sideX + 30, sideX + 300, sideX + 30, sideX + 300]) { await A.mouse.move(x, y, { steps: 6 }); await settle(A, 600); widths.push(Math.round((await (await A.$('.side')).boundingBox()).width)); }
+    await A.mouse.up(); await settle(A, 500);
     check(widths.join() === [64, w0, 64, w0].join(), 'one drag can collapse and expand back and forth', JSON.stringify(widths));
   }
 
   // --- My Library: Custom Sort is listed first, Creator is gone, dragging rearranges and saves
-  await A.click('#sl-sort'); await A.waitForTimeout(200);
+  await A.click('#sl-sort'); await settle(A, 200);
   const sorts = await A.$$eval('#menu [data-sort-opt] span', x => x.map(e => e.textContent));
   check(sorts[0] === 'Custom Sort' && !sorts.includes('Creator'), 'sort menu starts with Custom Sort, no Creator', JSON.stringify(sorts));
   await A.keyboard.press('Escape');
   const sideKinds = await A.$$eval('#side-list .li[data-open]', x => x.map(e => e.dataset.open.split(':')[0]));
   check(sideKinds.every(k => k === 'liked' || k === 'playlist' || k === 'folder') && (await A.textContent('.sl-head h2')) === 'My Playlists' && !(await A.$('[data-sl-chip]')), 'My Playlists shows only Liked Songs, playlists and folders, no filters');
   for (let n = 0; n < 2; n++) {
-    await A.evaluate(() => document.querySelector('.nav-btn[data-nav=library]').click()); await A.waitForTimeout(400);
-    await A.click('[data-chip="playlists"]'); await A.waitForTimeout(300);
-    await A.click('[data-action="new-pl"]'); await A.waitForTimeout(400);
-    await A.click('#pe-save'); await A.waitForTimeout(600);
+    await A.evaluate(() => document.querySelector('.nav-btn[data-nav=library]').click()); await settle(A, 400);
+    await A.click('[data-chip="playlists"]'); await settle(A, 300);
+    await A.click('[data-action="new-pl"]'); await settle(A, 400);
+    await A.click('#pe-save'); await settle(A, 600);
   }
   const sideBefore = await A.$$eval('#side-list .li[data-drag]', x => x.map(e => e.dataset.open));
   const s0 = await (await A.$('#side-list .li[data-drag] >> nth=0')).boundingBox(), s2 = await (await A.$('#side-list .li[data-drag] >> nth=2')).boundingBox();
   await A.mouse.move(s0.x + 40, s0.y + s0.height / 2); await A.mouse.down();
   await A.mouse.move(s0.x + 45, s0.y + 30, { steps: 4 }); await A.mouse.move(s2.x + 45, s2.y + s2.height * .8, { steps: 8 });
-  await A.mouse.up(); await A.waitForTimeout(1200);
+  await A.mouse.up(); await settle(A, 1200);
   const sideAfter = await A.$$eval('#side-list .li[data-drag]', x => x.map(e => e.dataset.open));
   check(sideAfter[2] === sideBefore[0] && sideAfter[0] === sideBefore[1], 'dragging rearranges My Library');
   data = await lib(A);
   check(Array.isArray(data.state.libOrder) && data.state.libOrder.indexOf(sideBefore[0]) > data.state.libOrder.indexOf(sideBefore[2]), 'custom library order saves online');
   check(await A.textContent('#sl-sort-label') === 'Custom Sort', 'library is on Custom Sort after dragging');
-  await A.click('#side-list .li-create'); await A.waitForTimeout(300);
-  await A.click('#menu .mi:has-text("Playlist")'); await A.waitForTimeout(400);
-  await A.fill('#pe-name', 'Newest In Test'); await A.click('#pe-save'); await A.waitForTimeout(800);
+  await A.click('#side-list .li-create'); await settle(A, 300);
+  await A.click('#menu .mi:has-text("Playlist")'); await settle(A, 400);
+  await A.fill('#pe-name', 'Newest In Test'); await A.click('#pe-save'); await settle(A, 800);
   const newestId = (await lib(A)).state.playlists.find(p => p.name === 'Newest In Test').id;
   const sideTop = await A.$$eval('#side-list .li[data-open]', x => x.map(e => e.dataset.open));
   // the column menu covers the whole cover when it opens upward over it
-  await A.click('#side-list [data-open="liked"]'); await A.waitForTimeout(600);
-  await A.setViewportSize({ width: 1440, height: 640 }); await A.waitForTimeout(300);
-  await A.click('#view [data-cols]'); await A.waitForTimeout(300);
+  await A.click('#side-list [data-open="liked"]'); await settle(A, 600);
+  await A.setViewportSize({ width: 1440, height: 640 }); await settle(A, 300);
+  await A.click('#view [data-cols]'); await settle(A, 300);
   const covered = await A.evaluate(() => { const m = document.getElementById('menu').getBoundingClientRect(), a = document.querySelector('#view .vhead .art').getBoundingClientRect(); return [Math.round(m.left - a.left), Math.round(m.top - a.top), m.right >= a.right - 1, m.bottom >= a.bottom - 1]; });
   await shot(A, 'cols-over-cover');
-  await A.keyboard.press('Escape'); await A.setViewportSize({ width: 1440, height: 900 }); await A.waitForTimeout(300);
+  await A.keyboard.press('Escape'); await A.setViewportSize({ width: 1440, height: 900 }); await settle(A, 300);
   check(covered[0] === 0 && covered[1] === 0 && covered[2] && covered[3], 'the column menu covers the whole cover when it opens over it', JSON.stringify(covered));
   check(sideTop[0] === 'liked' && sideTop[1] === 'playlist:' + newestId, 'a new playlist goes right under Liked Songs, even in Custom Sort', JSON.stringify(sideTop.slice(0, 3)));
 
   // --- clicking the page you are already on refreshes it
-  await A.click('.nav-btn[data-nav="home"]'); await A.waitForTimeout(500);
+  await A.click('.nav-btn[data-nav="home"]'); await settle(A, 500);
   await A.evaluate(() => { window.__marker = document.querySelector('#view .home-tabs'); });
-  await A.click('.nav-btn[data-nav="home"]'); await A.waitForTimeout(600);
+  await A.click('.nav-btn[data-nav="home"]'); await settle(A, 600);
   check(await A.evaluate(() => window.__marker !== document.querySelector('#view .home-tabs') && document.querySelector('#view').classList.contains('enter-fwd')), 'clicking the current page refreshes it');
-  await A.hover('.logo'); await A.waitForTimeout(300);
+  await A.hover('.logo'); await settle(A, 300);
   check(await A.$eval('.logo', e => getComputedStyle(e).backgroundColor === 'rgba(0, 0, 0, 0)'), 'the Allegro logo has no hover shading');
 
   // --- the search box sits in the top right on every page, next to the profile button
@@ -576,28 +608,28 @@ try {
   check(gutter === 14, 'the main panel uses the slim scroll bar', String(gutter));
   const boxes = [], boxX = [];
   for (const n of ['home', 'search', 'library', 'uploads']) {
-    await A.click(`.nav-btn[data-nav="${n}"]`); await A.waitForTimeout(350);
+    await A.click(`.nav-btn[data-nav="${n}"]`); await settle(A, 350);
     await shot(A, 'nav-' + n);
     boxX.push(await A.$eval('#search-box', b => { const r = b.getBoundingClientRect(); return [Math.round(r.left), Math.round(r.right)].join('-'); }));
     boxes.push(await A.evaluate(() => { const b = document.getElementById('search-box').getBoundingClientRect(), a = document.getElementById('acct-btn').getBoundingClientRect(); return b.width > 200 && b.height > 0 && b.right <= a.left && a.left - b.right < 20; }));
   }
   await A.fill('#search-input', 'Some');
-  await A.waitForTimeout(500);
+  await settle(A, 500);
   const searched = await A.evaluate(() => [...document.querySelectorAll('#view .t-name')].map(e => e.textContent));
   check(new Set(boxX).size === 1, 'search box stays in the same spot on every page, long or short', JSON.stringify(boxX));
   const boxStyle = await A.$eval('#search-box', b => [getComputedStyle(b).backgroundColor, getComputedStyle(b).borderTopWidth]);
   check(boxStyle[0] === 'rgb(236, 236, 236)' && boxStyle[1] === '0px', 'search box is light gray with no outline while typing', JSON.stringify(boxStyle));
   check(boxes.every(Boolean) && searched.includes('Untagged Song'), 'search box is in the top right on every page, and typing shows results', JSON.stringify({ boxes, searched }));
   await shot(A, 'search-top');
-  await A.click('.nav-btn[data-nav="home"]'); await A.waitForTimeout(400);
+  await A.click('.nav-btn[data-nav="home"]'); await settle(A, 400);
   check(await A.inputValue('#search-input') === '', 'leaving the results clears the search box');
 
   // --- Uploads: storage notice, editing only here, and lookups
-  await A.click('.nav-btn[data-nav="library"]'); await A.waitForTimeout(400);
-  await A.click('[data-chip="songs"]'); await A.waitForTimeout(300);
+  await A.click('.nav-btn[data-nav="library"]'); await settle(A, 400);
+  await A.click('[data-chip="songs"]'); await settle(A, 300);
   const editInSongs = await A.$$eval('#view [data-edit-song]', x => x.length);
   const noChip = !(await A.$('[data-chip="uploads"]'));
-  await A.click('.nav-btn[data-nav="uploads"]'); await A.waitForTimeout(400);
+  await A.click('.nav-btn[data-nav="uploads"]'); await settle(A, 400);
   check(noChip && (await A.textContent('#view h1')) === 'Uploads' && await A.$eval('.nav-btn[data-nav="uploads"]', b => b.classList.contains('active')), 'Uploads is its own page in the menu, under My Library');
   const note = await A.$eval('.storage-note', e => [e.textContent, getComputedStyle(e).backgroundColor, getComputedStyle(e).color]).catch(() => null);
   check(!!note && note[0].includes('10 GB') && note[0].includes('left') && note[1] === 'rgb(253, 228, 228)' && note[2] === 'rgb(138, 20, 20)', 'Uploads shows the storage notice in dark red on light red', JSON.stringify(note));
@@ -607,7 +639,7 @@ try {
   // upload a "Title - Artist" file from the Uploads button: the order gets worked out
   const swapped = join(state, 'Swapped Song - Mock Band (Official Audio).mp3');
   copyFileSync(join(fixtures, 'Some Band - Untagged Song.mp3'), swapped);
-  await A.click('#view [data-action="add"]'); await A.waitForTimeout(250);
+  await A.click('#view [data-action="add"]'); await settle(A, 250);
   const upChooser = A.waitForEvent('filechooser');
   await A.click('#menu .mi:has-text("Choose Audio Files")');
   await (await upChooser).setFiles(swapped);
@@ -616,21 +648,21 @@ try {
   const sw = data.songs.find(s => s.fileName && s.fileName.startsWith('Swapped Song'));
   check(!!sw && sw.title === 'Swapped Song' && sw.artist === 'Mock Band' && sw.album === 'Swap Album' && sw.cover, '"Title - Artist" file names are recognized and filled in', JSON.stringify(sw));
   // edit a song by hand: name, artist, album and a cropped photo
-  await A.click(`#view [data-edit-song="${tagged.id}"]`); await A.waitForTimeout(400);
+  await A.click(`#view [data-edit-song="${tagged.id}"]`); await settle(A, 400);
   const seOpen = await A.isVisible('#song-edit');
   const rowFit = await A.evaluate(() => { const r = document.getElementById('se-remove').getBoundingClientRect(), a = document.getElementById('se-album').getBoundingClientRect(), v = document.getElementById('se-view').getBoundingClientRect(), c = document.getElementById('se-cover').getBoundingClientRect(), f = document.getElementById('se-search').getBoundingClientRect();
     return [Math.round((r.top + r.height / 2) - (a.top + a.height / 2)), Math.round(r.left - c.left), Math.round(v.top - r.bottom), Math.round(v.left - c.left), Math.round(f.left - c.left), Math.round(f.top - v.bottom), Math.round(f.height - v.height)]; });
   check(Math.abs(rowFit[0]) <= 2 && rowFit[1] === 0 && rowFit[3] === 0 && rowFit[2] >= 10 && rowFit[4] === 0 && rowFit[5] === rowFit[2] && rowFit[6] === 0, 'Remove Photo lines up with the Album box, and all three buttons are left-aligned, the same size and evenly spaced', JSON.stringify(rowFit));
   await A.fill('#se-name', 'Sunny Day'); await A.fill('#se-artist', 'Edited Artist'); await A.fill('#se-album', 'Edited Album');
-  await A.fill('#se-date', 'someday'); await A.click('#se-save'); await A.waitForTimeout(300);
+  await A.fill('#se-date', 'someday'); await A.click('#se-save'); await settle(A, 300);
   const dateErr = (await A.textContent('#se-err')).includes('release date') && await A.isVisible('#song-edit');
   await A.fill('#se-date', '4/11/2024');
   const typeStart = await A.$eval('#se-type .seg-btn.on', b => b.dataset.rtype).catch(() => '');
   await A.click('#se-type [data-rtype="ep"]');
   const artChooser = A.waitForEvent('filechooser');
   await A.click('#se-cover');
-  await (await artChooser).setFiles(join(fixtures, 'wide.png')); await A.waitForTimeout(600);
-  await A.click('#crop-apply'); await A.waitForTimeout(600);
+  await (await artChooser).setFiles(join(fixtures, 'wide.png')); await settle(A, 600);
+  await A.click('#crop-apply'); await settle(A, 600);
   await A.click('#se-save');
   await A.waitForFunction(() => document.getElementById('song-edit').hidden, null, { timeout: 10000 }).catch(() => {});
   data = await lib(A);
@@ -642,7 +674,7 @@ try {
   check(dateErr && ed.released === '2024-04-11' && ed.year === '2024', 'release date is checked and saved from 4/11/2024 as 2024-04-11', JSON.stringify([dateErr, ed.released, ed.year]));
   check(seOpen && ed.title === 'Sunny Day' && ed.artist === 'Edited Artist' && ed.album === 'Edited Album' && ed.coverV > 0 && /[?&]v=/.test(edImg) && !!edDims && edDims[0] === edDims[1], 'editing a song saves its name, artist, album and new square art', JSON.stringify({ ed, edImg, edDims }));
   // Find Info Online in the editor fills everything in from the pick
-  await A.click(`#view [data-edit-song="${tagged.id}"]`); await A.waitForTimeout(400);
+  await A.click(`#view [data-edit-song="${tagged.id}"]`); await settle(A, 400);
   const shownDate = await A.inputValue('#se-date');
   check(shownDate === 'Apr 11, 2024', 'the editor shows the release date as Apr 11, 2024', shownDate);
   await A.fill('#se-name', 'Nightcore - Mock Hit (Official Audio)'); await A.fill('#se-artist', '');
@@ -661,21 +693,21 @@ try {
   data = await lib(A);
   const hit = data.songs.find(s => s.id === tagged.id);
   check(filled.join('|') === 'Mock Hit|Mock Artist|Mock Hit Album|Feb 2, 2021' && hit.album === 'Mock Hit Album' && hit.year === '2021' && hit.released === '2021-02-02' && hit.coverV > ed.coverV, 'Find Info Online fills in the song from the search', JSON.stringify({ filled, hit }));
-  await A.click(`#view .tr[data-id="${tagged.id}"] [data-go-album]`); await A.waitForTimeout(500);
+  await A.click(`#view .tr[data-id="${tagged.id}"] [data-go-album]`); await settle(A, 500);
   const albumDate = await A.textContent('.vhead .meta .released').catch(() => '');
   check(albumDate === 'Feb. 2, 2021', 'album page shows the full release date', albumDate);
-  await A.click('.nav-btn[data-nav="uploads"]'); await A.waitForTimeout(400);
+  await A.click('.nav-btn[data-nav="uploads"]'); await settle(A, 400);
   // when Apple turns the server away, Deezer still answers
   const dz = await A.evaluate(async () => (await fetch('/api/lookup?term=deezer%20song')).json());
   const dzHit = dz.results && dz.results.find(r => r.title === 'Deezer Song');
   const dzArt = dzHit ? await A.evaluate(async u => (await fetch('/api/art?url=' + encodeURIComponent(u))).status, dzHit.art) : 0;
   check(!!dzHit && dzHit.artist === 'Deezer Band' && dzHit.album === 'Deezer Album' && /403/.test(dz.sources.apple) && dzArt === 200, 'song search falls back to Deezer when Apple refuses', JSON.stringify({ dz, dzArt }));
   // artists show a blank picture until you choose one; songs never set it
-  await A.click('.nav-btn[data-nav="library"]'); await A.waitForTimeout(400);
-  await A.click('[data-chip="artists"]'); await A.waitForTimeout(300);
+  await A.click('.nav-btn[data-nav="library"]'); await settle(A, 400);
+  await A.click('[data-chip="artists"]'); await settle(A, 300);
   const blankCard = await A.$eval('#view .card[data-open="artist:Mock Artist"] .card-art', c => !!c.querySelector('.artist-ph') && !c.querySelector('img')).catch(() => false);
-  await A.click('#view .card[data-open="artist:Mock Artist"]'); await A.waitForTimeout(500);
-  await A.hover('.vhead .art'); await A.waitForTimeout(300);
+  await A.click('#view .card[data-open="artist:Mock Artist"]'); await settle(A, 500);
+  await A.hover('.vhead .art'); await settle(A, 300);
   await shot(A, 'artist-hover');
   const arDim = await A.$eval('.vhead .art', a => getComputedStyle(a, '::after').opacity === '1');
   const arPen = await A.$eval('.vhead .art [data-artist-pen]', e => getComputedStyle(e).opacity === '1').catch(() => false);
@@ -688,45 +720,45 @@ try {
   check(blankCard && arDim && arPen, 'artists start blank, and the artist picture dims and shows a pen on hover', JSON.stringify([blankCard, arDim, arPen]));
   const arChooser = A.waitForEvent('filechooser');
   await A.click('.vhead .art [data-artist-pen]');
-  await (await arChooser).setFiles(join(fixtures, 'wide.png')); await A.waitForTimeout(600);
-  await A.click('#crop-apply'); await A.waitForTimeout(1500);
+  await (await arChooser).setFiles(join(fixtures, 'wide.png')); await settle(A, 600);
+  await A.click('#crop-apply'); await settle(A, 1500);
   data = await lib(A);
   const pic = (data.state.artistPics || []).find(x => x.name === 'Mock Artist');
   const arImg = await A.$eval('.vhead .art img', i => i.complete && i.naturalWidth > 0 && i.naturalWidth === i.naturalHeight).catch(() => false);
   const otherBlank = (await B.evaluate(async () => (await (await fetch('/api/library')).json()).state.artistPics.length)) === 1;
   check(!!pic && arImg && otherBlank, 'choosing an artist photo crops, saves online and shows it', JSON.stringify({ pic, arImg }));
-  await A.click('.actions [data-ctx-more]'); await A.waitForTimeout(250);
-  await A.click('#menu .mi:has-text("Remove Artist Photo")'); await A.waitForTimeout(250); await A.click('#cf-yes'); await A.waitForTimeout(800);
+  await A.click('.actions [data-ctx-more]'); await settle(A, 250);
+  await A.click('#menu .mi:has-text("Remove Artist Photo")'); await settle(A, 250); await A.click('#cf-yes'); await settle(A, 800);
   data = await lib(A);
   check(!(data.state.artistPics || []).some(x => x.name === 'Mock Artist') && !!(await A.$('.vhead .art .artist-ph')), 'an artist photo can be removed');
 
   // the menu offers Edit Song in Uploads but not elsewhere
-  await A.click('.nav-btn[data-nav="uploads"]'); await A.waitForTimeout(400);
-  await A.click(`#view .tr[data-id="${tagged.id}"] .more`, { force: true }); await A.waitForTimeout(250);
+  await A.click('.nav-btn[data-nav="uploads"]'); await settle(A, 400);
+  await A.click(`#view .tr[data-id="${tagged.id}"] .more`, { force: true }); await settle(A, 250);
   const upMenu = await A.$$eval('#menu .mi', x => x.map(e => e.textContent.trim()));
   await A.keyboard.press('Escape');
-  await A.click('.nav-btn[data-nav="library"]'); await A.waitForTimeout(400);
-  await A.click('[data-chip="songs"]'); await A.waitForTimeout(300);
-  await A.click(`#view .tr[data-id="${tagged.id}"] .more`, { force: true }); await A.waitForTimeout(250);
+  await A.click('.nav-btn[data-nav="library"]'); await settle(A, 400);
+  await A.click('[data-chip="songs"]'); await settle(A, 300);
+  await A.click(`#view .tr[data-id="${tagged.id}"] .more`, { force: true }); await settle(A, 250);
   const songsMenu = await A.$$eval('#menu .mi', x => x.map(e => e.textContent.trim()));
   await A.keyboard.press('Escape');
   // hovering Add to Playlist opens the playlists in a panel beside the menu
-  await A.click(`#view .tr[data-id="${tagged.id}"] .more`, { force: true }); await A.waitForTimeout(250);
-  await A.hover('#menu .mi:has-text("Add to Playlist")'); await A.waitForTimeout(450);
+  await A.click(`#view .tr[data-id="${tagged.id}"] .more`, { force: true }); await settle(A, 250);
+  await A.hover('#menu .mi:has-text("Add to Playlist")'); await settle(A, 450);
   const fly = await A.evaluate(() => { const f = document.getElementById('menu-fly'); return f.hidden ? null : [f.querySelectorAll('.mi').length, f.querySelectorAll('.mf-art').length, f.querySelector('.m-title').textContent]; });
   await shot(A, 'menu-fly');
-  await A.keyboard.press('Escape'); await A.waitForTimeout(150);
+  await A.keyboard.press('Escape'); await settle(A, 150);
   check(!!fly && fly[0] >= 2 && fly[1] >= 1 && fly[2] === 'Add to Playlist' && await A.evaluate(() => document.getElementById('menu-fly').hidden), 'hovering Add to Playlist shows your playlists beside the menu', JSON.stringify(fly));
   // select songs with the boxes at the end of each row; Shift-click takes in everything between
   {
     const rows = await A.$$('#view .tl .tr[data-id]');
     await rows[0].hover(); await A.click('#view .tl .tr[data-id] >> nth=0 >> [data-sel]');
-    await A.click('#view .tl .tr[data-id] >> nth=3 >> [data-sel]', { modifiers: ['Shift'], force: true }); await A.waitForTimeout(300);
+    await A.click('#view .tl .tr[data-id] >> nth=3 >> [data-sel]', { modifiers: ['Shift'], force: true }); await settle(A, 300);
     const s1 = await A.evaluate(() => [document.querySelectorAll('#view .tr.sel').length, document.querySelector('#selbar').classList.contains('show'), document.querySelector('#selbar .sb-count').textContent, document.querySelector('[data-sel-all]').getAttribute('aria-checked'), [...document.querySelectorAll('#selbar [data-selact]')].map(b => b.dataset.selact).join(',')]);
     await shot(A, 'select-songs');
-    await A.click('[data-sel-all]', { force: true }); await A.waitForTimeout(200);
+    await A.click('[data-sel-all]', { force: true }); await settle(A, 200);
     const s2 = await A.evaluate(() => [document.querySelectorAll('#view .tr.sel').length, document.querySelectorAll('#view .tr[data-id]').length, document.querySelector('[data-sel-all]').getAttribute('aria-checked')]);
-    await A.keyboard.press('Escape'); await A.waitForTimeout(300);
+    await A.keyboard.press('Escape'); await settle(A, 300);
     const s3 = await A.evaluate(() => [document.querySelectorAll('#view .tr.sel').length, document.querySelector('#selbar').classList.contains('show')]);
     check(s1[0] === 4 && s1[1] && s1[2] === '4 songs selected' && s1[3] === 'mixed' && /play,next,queue,playlist,like/.test(s1[4]) && s2[0] === s2[1] && s2[2] === 'true' && s3[0] === 0 && !s3[1],
       'songs can be ticked, Shift-click selects a run of them, a bar offers what to do, Escape clears', JSON.stringify({ s1, s2, s3 }));
@@ -734,14 +766,14 @@ try {
   check(upMenu.includes('Edit Song') && !songsMenu.includes('Edit Song'), 'Edit Song is in the menu only in Uploads');
 
   // --- column picker at the left of the list header: each list keeps its own columns, saved online
-  await A.click('.nav-btn[data-nav="uploads"]'); await A.waitForTimeout(400);
-  await A.click('#view [data-cols]'); await A.waitForTimeout(250);
+  await A.click('.nav-btn[data-nav="uploads"]'); await settle(A, 400);
+  await A.click('#view [data-cols]'); await settle(A, 250);
   const colOpts = await A.$$eval('#menu [data-col-opt]', x => x.map(e => e.textContent.trim()));
-  for (const c of ['album', 'duration']) { await A.click(`#menu [data-col-opt="${c}"]`); await A.waitForTimeout(250); }
+  for (const c of ['album', 'duration']) { await A.click(`#menu [data-col-opt="${c}"]`); await settle(A, 250); }
   const stillOpen = await A.isVisible('#menu') && (await A.$$eval('#menu [data-col-opt][aria-checked="true"]', x => x.map(e => e.dataset.colOpt))).join() === 'cover,title,artist,date';
   await shot(A, 'columns-menu');
   const menuInPanel = await A.evaluate(() => document.getElementById('menu').getBoundingClientRect().left >= document.getElementById('main').getBoundingClientRect().left);
-  await A.keyboard.press('Escape'); await A.waitForTimeout(200);
+  await A.keyboard.press('Escape'); await settle(A, 200);
   const upHead = await A.$$eval('#view .tl-head > span', x => x.map(e => e.textContent.trim()).filter(Boolean));
   const relCells = await A.$$eval('#view .tr .c-added', x => x.map(e => e.textContent));
   const relHead = upHead.includes('Date Released') && !upHead.includes('Date Added');
@@ -753,29 +785,29 @@ try {
   const fonts = await A.evaluate(() => { const d = document.querySelector('#view .tr .c-dur') || document.querySelector('.prog span'), a = document.querySelector('#view .tr .c-added'); return [getComputedStyle(d).fontFamily, getComputedStyle(a).fontFamily]; });
   check(fonts[0] === fonts[1] && fonts[0].startsWith('Roboto'), 'durations use the same font as the rest of the row', JSON.stringify(fonts));
   check(relHead && relCells.includes('Feb. 2, 2021') && relCells.includes('Jan. 1, 2019'), 'the date column shows when each song was released', JSON.stringify(relCells));
-  await A.click('.nav-btn[data-nav="library"]'); await A.waitForTimeout(400); await A.click('[data-chip="songs"]'); await A.waitForTimeout(300);
+  await A.click('.nav-btn[data-nav="library"]'); await settle(A, 400); await A.click('[data-chip="songs"]'); await settle(A, 300);
   const libCols = [await A.$$eval('#view .tr .c-album', x => x.length), !!(await A.$('#view .tr .c-dur'))];
   data = await lib(A);
   const savedCols = (data.state.listCols || []).find(x => x.key === 'uploads');
-  await A.reload(); await A.waitForTimeout(2000);
-  await A.click('.nav-btn[data-nav="uploads"]'); await A.waitForTimeout(500);
+  await A.reload(); await settle(A, 2000);
+  await A.click('.nav-btn[data-nav="uploads"]'); await settle(A, 500);
   const afterReload = [!!(await A.$('#view .tr .c-album')), !!(await A.$('#view .tr .c-dur')), !!(await A.$('#view .tr .c-added'))];
-  await B.reload(); await B.waitForTimeout(2000);
+  await B.reload(); await settle(B, 2000);
   const onB = await B.evaluate(() => JSON.stringify((JSON.parse(localStorage.getItem('waxwing.state.v1') || '{}').listCols || []).find(x => x.key === 'uploads') || null));
   check(afterReload.join() === 'false,false,true' && onB && !onB.includes('duration') && onB.includes('date'), 'column choices stay after reloading, and on other devices', JSON.stringify({ afterReload, onB }));
   // Song Cover can be switched off for one list
-  await A.click('.nav-btn[data-nav="uploads"]'); await A.waitForTimeout(500);
+  await A.click('.nav-btn[data-nav="uploads"]'); await settle(A, 500);
   const coversBefore = await A.$$eval('#view .tr .c-title img', x => x.length);
-  await A.click('#view [data-cols]'); await A.waitForTimeout(250);
-  await A.click('#menu [data-col-opt="cover"]'); await A.waitForTimeout(300);
-  await A.keyboard.press('Escape'); await A.waitForTimeout(200);
+  await A.click('#view [data-cols]'); await settle(A, 250);
+  await A.click('#menu [data-col-opt="cover"]'); await settle(A, 300);
+  await A.keyboard.press('Escape'); await settle(A, 200);
   const coversAfter = await A.$$eval('#view .tr .c-title img', x => x.length), titlesAfter = await A.$$eval('#view .tr .t-name', x => x.length);
-  await A.click('.nav-btn[data-nav="library"]'); await A.waitForTimeout(400); await A.click('[data-chip="songs"]'); await A.waitForTimeout(300);
+  await A.click('.nav-btn[data-nav="library"]'); await settle(A, 400); await A.click('[data-chip="songs"]'); await settle(A, 300);
   const libCovers = await A.$$eval('#view .tr .c-title img', x => x.length);
   check(coversBefore > 0 && coversAfter === 0 && titlesAfter > 0 && libCovers > 0, 'Song Cover can be hidden for one list and stays on elsewhere', JSON.stringify({ coversBefore, coversAfter, titlesAfter, libCovers }));
-  await A.click('.nav-btn[data-nav="library"]'); await A.waitForTimeout(400); await A.click('[data-chip="songs"]'); await A.waitForTimeout(500);
-  const wantTop = await A.evaluate(() => { const m = document.getElementById('main'); m.scrollTop = 120; return m.scrollTop; }); await A.waitForTimeout(500);
-  await A.reload(); await A.waitForTimeout(2500);
+  await A.click('.nav-btn[data-nav="library"]'); await settle(A, 400); await A.click('[data-chip="songs"]'); await settle(A, 500);
+  const wantTop = await A.evaluate(() => { const m = document.getElementById('main'); m.scrollTop = 120; return m.scrollTop; }); await settle(A, 500);
+  await A.reload(); await settle(A, 2500);
   const stayed = [await A.textContent('#view h1').catch(() => ''), await A.evaluate(() => document.getElementById('main').scrollTop)];
   check(stayed[0] === 'My Library' && wantTop > 20 && Math.abs(stayed[1] - wantTop) <= 4, 'reloading keeps you on the same page and scroll spot', JSON.stringify([...stayed, wantTop]));
   check(libCols[0] > 0 && libCols[1] && !!savedCols && savedCols.cols.join() === 'cover,title,artist,date', 'each list keeps its own columns, saved online', JSON.stringify({ libCols, savedCols }));
@@ -784,8 +816,8 @@ try {
     const s = (await (await fetch('/api/library')).json()).songs.find(x => x.id === id);
     await fetch('/api/songs/' + id, { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ ...s, album: 'Unknown album', cover: false }) });
   }, untagged.id);
-  await A.reload(); await A.waitForTimeout(1500);
-  await A.click('.nav-btn[data-nav="uploads"]'); await A.waitForTimeout(400);
+  await A.reload(); await settle(A, 1500);
+  await A.click('.nav-btn[data-nav="uploads"]'); await settle(A, 400);
   await shot(A, 'uploads-missing');
   const fillBtn = await A.isVisible('#view [data-action="fill-info"]');
   await A.click('#view [data-action="fill-info"]').catch(() => {});
@@ -795,16 +827,16 @@ try {
   check(fillBtn && fixedSong.album === 'Mock Album' && fixedSong.cover, 'Find Missing Info fills in older uploads', JSON.stringify(fixedSong));
 
   // --- remove a song (the server delete runs after the 8-second undo window)
-  await B.reload(); await B.waitForTimeout(1500);
-  await B.click('.tab[data-nav=uploads]'); await B.waitForTimeout(500);
+  await B.reload(); await settle(B, 1500);
+  await B.click('.tab[data-nav=uploads]'); await settle(B, 500);
   await shot(B, 'phone-uploads');
   check((await B.textContent('#view h1')) === 'Uploads' && await B.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'phone has an Uploads tab that fits the screen');
-  await B.click('.tab[data-nav=library]'); await B.click('[data-chip="songs"]'); await B.waitForTimeout(400);
+  await B.click('.tab[data-nav=library]'); await B.click('[data-chip="songs"]'); await settle(B, 400);
   const victim = (await lib(B)).songs.find(s => s.title === 'Untagged Song').id;
-  await B.click(`.tr[data-id="${victim}"] .more`, { force: true }); await B.waitForTimeout(300);
-  await B.click('.mi.danger'); await B.waitForTimeout(300);
+  await B.click(`.tr[data-id="${victim}"] .more`, { force: true }); await settle(B, 300);
+  await B.click('.mi.danger'); await settle(B, 300);
   const askTxt = await B.evaluate(() => !document.getElementById('cf-dlg').hidden && document.getElementById('cf-title').textContent);
-  await B.click('#cf-yes'); await B.waitForTimeout(17000);
+  await B.click('#cf-yes'); await B.waitForTimeout(17000);   // the Undo window has to run out for real
   check(!!askTxt && askTxt.startsWith('Delete') && !(await lib(B)).songs.some(s => s.id === victim), 'removing a song asks first, then deletes it online once Undo has run out', String(askTxt));
 
   // --- no drag-and-drop uploading: dropping a file on the page does nothing
@@ -812,33 +844,33 @@ try {
   const dropped = await A.evaluate(() => { const dt = new DataTransfer(); dt.items.add(new File([new Uint8Array(2000)], 'x.mp3', { type: 'audio/mpeg' }));
     for (const t of ['dragenter', 'dragover', 'drop']) document.querySelector('#view').dispatchEvent(new DragEvent(t, { dataTransfer: dt, bubbles: true, cancelable: true }));
     return !document.getElementById('drop') && document.querySelector('img') ? getComputedStyle(document.querySelector('img')).webkitUserDrag : 'overlay'; });
-  await A.waitForTimeout(1500);
+  await settle(A, 1500);
   check(dropped === 'none' && (await lib(A)).songs.length === songsBefore, 'no Drop to Add: dropped files are ignored and pictures cannot be dragged', String(dropped));
 
   // --- Settings: in the account menu above "Allegro Account"; demo songs switch; change password
-  await A.click('#acct-btn'); await A.waitForTimeout(250);
+  await A.click('#acct-btn'); await settle(A, 250);
   const acctMenu = await A.$$eval('#menu > *', x => x.map(e => e.textContent.trim()).filter(Boolean));
-  await A.click('#menu .mi:has-text("Settings")'); await A.waitForTimeout(500);
+  await A.click('#menu .mi:has-text("Settings")'); await settle(A, 500);
   const setH1 = await A.textContent('#view h1');
   await shot(A, 'settings');
   check(acctMenu.join('|') === 'Settings|Allegro Account|Sign Out' && setH1 === 'Settings', 'Settings sits above Allegro Account and opens the Settings page', JSON.stringify(acctMenu));
-  await A.click('#set-demos'); await A.waitForTimeout(800);
+  await A.click('#set-demos'); await settle(A, 800);
   data = await lib(A);
   const demoOff = [(data.state.prefs || []).includes('hideDemos'), await A.evaluate(() => document.querySelector('#set-demos').getAttribute('aria-checked'))];
-  await A.click('.nav-btn[data-nav="library"]'); await A.waitForTimeout(400); await A.click('[data-chip="songs"]'); await A.waitForTimeout(300);
+  await A.click('.nav-btn[data-nav="library"]'); await settle(A, 400); await A.click('[data-chip="songs"]'); await settle(A, 300);
   const demoTagsOff = await A.$$eval('#view .demo-tag', x => x.length);
-  await A.click('#acct-btn'); await A.waitForTimeout(250); await A.click('#menu .mi:has-text("Settings")'); await A.waitForTimeout(400);
-  await A.click('#set-demos'); await A.waitForTimeout(800);
-  await A.click('.nav-btn[data-nav="library"]'); await A.waitForTimeout(400); await A.click('[data-chip="songs"]'); await A.waitForTimeout(300);
+  await A.click('#acct-btn'); await settle(A, 250); await A.click('#menu .mi:has-text("Settings")'); await settle(A, 400);
+  await A.click('#set-demos'); await settle(A, 800);
+  await A.click('.nav-btn[data-nav="library"]'); await settle(A, 400); await A.click('[data-chip="songs"]'); await settle(A, 300);
   const demoTagsOn = await A.$$eval('#view .demo-tag', x => x.length);
   check(demoOff[0] && demoOff[1] === 'false' && demoTagsOff === 0 && demoTagsOn > 0, 'Show Demo Songs hides and brings back the demo songs, saved online', JSON.stringify({ demoOff, demoTagsOff, demoTagsOn }));
-  await A.click('#acct-btn'); await A.waitForTimeout(250); await A.click('#menu .mi:has-text("Settings")'); await A.waitForTimeout(400);
+  await A.click('#acct-btn'); await settle(A, 250); await A.click('#menu .mi:has-text("Settings")'); await settle(A, 400);
   // Breathing Album Cover: off at first; on makes the Now Playing cover zoom in, rest 1s, and zoom out (17s, playing or paused), saved on this device only
   const breatheAnim = () => A.evaluate(() => [document.documentElement.classList.contains('breathe'), getComputedStyle(document.getElementById('s-cover')).animationName, getComputedStyle(document.getElementById('s-cover')).animationPlayState, getComputedStyle(document.getElementById('s-cover')).animationDuration, localStorage.getItem('allegro.breathe')]);
   const breathe0 = await A.evaluate(() => document.querySelector('#set-breathe').getAttribute('aria-checked'));
-  await A.click('#set-breathe'); await A.waitForTimeout(200);
+  await A.click('#set-breathe'); await settle(A, 200);
   const breatheOn = [await A.evaluate(() => document.querySelector('#set-breathe').getAttribute('aria-checked')), ...await breatheAnim()];
-  await A.click('#set-breathe'); await A.waitForTimeout(200);
+  await A.click('#set-breathe'); await settle(A, 200);
   const breatheOff = await breatheAnim();
   check(breathe0 === 'false' && breatheOn.join('|') === 'true|true|s-breathe|running|17s|1' && breatheOff.join('|') === 'false|none|running|0s|0', 'Breathing Album Cover turns the slow zoom on the Now Playing cover on and off', JSON.stringify({ breathe0, breatheOn, breatheOff }));
   await A.fill('#pw-cur', 'wrong password!'); await A.fill('#pw-new', 'brand new pass 1'); await A.fill('#pw-new2', 'brand new pass 1');
@@ -852,62 +884,62 @@ try {
   check(pwBad.includes('not right') && pwGood.includes('changed') && stillIn && loginNew === 200, 'Settings can change the password', JSON.stringify({ pwBad, pwGood, stillIn, loginNew }));
 
   // --- playlist version history: see every change, preview an old version, restore it
-  await A.click('#side-list [data-open="playlist:pl-example"]'); await A.waitForTimeout(600);
-  await A.click('.actions [data-ctx-more]'); await A.waitForTimeout(250);
+  await A.click('#side-list [data-open="playlist:pl-example"]'); await settle(A, 600);
+  await A.click('.actions [data-ctx-more]'); await settle(A, 250);
   await A.click('#menu .mi:has-text("Version History")');
   await A.waitForSelector('#view .vh-item', { timeout: 10000 }).catch(() => {});
   const vhItems = await A.$$eval('#view .vh-item', x => x.map(e => e.textContent.replace(/\s+/g, ' ').trim()));
   const vhAll = vhItems.join(' | ');
   await shot(A, 'version-history');
   check(vhItems.length >= 3 && vhItems[0].includes('Current Version') && vhAll.includes('Renamed from “Late Night Study” to “Renamed In Test”') && vhAll.includes('Created the playlist') && vhAll.includes('Changed the song order'), 'Version History lists each change to the playlist', JSON.stringify(vhItems.slice(0, 6)));
-  await A.click('#view .vh-item >> nth=-1'); await A.waitForTimeout(300);
+  await A.click('#view .vh-item >> nth=-1'); await settle(A, 300);
   const oldName = await A.textContent('.vh-head h2');
-  await A.click('[data-vh-restore]'); await A.waitForTimeout(2500);
+  await A.click('[data-vh-restore]'); await settle(A, 2500);
   data = await lib(A);
   const restored = data.state.playlists.find(p => p.id === 'pl-example');
-  await A.waitForTimeout(500);
+  await settle(A, 500);
   const vhTop = await A.$eval('#view .vh-item', e => e.textContent).catch(() => '');
   check(oldName === 'Late Night Study' && restored.name === 'Late Night Study' && vhTop.includes('Restored the version from'), 'an old version can be restored, and the restore is listed too', JSON.stringify({ oldName, restoredName: restored.name, vhTop: vhTop.slice(0, 120) }));
 
   // --- Appearance: dark mode and languages
-  await A.click('#acct-btn'); await A.waitForTimeout(250); await A.click('#menu .mi:has-text("Settings")'); await A.waitForTimeout(500);
-  await A.click('[data-theme-opt="dark"]'); await A.waitForTimeout(400);
+  await A.click('#acct-btn'); await settle(A, 250); await A.click('#menu .mi:has-text("Settings")'); await settle(A, 500);
+  await A.click('[data-theme-opt="dark"]'); await settle(A, 400);
   const darkNow = await A.evaluate(() => [document.documentElement.dataset.theme, getComputedStyle(document.body).backgroundColor, getComputedStyle(document.querySelector('.main')).backgroundColor]);
   await shot(A, 'settings-dark');
-  await A.reload(); await A.waitForTimeout(1500);
+  await A.reload(); await settle(A, 1500);
   const darkKept = await A.evaluate(() => document.documentElement.dataset.theme);
   check(darkNow[0] === 'dark' && darkNow[1] === 'rgb(11, 11, 12)' && darkKept === 'dark', 'dark mode turns on from Settings and stays after reloading', JSON.stringify([...darkNow, darkKept]));
-  await A.click('[data-lang-opt="zh-Hans"]'); await A.waitForTimeout(2500);
+  await A.click('[data-lang-opt="zh-Hans"]'); await settle(A, 2500);
   const zh = await A.evaluate(() => [document.querySelector('.nav-btn[data-nav="home"] span').textContent, document.querySelector('#view h1').textContent, document.documentElement.lang, document.querySelector('#search-input').placeholder, document.querySelector('#side-list .li-create .li-name').textContent, document.querySelector('#side-list [data-open="liked"] .li-name').textContent, document.getElementById('p-title').textContent, document.getElementById('p-artist').textContent]);
   await shot(A, 'settings-zh');
   check(zh[6] !== 'Nothing Playing' && zh[7] !== 'Pick a song to start', 'the empty player bar is translated in 简体中文', JSON.stringify(zh.slice(6)));
-  await A.click('.nav-btn[data-nav="library"]'); await A.waitForTimeout(400); await A.click('[data-chip="songs"]'); await A.waitForTimeout(400);
+  await A.click('.nav-btn[data-nav="library"]'); await settle(A, 400); await A.click('[data-chip="songs"]'); await settle(A, 400);
   const zhLib = await A.evaluate(() => [document.querySelector('[data-chip="songs"]').textContent, [...document.querySelectorAll('#view .t-name')].map(e => e.textContent)]);
   check(zh[0] === '首页' && zh[1] === '设置' && zh[2] === 'zh-Hans' && zh[3] === '搜索' && zh[4] === '新建' && zh[5] === '喜欢的歌曲' && zhLib[0] === '歌曲' && zhLib[1].includes('Rain on Glass'), 'switching to 简体中文 translates Allegro but not your song names', JSON.stringify({ zh, chip: zhLib[0] }));
-  await A.click('#acct-btn'); await A.waitForTimeout(250); await A.click('#menu .mi >> nth=0'); await A.waitForTimeout(500);
-  await A.click('[data-lang-opt="zh-Hant"]'); await A.waitForTimeout(2500);
+  await A.click('#acct-btn'); await settle(A, 250); await A.click('#menu .mi >> nth=0'); await settle(A, 500);
+  await A.click('[data-lang-opt="zh-Hant"]'); await settle(A, 2500);
   const zht = await A.evaluate(() => [document.querySelector('.nav-btn[data-nav="home"] span').textContent, document.querySelector('#view h1').textContent]);
-  await A.click('[data-lang-opt="en"]'); await A.waitForTimeout(2500);
-  await A.click('[data-theme-opt="light"]'); await A.waitForTimeout(300);
+  await A.click('[data-lang-opt="en"]'); await settle(A, 2500);
+  await A.click('[data-theme-opt="light"]'); await settle(A, 300);
   const backEn = await A.evaluate(() => [document.querySelector('.nav-btn[data-nav="home"] span').textContent, document.documentElement.dataset.theme]);
   check(zht[0] === '首頁' && zht[1] === '設定' && backEn.join() === 'Home,light', '繁體中文 works too, and switching back restores English and light mode', JSON.stringify({ zht, backEn }));
   // Changing the language happens on the spot, so a song that's playing keeps playing (a page reload used to stop it).
-  await A.click('.nav-btn[data-nav="uploads"]'); await A.waitForTimeout(500);
+  await A.click('.nav-btn[data-nav="uploads"]'); await settle(A, 500);
   await A.click(`#view .tr[data-id="${tagged.id}"] .t-name`);
   await A.waitForFunction(() => document.body.classList.contains('is-playing'), null, { timeout: 8000 }).catch(() => {});
   await A.evaluate(() => { window.__sameLoad = 1; });
-  await A.click('#acct-btn'); await A.waitForTimeout(250); await A.click('#menu .mi:has-text("Settings")'); await A.waitForTimeout(400);
-  await A.click('[data-lang-opt="zh-Hans"]'); await A.waitForTimeout(400);
+  await A.click('#acct-btn'); await settle(A, 250); await A.click('#menu .mi:has-text("Settings")'); await settle(A, 400);
+  await A.click('[data-lang-opt="zh-Hans"]'); await settle(A, 400);
   const liveZh = await A.evaluate(() => [window.__sameLoad === 1, document.body.classList.contains('is-playing'), document.querySelector('.nav-btn[data-nav="home"] span').textContent, document.querySelector('#view h1').textContent, document.querySelector('#player [data-act="toggle"]').getAttribute('aria-label')]);
-  await A.click('[data-lang-opt="en"]'); await A.waitForTimeout(400);
+  await A.click('[data-lang-opt="en"]'); await settle(A, 400);
   const liveEn = await A.evaluate(() => [window.__sameLoad === 1, document.body.classList.contains('is-playing'), document.querySelector('.nav-btn[data-nav="home"] span').textContent, document.querySelector('#view h1').textContent, document.querySelector('#search-input').placeholder, document.querySelector('#side-list .li-create .li-name').textContent, document.querySelector('#player [data-act="toggle"]').getAttribute('aria-label'), document.documentElement.lang]);
   check(liveZh.join() === 'true,true,首页,设置,暂停' && liveEn.join() === 'true,true,Home,Settings,Search,Create,Pause,en', 'switching language keeps the song playing and changes the words in place', JSON.stringify({ liveZh, liveEn }));
   if (await A.evaluate(() => document.body.classList.contains('is-playing'))) await A.click('#player [data-act="toggle"]');
 
   // --- Now Playing: tilting cover, and Wiki / Lyrics / Comments on the right
-  await A.click('.nav-btn[data-nav="uploads"]'); await A.waitForTimeout(500);
-  await A.click(`#view .tr[data-id="${tagged.id}"] .t-name`); await A.waitForTimeout(800);
-  await A.click('#p-cover'); await A.waitForTimeout(800);
+  await A.click('.nav-btn[data-nav="uploads"]'); await settle(A, 500);
+  await A.click(`#view .tr[data-id="${tagged.id}"] .t-name`); await settle(A, 800);
+  await A.click('#p-cover'); await settle(A, 800);
   const np = await A.evaluate(() => [getComputedStyle(document.getElementById('s-panel')).display, [...document.querySelectorAll('[data-sp-tab]')].map(b => b.textContent).join('|'), (document.querySelector('.w-title') || {}).textContent, [...document.querySelectorAll('.w-row .w-k')].map(e => e.textContent).join('|')]);
   const bar = await A.evaluate(() => { const pl = document.getElementById('player').getBoundingClientRect(), sh = document.getElementById('sheet'), art = document.getElementById('s-art').getBoundingClientRect(), tab = document.querySelector('.sp-tab').getBoundingClientRect();
     const top = document.elementFromPoint(pl.left + pl.width / 2, pl.top + pl.height / 2);
@@ -916,19 +948,19 @@ try {
   check(Math.abs(sizes[0] - sizes[1]) <= 2 && Math.abs(sizes[2] - sizes[3]) <= 2 && sizes[0] === sizes[4] && sizes[0] > 300, 'the cover and the panel are the same size, side by side', JSON.stringify(sizes));
   check(bar[0] && bar[1] === 'none' && bar[2] && bar[3] <= 28 && bar[4] === 'rgb(255, 255, 255)', 'on desktop, the play controls stay in the bar along the bottom, in white; the tabs are compact', JSON.stringify(bar));
   check(np[0] === 'flex' && np[1] === 'Wiki|Queue|Lyrics|Comments' && np[2] === 'Mock Hit' && np[3].startsWith('Artist|Album'), 'Now Playing shows Wiki, Queue, Lyrics and Comments beside the cover, Wiki first', JSON.stringify(np));
-  { const b = await (await A.$('#s-art')).boundingBox(); await A.mouse.move(b.x + b.width * .2, b.y + b.height * .3); await A.mouse.move(b.x + b.width * .25, b.y + b.height * .3, { steps: 3 }); await A.waitForTimeout(200); }
+  { const b = await (await A.$('#s-art')).boundingBox(); await A.mouse.move(b.x + b.width * .2, b.y + b.height * .3); await A.mouse.move(b.x + b.width * .25, b.y + b.height * .3, { steps: 3 }); await settle(A, 200); }
   const tilt = await A.evaluate(() => { const bg = getComputedStyle(document.querySelector('.s-shine')).backgroundImage, m = bg.match(/at ([\d.]+)% ([\d.]+)%/); return [document.getElementById('s-art').style.transform, document.getElementById('s-art').classList.contains('tilting'), bg.includes('radial') && !!m && +m[1] > 50 && +m[2] > 50]; });
   await shot(A, 'now-playing-wiki');
   check(/rotateX/.test(tilt[0]) && tilt[1] && tilt[2], 'the cover eases toward the mouse, with the light on the far side', JSON.stringify(tilt));
   const gapNp = await A.evaluate(() => [Math.round(document.getElementById('player').getBoundingClientRect().top - document.getElementById('s-art').getBoundingClientRect().bottom), !document.querySelector('#player [data-act="sheet"]'), !document.getElementById('s-qtoggle'), getComputedStyle(document.querySelector('#p-cover .p-exp')).display]);
   check(gapNp[0] >= 40 && gapNp[1] && gapNp[2] && gapNp[3] === 'grid', 'a wider gap above the player bar; the expand and queue buttons are gone, the bar cover has the arrows instead', JSON.stringify(gapNp));
-  await A.click('[data-sp-tab="queue"]'); await A.waitForTimeout(300);
+  await A.click('[data-sp-tab="queue"]'); await settle(A, 300);
   const qTab = await A.evaluate(() => [document.querySelectorAll('#sp-body .sp-queue .qrow.now').length, (document.querySelector('#sp-body .q-sec') || {}).textContent]);
   check(qTab[0] === 1, 'the queue is a page of the Now Playing panel', JSON.stringify(qTab));
-  await A.click('[data-sp-tab="wiki"]'); await A.waitForTimeout(200);
-  await A.click('[data-w-edit]'); await A.waitForTimeout(200);
+  await A.click('[data-sp-tab="wiki"]'); await settle(A, 200);
+  await A.click('[data-w-edit]'); await settle(A, 200);
   await A.fill('#w-lyricist', 'Writer A'); await A.fill('#w-composer', 'Composer B'); await A.fill('#w-about', 'A song about tests.');
-  await A.click('[data-w-save]'); await A.waitForTimeout(1200);
+  await A.click('[data-w-save]'); await settle(A, 1200);
   const wiki = await A.evaluate(() => [document.querySelector('.w-credits') && document.querySelector('.w-credits').textContent, document.querySelector('.w-about p').textContent]);
   data = await lib(A);
   const wm = data.songs.find(x => x.id === tagged.id);
@@ -936,45 +968,45 @@ try {
   await A.mouse.move(5, 5);
   await A.click('[data-sp-tab="lyrics"]');
   await A.waitForSelector('#ly .ly-line', { timeout: 10000 }).catch(() => {});
-  await A.waitForTimeout(1500);
+  await settle(A, 1500);
   const ly = await A.evaluate(() => [...document.querySelectorAll('#ly .ly-line')].map(e => [e.textContent, e.className]));
   await shot(A, 'now-playing-lyrics');
   await A.waitForFunction(() => document.querySelector('#ly .ly-line.on') && document.querySelector('#ly .ly-line.past'), null, { timeout: 8000 }).catch(() => {});   // timing varies on slower machines
-  await A.click('#player [data-act="toggle"]'); await A.waitForTimeout(500);   // hold still so the color change has finished
+  await A.click('#player [data-act="toggle"]'); await settle(A, 500);   // hold still so the color change has finished
   const onVis = await A.evaluate(() => { const w = document.querySelector('#ly .ly-line.on'); if (!w) return null; const st = getComputedStyle(w); const past = document.querySelector('#ly .ly-line.past'); return [st.color, st.textShadow, past ? getComputedStyle(past).filter : '']; });
   check(!!onVis && onVis[0] === 'rgb(255, 255, 255)' && /rgba\(255, 255, 255/.test(onVis[1]) && /blur/.test(onVis[2]), 'the whole line being sung lights up with a soft glow; sung lines blur', JSON.stringify(onVis));
-  await A.click('#player [data-act="toggle"]'); await A.waitForTimeout(200);
+  await A.click('#player [data-act="toggle"]'); await settle(A, 200);
   check(ly.length === 5 && !/side/.test(ly[0][1]) && /side-1/.test(ly[2][1]) && ly[2][0].startsWith('Guest Singer') && /side-c/.test(ly[4][1]) && ly.some(l => / on/.test(l[1])), 'lyrics load with timing; a duet partner sings on the right, together lines in the middle', JSON.stringify(ly));
   check(lrclibAsks.some(x => x.startsWith('Allegro/')), 'lyrics are looked up on LRCLIB from the browser, naming Allegro', JSON.stringify(lrclibAsks.slice(0, 3)));
-  await A.click('#ly .ly-line >> nth=3'); await A.waitForTimeout(400);
+  await A.click('#ly .ly-line >> nth=3'); await settle(A, 400);
   const jumped = await A.evaluate(() => document.querySelector('#ly .ly-line.on') && document.querySelector('#ly .ly-line.on').dataset.lyI);
   check(jumped === '3' || jumped === '4', 'clicking a lyric line jumps there', String(jumped));
-  await A.click('[data-sp-tab="comments"]'); await A.waitForTimeout(800);
+  await A.click('[data-sp-tab="comments"]'); await settle(A, 800);
   await A.fill('#cm-text', 'This chorus is great'); await A.click('#cm-form [type="submit"]');
   await A.waitForSelector('.cm-text', { timeout: 8000 }).catch(() => {});
-  await A.click('[data-cm-like]'); await A.waitForTimeout(800);
+  await A.click('[data-cm-like]'); await settle(A, 800);
   const cmList = await A.evaluate(async id => (await (await fetch('/api/comments/' + id)).json()).comments, tagged.id);
   await shot(A, 'now-playing-comments');
   check(cmList.length === 1 && cmList[0].text === 'This chorus is great' && cmList[0].liked === 1 && (await A.textContent('.cm-text')) === 'This chorus is great', 'comments can be posted and liked, saved online', JSON.stringify(cmList));
-  await A.click('#p-cover'); await A.waitForTimeout(80);
+  await A.click('#p-cover'); await settle(A, 80);
   const closingNp = await A.evaluate(() => [document.getElementById('sheet').hidden, document.getElementById('sheet').classList.contains('closing')]);
-  await A.waitForTimeout(450);
+  await settle(A, 450);
   const closedNp = await A.evaluate(() => document.getElementById('sheet').hidden);
-  await A.click('#p-cover'); await A.waitForTimeout(600);
+  await A.click('#p-cover'); await settle(A, 600);
   const reopened = await A.evaluate(() => !document.getElementById('sheet').hidden);
   check(closingNp.join() === 'false,true' && closedNp && reopened, 'clicking the bar cover closes Now Playing smoothly and opens it again', JSON.stringify([closingNp, closedNp, reopened]));
-  await A.keyboard.press('Escape'); await A.waitForTimeout(450);
+  await A.keyboard.press('Escape'); await settle(A, 450);
 
   // --- lyrics with no times get timed to the song by AI
-  await A.click('.nav-btn[data-nav="uploads"]'); await A.waitForTimeout(500);
+  await A.click('.nav-btn[data-nav="uploads"]'); await settle(A, 500);
   const swId = await A.evaluate(() => [...document.querySelectorAll('#view .tr')].find(r => r.querySelector('.t-name').textContent === 'Swapped Song').dataset.id);
-  await A.click(`#view .tr[data-id="${swId}"] .t-name`); await A.waitForTimeout(800);
-  await A.click('#p-cover'); await A.waitForTimeout(700);
+  await A.click(`#view .tr[data-id="${swId}"] .t-name`); await settle(A, 800);
+  await A.click('#p-cover'); await settle(A, 700);
   await A.click('[data-sp-tab="lyrics"]'); await A.waitForSelector('[data-ly-edit]', { timeout: 8000 }).catch(() => {});
-  await A.click('[data-ly-edit]'); await A.waitForTimeout(200);
+  await A.click('[data-ly-edit]'); await settle(A, 200);
   await A.fill('#ly-edit', 'Hello there\nSecond line\nThird line'); await A.click('[data-ly-save]');
   await A.waitForSelector('#ly .ly-line', { timeout: 15000 }).catch(() => {});
-  await A.waitForTimeout(400);
+  await settle(A, 400);
   const aiLines = await A.evaluate(() => [...document.querySelectorAll('#ly .ly-line')].map(e => e.textContent));
   const aiSaved = await A.evaluate(async id => (await (await fetch('/api/lyrics?id=' + id)).json()).synced, swId);
   await shot(A, 'lyrics-ai-timed');
@@ -982,45 +1014,45 @@ try {
     'plain lyrics get timed to the song with AI and saved', JSON.stringify({ aiSaved, aiLines, transcribed: transcribed.map(x => ({ ...x, prompt: x.prompt.slice(0, 40) })) }));
   // Chinese lyrics offer Romanization (pinyin, made in the browser) and Translation (from the language model)
   if (await A.evaluate(() => document.body.classList.contains('is-playing'))) await A.click('#player [data-act="toggle"]');   // stay on this short song
-  await A.click('[data-ly-edit]'); await A.waitForTimeout(200);
-  await A.fill('#ly-edit', '[00:00.30]我爱你\n[00:02.00]簪花雨'); await A.click('[data-ly-save]'); await A.waitForTimeout(500);
-  await A.click('[data-lyx-toggle]'); await A.waitForTimeout(450);
+  await A.click('[data-ly-edit]'); await settle(A, 200);
+  await A.fill('#ly-edit', '[00:00.30]我爱你\n[00:02.00]簪花雨'); await A.click('[data-ly-save]'); await settle(A, 500);
+  await A.click('[data-lyx-toggle]'); await settle(A, 450);
   const optNames = await A.$$eval('.ly-opts [data-lyx-mode]', x => x.map(e => e.textContent.trim()));
   const segOpen = await A.evaluate(() => document.querySelector('.ly-seg').getBoundingClientRect().width);
   await shot(A, 'lyrics-translate-open');
   await A.click('[data-lyx-mode="rom"]'); await A.waitForSelector('#ly .ly-rom', { timeout: 8000 }).catch(() => {});
   await A.click('[data-lyx-mode="tr"]'); await A.waitForSelector('#ly .ly-tr', { timeout: 8000 }).catch(() => {});
-  await A.waitForTimeout(300);
+  await settle(A, 300);
   const both = await A.evaluate(() => { const l = document.querySelector('#ly .ly-line'); return [[...document.querySelectorAll('#ly .ly-rom')].map(e => e.textContent), [...document.querySelectorAll('#ly .ly-tr')].map(e => e.textContent), [...l.children].map(c => c.className.replace('ly-x ', '')).join('>'), [...document.querySelectorAll('[data-lyx-mode].on')].map(b => b.dataset.lyxMode).join(',')]; });
   await shot(A, 'lyrics-extras');
-  await A.waitForTimeout(1900);
+  await settle(A, 1900);
   const folded = await A.evaluate(() => !document.querySelector('.ly-opts').classList.contains('open'));
   check(optNames.join('|') === 'Off|Translation|Romanization|繁體' && segOpen > 150 && folded && both[0][0] === 'wǒ ài nǐ' && both[0][1] === 'zān huā yǔ' && both[1][0] === 'EN: 我爱你' && both[2] === 'ly-rom>ly-t>ly-tr' && both[3] === 'tr,rom' && llmAsks.some(x => x.startsWith('You translate')),
     'Translation and Romanization can be on together: pinyin above each line, the translation below', JSON.stringify({ optNames, segOpen, folded, both, llmAsks }));
   // Simplified lyrics can be shown in Traditional (and Traditional in Simplified)
-  await A.click('[data-lyx-toggle]'); await A.waitForTimeout(450);
+  await A.click('[data-lyx-toggle]'); await settle(A, 450);
   await A.waitForFunction(() => { const b = document.querySelector('[data-lyx-mode="sc"]'); return b && b.textContent.trim() === '繁體'; }, null, { timeout: 8000 }).catch(() => {});
   const scLabel = await A.evaluate(() => (document.querySelector('[data-lyx-mode="sc"]') || {}).textContent);
   await A.click('[data-lyx-mode="sc"]');
   await A.waitForFunction(() => [...document.querySelectorAll('#ly .ly-t')].some(e => e.textContent.includes('愛')), null, { timeout: 8000 }).catch(() => {});
   const conv = await A.evaluate(() => [...document.querySelectorAll('#ly .ly-t')].map(e => e.textContent));
-  await A.waitForTimeout(1900);
+  await settle(A, 1900);
   check(scLabel && scLabel.trim() === '繁體' && conv[0] === '我愛你', 'Simplified Chinese lyrics can be switched to Traditional', JSON.stringify({ scLabel, conv }));
-  await A.click('[data-lyx-toggle]'); await A.waitForTimeout(450); await A.click('[data-lyx-mode="off"]'); await A.waitForTimeout(200);   // off again for the tests that follow
-  await A.keyboard.press('Escape'); await A.waitForTimeout(450);
+  await A.click('[data-lyx-toggle]'); await settle(A, 450); await A.click('[data-lyx-mode="off"]'); await settle(A, 200);   // off again for the tests that follow
+  await A.keyboard.press('Escape'); await settle(A, 450);
 
   // --- player bar: playback speed, a tall volume slider, and the quality of the file
-  await A.click('.nav-btn[data-nav="uploads"]'); await A.waitForTimeout(400);
-  await A.locator('#view .tr').first().locator('.t-name').click(); await A.waitForTimeout(1500);
-  await A.click('#spd-btn'); await A.waitForTimeout(300);
+  await A.click('.nav-btn[data-nav="uploads"]'); await settle(A, 400);
+  await A.locator('#view .tr').first().locator('.t-name').click(); await settle(A, 1500);
+  await A.click('#spd-btn'); await settle(A, 300);
   await A.evaluate(() => { const r = document.getElementById('spd'); r.value = 125; r.dispatchEvent(new Event('input', { bubbles: true })); });
-  await A.click('#spd-pitch + .sw'); await A.waitForTimeout(200);
+  await A.click('#spd-pitch + .sw'); await settle(A, 200);
   const spd = await A.evaluate(() => [document.getElementById('spd-wrap').classList.contains('open'), document.getElementById('spd-lbl').textContent, document.getElementById('spd-btn').classList.contains('changed'), document.getElementById('spd-pitch').checked, JSON.parse(localStorage.getItem('allegro.speed'))]);
   await shot(A, 'player-speed');
-  await A.click('#spd-reset'); await A.mouse.move(700, 300); await A.mouse.click(700, 300); await A.waitForTimeout(300);
-  await A.hover('#vol-btn'); await A.waitForTimeout(450);
+  await A.click('#spd-reset'); await A.mouse.move(700, 300); await A.mouse.click(700, 300); await settle(A, 300);
+  await A.hover('#vol-btn'); await settle(A, 450);
   const vt = await (await A.$('#vtrack')).boundingBox();
-  await A.mouse.click(vt.x + vt.width / 2, vt.y + vt.height * .75); await A.waitForTimeout(200);
+  await A.mouse.click(vt.x + vt.width / 2, vt.y + vt.height * .75); await settle(A, 200);
   const vol = await A.evaluate(() => [document.getElementById('vol-wrap').classList.contains('open'), +document.getElementById('vtrack').getAttribute('aria-valuenow')]);
   const volumePanel = await A.evaluate(() => {
     const panel = document.getElementById('vol-pop'), speaker = document.getElementById('vol-btn');
@@ -1040,56 +1072,56 @@ try {
     'compact volume popup floats above the speaker with a white slider in dark mode and Now Playing', JSON.stringify(volumePanel));
   await shot(A, 'player-volume');
   { const before = await A.evaluate(() => document.getElementById('vtrack').getAttribute('aria-valuenow'));
-    await A.mouse.move(vt.x + vt.width / 2, vt.y + vt.height / 2); await A.mouse.wheel(0, -300); await A.waitForTimeout(200);
+    await A.mouse.move(vt.x + vt.width / 2, vt.y + vt.height / 2); await A.mouse.wheel(0, -300); await settle(A, 200);
     const after = await A.evaluate(() => document.getElementById('vtrack').getAttribute('aria-valuenow'));
     check(before === after, 'scrolling over the volume slider does not change the volume', JSON.stringify({ before, after })); }
-  await A.mouse.move(700, 300); await A.waitForTimeout(500);
+  await A.mouse.move(700, 300); await settle(A, 500);
   await A.waitForSelector('#q-badge:not([hidden])', { timeout: 8000 }).catch(() => {});
   const qb = await A.evaluate(() => document.getElementById('q-badge').hidden ? null : document.getElementById('q-badge').textContent);
   check(spd[0] && spd[1] === '1.25x' && spd[2] && spd[3] === false && spd[4].rate === 1.25 && vol[0] && Math.abs(vol[1] - 25) <= 3 && /^\d+ kbps$/.test(qb || ''),
     'the player bar has playback speed (with Preserve Pitch), a tall volume slider and the file quality', JSON.stringify({ spd, vol, qb }));
-  await A.evaluate(() => { const r = document.getElementById('spd'); }); await A.hover('#vol-btn'); await A.waitForTimeout(400);
-  { const v2 = await (await A.$('#vtrack')).boundingBox(); await A.mouse.click(v2.x + v2.width / 2, v2.y + v2.height * .2); } await A.mouse.move(700, 300); await A.waitForTimeout(300);
+  await A.evaluate(() => { const r = document.getElementById('spd'); }); await A.hover('#vol-btn'); await settle(A, 400);
+  { const v2 = await (await A.$('#vtrack')).boundingBox(); await A.mouse.click(v2.x + v2.width / 2, v2.y + v2.height * .2); } await A.mouse.move(700, 300); await settle(A, 300);
 
   // --- the quality pill: dark liquid glass, and a choice of Max, 320 kbps or 96 kbps; a 96 kbps copy is made in the browser and played next time
   const pill = await A.evaluate(() => { const b = document.getElementById('q-badge'), st = getComputedStyle(b); return [b.className, st.backgroundImage.includes('radial-gradient'), st.borderRadius, st.color, st.alignItems]; });
-  await A.click('#q-badge'); await A.waitForTimeout(350);
+  await A.click('#q-badge'); await settle(A, 350);
   const qOpts = await A.evaluate(() => [...document.querySelectorAll('#qb-pop .qb-opt')].map(o => [o.dataset.qset, o.getAttribute('aria-checked'), o.querySelector('.q-badge').className]));
   const qDl = await A.evaluate(() => !!document.querySelector('#qb-pop dl'));
   await shot(A, 'quality-pop');
-  await A.click('[data-qset="96"]'); await A.waitForTimeout(300);
+  await A.click('[data-qset="96"]'); await settle(A, 300);
   let copied = null;
-  for (let i = 0; i < 60 && !copied; i++) { await A.waitForTimeout(500); copied = await A.evaluate(async () => { const l = await (await fetch('/api/library')).json(); return (l.songs.find(x => x.q96) || {}).id || null; }); }
+  for (let i = 0; i < 60 && !copied; i++) { await settle(A, 500); copied = await A.evaluate(async () => { const l = await (await fetch('/api/library')).json(); return (l.songs.find(x => x.q96) || {}).id || null; }); }
   const copyRes = copied && await A.evaluate(async id => { const r = await fetch('/api/audio/' + encodeURIComponent(id) + '?q=96'), b = new Uint8Array(await r.arrayBuffer()); return [r.status, r.headers.get('content-type'), b.length, b[0] === 0xFF || String.fromCharCode(b[0], b[1], b[2]) === 'ID3']; }, copied);
   check(pill[0] === 'q-badge' && pill[1] && parseFloat(pill[2]) > 100 && qOpts.map(o => o[0]).join() === 'max,96' && qOpts[0][1] === 'true' && qOpts[0][2] === 'q-badge' && /q96/.test(qOpts[1][2]) && pill[3] === 'rgb(255, 94, 106)' && pill[4] === 'center' && !qDl && copyRes && copyRes[0] === 200 && copyRes[1] === 'audio/mpeg' && copyRes[2] > 1000 && copyRes[3],
     'the quality pill is a dark liquid glass pill, red for Max with its text centered; it offers Max and 96 kbps, no file details; choosing 96 kbps makes an MP3 copy and stores it', JSON.stringify({ pill, qOpts, qDl, copied, copyRes }));
-  await A.mouse.click(700, 300); await A.waitForTimeout(300);
+  await A.mouse.click(700, 300); await settle(A, 300);
   // clicking the song that is already playing only pauses it, so play another song first, then come back to the copied one
-  await A.locator(`#view .tr:not([data-id="${copied}"]) .t-name`).first().click(); await A.waitForTimeout(800);
+  await A.locator(`#view .tr:not([data-id="${copied}"]) .t-name`).first().click(); await settle(A, 800);
   await A.click(`#view .tr[data-id="${copied}"] .t-name`);
   await A.waitForFunction(() => document.getElementById('q-badge').textContent === '96 kbps', null, { timeout: 8000 }).catch(() => {});
   const q96 = await A.evaluate(() => [document.getElementById('q-badge').textContent, document.getElementById('q-badge').className]);
   await shot(A, 'quality-96');
-  await A.click('#q-badge'); await A.waitForTimeout(300); await A.click('[data-qset="max"]'); await A.waitForTimeout(1200);
+  await A.click('#q-badge'); await settle(A, 300); await A.click('[data-qset="max"]'); await settle(A, 1200);
   const qMax = await A.evaluate(() => [document.getElementById('q-badge').textContent, document.getElementById('q-badge').className, localStorage.getItem('allegro.quality')]);
-  await A.mouse.click(700, 300); await A.waitForTimeout(300);
+  await A.mouse.click(700, 300); await settle(A, 300);
   check(q96[0] === '96 kbps' && /\bq96\b/.test(q96[1]) && /^\d+ kbps$/.test(qMax[0]) && qMax[0] !== '96 kbps' && qMax[1] === 'q-badge' && qMax[2] === 'max',
     'at 96 kbps the song plays from its copy with a gold pill, and Max goes back to the original file', JSON.stringify({ q96, qMax }));
 
   // --- a reload comes back to the same song at the same second, never "Nothing Playing"
   // start the second song fresh: if it's already playing, clicking it would only pause it
-  await A.locator('#view .tr').nth(0).locator('.t-name').click(); await A.waitForTimeout(600);
+  await A.locator('#view .tr').nth(0).locator('.t-name').click(); await settle(A, 600);
   await A.locator('#view .tr').nth(1).locator('.t-name').click();
   await A.waitForFunction(() => { const [m, x] = (document.querySelector('#player .t-cur').textContent || '0:00').split(':').map(Number); return m * 60 + x >= 3; }, null, { timeout: 10000 }).catch(() => {});
-  await A.click('#player [data-act="toggle"]'); await A.waitForTimeout(300);
+  await A.click('#player [data-act="toggle"]'); await settle(A, 300);
   const rsBefore = await A.evaluate(() => [document.getElementById('p-title').textContent, document.querySelector('#player .t-cur').textContent]);
-  await A.reload(); await A.waitForTimeout(150);
+  await A.reload(); await settle(A, 150);
   const rsEarly = await A.evaluate(() => document.getElementById('p-title').textContent);
-  await A.waitForTimeout(2500);
+  await settle(A, 2500);
   const rsAfter = await A.evaluate(() => [document.getElementById('p-title').textContent, document.querySelector('#player .t-cur').textContent, +document.querySelector('#player .seek').value, !document.getElementById('q-badge').hidden]);
-  await A.click('#player [data-act="toggle"]'); await A.waitForTimeout(1200);
+  await A.click('#player [data-act="toggle"]'); await settle(A, 1200);
   const resumed = await A.evaluate(() => document.querySelector('#player .t-cur').textContent);
-  await A.click('#player [data-act="toggle"]'); await A.waitForTimeout(200);
+  await A.click('#player [data-act="toggle"]'); await settle(A, 200);
   const sec = t => { const [m, x] = t.split(':').map(Number); return m * 60 + x; };
   check(rsEarly !== 'Nothing Playing' && rsAfter[0] === rsBefore[0] && rsAfter[1] === rsBefore[1] && rsAfter[2] > 0 && rsAfter[3] && sec(rsBefore[1]) >= 2 && sec(resumed) >= sec(rsBefore[1]),
     'after a reload the bar shows the last song (with its quality pill) at the second it stopped, and play carries on from there', JSON.stringify({ rsBefore, rsEarly, rsAfter, resumed }));
@@ -1102,7 +1134,7 @@ try {
   for (let k = 0; k < 4 && await A.getAttribute('#player [data-act="repeat"]', 'aria-label') !== 'Repeat off'; k++) await A.click('#player [data-act="repeat"]');
   const modes = [];
   for (let k = 0; k < 4; k++) {
-    await A.click('#player [data-act="repeat"]'); await A.waitForTimeout(80);
+    await A.click('#player [data-act="repeat"]'); await settle(A, 80);
     modes.push(await A.evaluate(() => { const b = document.querySelector('#player [data-act="repeat"]'); return [b.getAttribute('aria-label'), b.classList.contains('on'), !b.querySelector('.one').hidden, b.querySelector('svg path').getAttribute('d').startsWith('M3 7h3')].join('|'); }));
   }
   check(sec(rsAt) >= 2 && rsZero[0] === '0:00' && !rsZero[1] && rsZero[2] && rsZero[3]
@@ -1110,11 +1142,11 @@ try {
     'play from the start goes back to 0:00 (still paused), and the repeat button cycles all, one, shuffle, off', JSON.stringify({ rsAt, rsZero, modes }));
 
   // --- the play queue floats under the search bar, lined up with it, and fades in and out
-  await A.locator('#view .tr').first().locator('.t-name').click(); await A.waitForTimeout(800);
+  await A.locator('#view .tr').first().locator('.t-name').click(); await settle(A, 800);
   const mainW = await A.evaluate(() => document.getElementById('main').getBoundingClientRect().width);
-  await A.click('#q-btn'); await A.waitForTimeout(60);
+  await A.click('#q-btn'); await settle(A, 60);
   const qMid = await A.evaluate(() => +getComputedStyle(document.getElementById('queue-panel')).opacity);
-  await A.waitForTimeout(500);
+  await settle(A, 500);
   const qp = await A.evaluate(() => { const q = document.getElementById('queue-panel').getBoundingClientRect(), s = document.getElementById('search-box').getBoundingClientRect(), a = document.getElementById('acct-btn').getBoundingClientRect(), pl = document.getElementById('player').getBoundingClientRect();
     return { dl: Math.round(q.left - s.left), dr: Math.round(q.right - a.right), below: q.top > s.bottom, abovePlayer: q.bottom <= pl.top, op: getComputedStyle(document.getElementById('queue-panel')).opacity, main: document.getElementById('main').getBoundingClientRect().width,
       secs: [...document.querySelectorAll('#queue-list .q-sec')].map(e => e.textContent.trim()), now: document.querySelectorAll('#queue-list .qrow.now').length, next: document.querySelectorAll('#queue-list .qrow.next').length, past: document.querySelectorAll('#queue-list .qrow.past').length }; });
@@ -1122,44 +1154,44 @@ try {
   check(qMid < 1 && qp.op === '1' && qp.dl >= -4 && qp.dl <= 0 && qp.dr >= 0 && qp.dr <= 5 && qp.below && qp.abovePlayer && Math.abs(qp.main - mainW) < 1, 'the queue fades in as a card under the search bar, the same width as the search bar and account button, over the page', JSON.stringify({ qMid, ...qp, mainW }));
   check(qp.secs[0] === 'History' && /^Playing from: /.test(qp.secs[1]) && /Clear$/.test(qp.secs[1]) && /^Next Up from: /.test(qp.secs[2]) && qp.now === 1 && qp.past >= 1 && qp.next >= 1, 'the queue shows History, Playing from (with Clear) and Next Up', JSON.stringify(qp.secs));
   const nextN = qp.next;
-  await A.click('[data-qclear]'); await A.waitForTimeout(300);
+  await A.click('[data-qclear]'); await settle(A, 300);
   const cleared = await A.evaluate(() => document.querySelectorAll('#queue-list .qrow.next').length);
-  await A.click('#toast-act'); await A.waitForTimeout(300);
+  await A.click('#toast-act'); await settle(A, 300);
   const undone = await A.evaluate(() => document.querySelectorAll('#queue-list .qrow.next').length);
   check(cleared === 0 && undone === nextN, 'Clear empties what is coming up, and Undo brings it back', JSON.stringify([nextN, cleared, undone]));
-  await A.click('#queue-panel [data-act="queue"]'); await A.waitForTimeout(60);
+  await A.click('#queue-panel [data-act="queue"]'); await settle(A, 60);
   const qOut = await A.evaluate(() => [+getComputedStyle(document.getElementById('queue-panel')).opacity, getComputedStyle(document.getElementById('queue-panel')).visibility]);
-  await A.waitForTimeout(450);
+  await settle(A, 450);
   const qGone = await A.evaluate(() => [getComputedStyle(document.getElementById('queue-panel')).opacity, getComputedStyle(document.getElementById('queue-panel')).visibility, document.getElementById('queue-panel').inert]);
   check(qOut[0] > 0 && qOut[1] === 'visible' && qGone.join() === '0,hidden,true', 'closing the queue fades it out smoothly', JSON.stringify([qOut, qGone]));
 
   // --- Home has tabs (Home, New Releases, Charts, Podcasts) in place of the greeting; the font is Roboto Medium
-  await A.click('.nav-btn[data-nav="home"]'); await A.waitForTimeout(400);
+  await A.click('.nav-btn[data-nav="home"]'); await settle(A, 400);
   const tabsTxt = await A.$$eval('.home-tabs .ht', x => x.map(e => e.textContent));
   const font = await A.evaluate(() => { const st = getComputedStyle(document.body); return [st.fontFamily.split(',')[0], st.fontWeight, st.fontSize, !document.querySelector('#view .greet')]; });
-  await A.click('[data-home-tab="charts"]'); await A.waitForTimeout(80);
+  await A.click('[data-home-tab="charts"]'); await settle(A, 80);
   const inkMid = await A.evaluate(() => { const i = document.querySelector('.ht-ink').getBoundingClientRect(), c = document.querySelector('.ht.on').getBoundingClientRect(); return Math.round(i.left - c.left); });
-  await A.waitForTimeout(500);
+  await settle(A, 500);
   const inkEnd = await A.evaluate(() => { const i = document.querySelector('.ht-ink').getBoundingClientRect(), c = document.querySelector('.ht.on').getBoundingClientRect(); return [Math.round(i.left - c.left), Math.round(i.width - c.width)]; });
   check(inkMid < -5 && inkEnd[0] === 0 && inkEnd[1] === 0, 'the red underline slides from the old tab to the new one', JSON.stringify({ inkMid, inkEnd }));
   const charts = await A.evaluate(() => [[...document.querySelectorAll('#view .sec-head h2')].map(e => e.textContent), document.querySelectorAll('#view .tr').length, document.querySelector('.ht.on').textContent]);
   await shot(A, 'home-charts');
-  await A.click('[data-home-tab="new"]'); await A.waitForTimeout(400);
+  await A.click('[data-home-tab="new"]'); await settle(A, 400);
   const fresh = await A.evaluate(() => [[...document.querySelectorAll('#view .sec-head h2')].map(e => e.textContent), document.querySelectorAll('#view .tr').length]);
-  await A.click('[data-home-tab="home"]'); await A.waitForTimeout(300);
+  await A.click('[data-home-tab="home"]'); await settle(A, 300);
   check(tabsTxt.join('|') === 'Home|New Releases|Charts|Podcasts' && /Roboto/.test(font[0]) && font[1] === '500' && font[2] === '14px' && font[3] && charts[0].includes('Top Songs of All Time') && charts[1] > 0 && charts[2] === 'Charts' && fresh[0].includes('Newest Songs') && fresh[1] > 0,
     'Home has New Releases, Charts and Podcasts tabs instead of the greeting; the font is Roboto Medium at 14px', JSON.stringify({ tabsTxt, font, charts, fresh }));
 
   // --- a playlist's own page shows its songs' full-size covers (as Now Playing does); lists keep the small copies
   {
     const song = (await lib(A)).songs.find(x => x.cover && x.coverSm);   // any upload with its own cover (earlier checks rename songs)
-    await A.click('.nav-btn[data-nav="library"]'); await A.waitForTimeout(400); await A.click('[data-chip="songs"]'); await A.waitForTimeout(400);
-    await A.click(`#view .tr[data-id="${song.id}"] .more`, { force: true }); await A.waitForTimeout(250);
-    await A.hover('#menu .mi:has-text("Add to Playlist")'); await A.waitForTimeout(450);
-    await A.click('#menu-fly [data-mf]:has-text("New Playlist")'); await A.waitForTimeout(500);
-    await A.fill('#pe-name', 'Sharp Covers'); await A.click('#pe-save'); await A.waitForTimeout(1200);
+    await A.click('.nav-btn[data-nav="library"]'); await settle(A, 400); await A.click('[data-chip="songs"]'); await settle(A, 400);
+    await A.click(`#view .tr[data-id="${song.id}"] .more`, { force: true }); await settle(A, 250);
+    await A.hover('#menu .mi:has-text("Add to Playlist")'); await settle(A, 450);
+    await A.click('#menu-fly [data-mf]:has-text("New Playlist")'); await settle(A, 500);
+    await A.fill('#pe-name', 'Sharp Covers'); await A.click('#pe-save'); await settle(A, 1200);
     const pl = (await lib(A)).state.playlists.find(x => x.name === 'Sharp Covers');
-    if (pl) { await A.click(`#side-list [data-open="playlist:${pl.id}"]`); await A.waitForTimeout(800); }
+    if (pl) { await A.click(`#side-list [data-open="playlist:${pl.id}"]`); await settle(A, 800); }
     const srcs = pl ? await A.evaluate(id => [document.querySelector('.pl-head .art img')?.getAttribute('src') || '', document.querySelector(`#side-list [data-open="playlist:${id}"] .li-art img`)?.getAttribute('src') || ''], pl.id) : [];
     await shot(A, 'playlist-full-cover');
     const coverPath = '/api/cover/' + encodeURIComponent(song.id) + '?';

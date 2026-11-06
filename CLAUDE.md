@@ -55,7 +55,7 @@ this repo, and the rules for interface text, deleting, themes and phones.
   transcribe, LLM, search, Deezer and art.
 - It writes `.wrangler-test.jsonc` (the config without `"ai"`, which would need remote auth) and passes `TRANSCRIBE_URL`,
   `LLM_URL`, `LYRICS_URL` and the search stand-in URLs as vars.
-- There are about 140 checks, and a full run takes about 8 minutes. Run it in the background:
+- There are about 150 checks, and a full run takes about 4 minutes in the sandbox. Run it in the background:
 
 ```sh
 rm -f .dev.vars; SHOTS=/tmp/shots CHROMIUM_PATH=/opt/pw-browsers/chromium-1243/chrome-linux64/chrome timeout 590 npm test > /tmp/e2e.log 2>&1; echo "exit $?"
@@ -67,6 +67,11 @@ grep -n FAIL /tmp/e2e.log
   - The `audio` element is not reachable from `page.evaluate`. Read the DOM instead: `#q-badge`, `.t-cur`,
     `.seek`, `#p-title`.
   - Use waitForFunction for anything animated or timed. CI is slower than the sandbox.
+  - Pause with `settle(page, ms)`, not `page.waitForTimeout`: it returns once the page is quiet (no requests,
+    no song still starting, no short timers, no animations) and never waits longer than `ms`. Keep
+    `waitForTimeout` only where time itself must pass, such as the Undo window running out.
+  - Reloads later in the run take 4 to 18 seconds each, in the old suite too (the server answers fast; the
+    browser starts reading the page late). The cause is not known yet.
   - Delete confirmations need a click on `#cf-yes`.
   - The test MP3s are short: `tagged.mp3` is 8s at 128 kbps mono; `Some Band - Untagged Song.mp3` is 6s at 96 kbps.
 
