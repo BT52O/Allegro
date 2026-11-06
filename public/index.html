@@ -630,6 +630,12 @@ input[type="range"]:disabled { opacity: .4; cursor: default; }
    (measured from Tidal: no change down to the middle, about 8% darker at four fifths down, about 18% at the bottom) */
 @media (min-width: 760px) { .s-art::after { content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .14);
   background: linear-gradient(to bottom, rgba(0, 0, 0, 0) 55%, rgba(0, 0, 0, .07) 80%, rgba(0, 0, 0, .17) 95%, rgba(0, 0, 0, .2) 100%); } }
+/* Breathing cover (Settings > Appearance): the picture slowly zooms in and back out inside its frame. It moves the
+   picture rather than the frame, so it never fights the pointer tilt on .s-art, and it holds still while paused. */
+@keyframes s-breathe { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.07); } }
+html.breathe .s-art img { animation: s-breathe 16s ease-in-out infinite; animation-play-state: paused; }
+html.breathe body.is-playing .s-art img { animation-play-state: running; }
+@media (prefers-reduced-motion: reduce) { html.breathe .s-art img { animation: none; } }
 /* Now Playing panel: Wiki, Lyrics, Comments */
 /* No background blur on the panel: behind it is only a smooth gradient, and a blurred panel made Chrome draw visible
    boxes around the blurred and faded lyric lines inside it. */
@@ -1609,6 +1615,8 @@ const I18N = [
   ['Change the password you use to sign in. Your other devices will need to sign in again.', '更改你的登录密码。其他设备需要重新登录。', '變更你的登入密碼。其他裝置需要重新登入。'],
   ['Current password', '当前密码', '目前密碼'], ['New password (8+ characters)', '新密码（至少 8 个字符）', '新密碼（至少 8 個字元）'], ['New password again', '再次输入新密码', '再次輸入新密碼'], ['Change Password', '更改密码', '變更密碼'],
   ['Sign out of Allegro on this device.', '在这台设备上退出 Allegro。', '在這台裝置上登出 Allegro。'], ['Library', '音乐库', '音樂庫'], ['Show Demo Songs', '显示示例歌曲', '顯示範例歌曲'],
+  ['Breathing Album Cover', '呼吸专辑封面', '呼吸專輯封面'], ['Breathing album cover', '呼吸专辑封面', '呼吸專輯封面'],
+  ['In Now Playing, the album cover slowly zooms in and back out while a song plays. This setting is for this device only.', '在“正在播放”中，播放歌曲时专辑封面会缓缓放大再缩小。此设置仅适用于这台设备。', '在「正在播放」中，播放歌曲時專輯封面會緩緩放大再縮小。此設定僅適用於這台裝置。'],
   ['The generated sample songs that came with Allegro. Turning this off hides them everywhere, on all your devices.', 'Allegro 自带的示例歌曲。关闭后会在你所有的设备上隐藏。', 'Allegro 內建的範例歌曲。關閉後會在你所有的裝置上隱藏。'],
   ['Column Choices', '列设置', '欄位設定'], ['Every list shows the usual columns.', '所有列表都显示默认的列。', '所有清單都顯示預設的欄位。'], ['Storage', '存储空间', '儲存空間'], ['Your Uploads', '你的上传', '你的上傳'],
   ['See, edit and add the songs you\'ve uploaded.', '查看、编辑和添加你上传的歌曲。', '查看、編輯和加入你上傳的歌曲。'], ['Open Uploads', '打开上传', '開啟上傳'], ['About', '关于', '關於'], ['View on GitHub', '在 GitHub 上查看', '在 GitHub 上查看'],
@@ -2953,6 +2961,7 @@ const VIEWS = {
       </section>
       <section class="set-sec"><h2>Appearance</h2>
         <div class="set-row"><div><h3>Theme</h3><p>Match your device, or always use light or dark.</p></div><div class="seg" role="radiogroup" aria-label="Theme">${[['system', 'System'], ['light', 'Light'], ['dark', 'Dark']].map(([k, l]) => `<button class="seg-btn${themePref() === k ? ' on' : ''}" data-theme-opt="${k}" role="radio" aria-checked="${themePref() === k}">${l}</button>`).join('')}</div></div>
+        <div class="set-row"><div><h3>Breathing Album Cover</h3><p>In Now Playing, the album cover slowly zooms in and back out while a song plays. This setting is for this device only.</p></div>${toggle('set-breathe', breathePref(), 'Breathing album cover')}</div>
         <div class="set-row"><div><h3>Language</h3><p>The language for Allegro on this device. Your song and playlist names stay as they are.</p></div><div class="seg" role="radiogroup" aria-label="Language" data-nt>${LANGS.map(([k, l]) => `<button class="seg-btn${LANG === k ? ' on' : ''}" data-lang-opt="${k}" role="radio" aria-checked="${LANG === k}">${l}</button>`).join('')}</div></div>
       </section>
       <section class="set-sec"><h2>Library</h2>
@@ -4509,6 +4518,18 @@ function applyTheme() {
 }
 applyTheme();
 darkMQ.addEventListener('change', applyTheme);
+// Breathing album cover: a per-device choice, like the theme, kept in its own key. Off unless turned on.
+const breathePref = () => { try { return localStorage.getItem('allegro.breathe') === '1'; } catch (e) { return false; } };
+const applyBreathe = () => document.documentElement.classList.toggle('breathe', breathePref());
+applyBreathe();
+document.addEventListener('click', e => {
+  const sw = e.target.closest('#set-breathe');
+  if (!sw) return;
+  const on = sw.getAttribute('aria-checked') !== 'true';
+  try { localStorage.setItem('allegro.breathe', on ? '1' : '0'); } catch (ex) {}
+  sw.classList.toggle('on', on); sw.setAttribute('aria-checked', on);
+  applyBreathe();
+});
 // Change the language without reloading: translate the fixed parts again, then redraw the parts Allegro draws itself.
 function setLanguage(code) {
   retranslate(code);
