@@ -1610,7 +1610,7 @@ const I18N = [
   ['Rename or Move', '重命名或移动', '重新命名或移動'], ['Remove Page Break', '移除分段', '移除分段'], ['Starts After', '开始于此歌曲之后', '開始於此歌曲之後'], ['The very top', '最前面', '最前面'],
   ['The page break goes right after the song you pick. Songs after it belong to this section.', '分段会放在你选择的歌曲之后，之后的歌曲都属于这一段。', '分段會放在你選擇的歌曲之後，之後的歌曲都屬於這一段。'],
   ['Page break updated', '分段已更新', '分段已更新'], ['Untitled Section', '未命名分段', '未命名分段'], ['Search your songs', '搜索你的歌曲', '搜尋你的歌曲'], ['Search your playlists and folders', '搜索你的歌单和文件夹', '搜尋你的歌單和資料夾'],
-  ['This Playlist Is Empty', '空空如也~', '空空如也~'], ['Use the + button above, or open the ⋯ menu on any song and choose Add to Playlist.', '使用上方的 + 按钮，或打开任意歌曲的 ⋯ 菜单，选择“添加到歌单”。', '使用上方的 + 按鈕，或開啟任一歌曲的 ⋯ 選單，選擇「加入歌單」。'],
+  ['This Playlist Is Empty', '空空如也~', '空空如也~'],
   ['Browse Songs', '浏览歌曲', '瀏覽歌曲'], ['This Folder Is Empty', '这个文件夹是空的', '這個資料夾是空的'], ['Use the + button to add playlists or make a folder inside this one.', '使用 + 按钮添加歌单，或在里面新建文件夹。', '使用 + 按鈕加入歌單，或在裡面新增資料夾。'],
   ['Nothing here yet. Drag a playlist onto this folder to add it.', '这里还没有内容。把歌单拖到这个文件夹即可添加。', '這裡還沒有內容。把歌單拖到這個資料夾即可加入。'],
   ['Show Columns', '显示的列', '顯示的欄位'], ['Choose Columns', '选择列', '選擇欄位'], ['Played', '播放时间', '播放時間'],
@@ -3092,7 +3092,7 @@ const VIEWS = {
         <button class="pl-ic" data-ctx-more="${esc(key)}" aria-label="Playlist options">${ic('more')}<span>More</span></button>
       </div></header>`;
     return `<div class="view-bg" data-tint-src="${esc(tint)}"></div><div class="pl-layout">${side}<section class="pl-main">`
-      + trackList(ids, { key, name: p.name }, { playlist: p.id, empty: `<div class="empty"><h3>This Playlist Is Empty</h3><p>Use the + button above, or open the ⋯ menu on any song and choose Add to Playlist.</p><button class="btn ghost" data-open="library:songs">${ic('music')}Browse Songs</button></div>` }) + `</section></div>`;
+      + trackList(ids, { key, name: p.name }, { playlist: p.id, empty: `<div class="empty"><h3>This Playlist Is Empty</h3><button class="btn ghost" data-open="library:songs">${ic('music')}Browse Songs</button></div>` }) + `</section></div>`;
   },
   liked() {
     const ids = live(S.liked);
