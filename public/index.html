@@ -568,7 +568,7 @@ body.sheet-open #vol-wrap { --volume-panel: #242426; --volume-track: #3b3b3f; --
   background: radial-gradient(120% 140% at 50% 50%, rgba(255, 255, 255, 0) 52%, rgba(255, 255, 255, .14) 100%),
     radial-gradient(60% 80% at 50% 55%, rgba(var(--qg), var(--qa)), rgba(var(--qg), 0) 100%),
     linear-gradient(180deg, rgba(255, 255, 255, .09), rgba(255, 255, 255, .02) 55%, rgba(255, 255, 255, .05)),
-    rgba(var(--qbase-rgb, 14, 14, 18), var(--qbase, .2));
+    rgba(255, 255, 255, var(--qbase, .03));
   -webkit-backdrop-filter: blur(6px) saturate(160%); backdrop-filter: blur(6px) saturate(160%);
   border: 0; box-shadow: inset 0 0 0 .5px rgba(255, 255, 255, .16), inset 0 0 9px rgba(255, 255, 255, .09), inset 0 0 18px rgba(var(--qg), .08), 0 0 0 .5px rgba(0, 0, 0, .45), 0 6px 22px -4px rgba(0, 0, 0, .4); transition: filter .15s, color .2s, transform .25s cubic-bezier(.3, 1.6, .5, 1); }
 /* the specular highlights: a bright sliver on the top left and a softer one on the bottom right, clear in between */
@@ -577,9 +577,14 @@ body.sheet-open #vol-wrap { --volume-panel: #242426; --volume-track: #3b3b3f; --
   -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0); }
 .q-badge:active { transform: scale(1.04); }
 @media (prefers-reduced-motion: reduce) { .q-badge:active { transform: none; } }
-/* on a light page clear glass vanishes and the red fades, so there it is smoked glass: same light, darker body */
-:root:not([data-theme="dark"]) .q-badge { --qbase-rgb: 20, 20, 24; --qbase: .74; }
+/* on a light page the glass stays clear; a soft dark halo would look dirty there, so the text gets a light one and a
+   faint outline keeps the edge visible against white */
+:root:not([data-theme="dark"]) .q-badge { --qbase: .2; text-shadow: 0 0 8px rgba(var(--qg), .25), 0 1px 0 rgba(255, 255, 255, .6);
+  box-shadow: inset 0 0 0 .5px rgba(0, 0, 0, .1), inset 0 0 9px rgba(255, 255, 255, .5), inset 0 0 18px rgba(var(--qg), .08), 0 0 0 .5px rgba(0, 0, 0, .12), 0 6px 18px -6px rgba(0, 0, 0, .22); }
 .q-badge.q96 { --qg: 236, 186, 62; --qa: .22; --qt: #f5c548; }
+/* the bright red and gold are too pale on clear glass over a white bar, so they go deeper there */
+:root:not([data-theme="dark"]) .q-badge { --qt: #e5343f; }
+:root:not([data-theme="dark"]) .q-badge.q96 { --qt: #b07a00; }
 @media (prefers-reduced-transparency: reduce) { .q-badge { -webkit-backdrop-filter: none; backdrop-filter: none; background: radial-gradient(70% 90% at 50% 60%, rgba(var(--qg), var(--qa)), rgba(var(--qg), 0) 100%), linear-gradient(#26262b, #121215); } }
 .q-badge.making::after { content: ""; position: absolute; right: 7px; top: 50%; width: 4px; height: 4px; margin-top: -2px; border-radius: 50%; background: var(--qt); animation: qbPulse 1.2s ease-in-out infinite; }
 @keyframes qbPulse { 50% { opacity: .25; } }

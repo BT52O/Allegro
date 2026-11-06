@@ -1093,8 +1093,8 @@ try {
   let copied = null;
   for (let i = 0; i < 60 && !copied; i++) { await settle(A, 500); copied = await A.evaluate(async () => { const l = await (await fetch('/api/library')).json(); return (l.songs.find(x => x.q96) || {}).id || null; }); }
   const copyRes = copied && await A.evaluate(async id => { const r = await fetch('/api/audio/' + encodeURIComponent(id) + '?q=96'), b = new Uint8Array(await r.arrayBuffer()); return [r.status, r.headers.get('content-type'), b.length, b[0] === 0xFF || String.fromCharCode(b[0], b[1], b[2]) === 'ID3']; }, copied);
-  check(pill[0] === 'q-badge' && pill[1] && parseFloat(pill[2]) > 100 && qOpts.map(o => o[0]).join() === 'max,96' && qOpts[0][1] === 'true' && qOpts[0][2] === 'q-badge' && /q96/.test(qOpts[1][2]) && pill[3] === 'rgb(255, 94, 106)' && pill[4] === 'center' && !qDl && copyRes && copyRes[0] === 200 && copyRes[1] === 'audio/mpeg' && copyRes[2] > 1000 && copyRes[3],
-    'the quality pill is a dark liquid glass pill, red for Max with its text centered; it offers Max and 96 kbps, no file details; choosing 96 kbps makes an MP3 copy and stores it', JSON.stringify({ pill, qOpts, qDl, copied, copyRes }));
+  check(pill[0] === 'q-badge' && pill[1] && parseFloat(pill[2]) > 100 && qOpts.map(o => o[0]).join() === 'max,96' && qOpts[0][1] === 'true' && qOpts[0][2] === 'q-badge' && /q96/.test(qOpts[1][2]) && pill[3] === 'rgb(229, 52, 63)' && pill[4] === 'center' && !qDl && copyRes && copyRes[0] === 200 && copyRes[1] === 'audio/mpeg' && copyRes[2] > 1000 && copyRes[3],
+    'the quality pill is a clear liquid glass pill, deep red for Max on the light theme with its text centered; it offers Max and 96 kbps, no file details; choosing 96 kbps makes an MP3 copy and stores it', JSON.stringify({ pill, qOpts, qDl, copied, copyRes }));
   await A.mouse.click(700, 300); await settle(A, 300);
   // clicking the song that is already playing only pauses it, so play another song first, then come back to the copied one
   await A.locator(`#view .tr:not([data-id="${copied}"]) .t-name`).first().click(); await settle(A, 800);
