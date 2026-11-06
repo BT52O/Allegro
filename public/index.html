@@ -3193,8 +3193,9 @@ function syncToggles() {
 }
 function updateMeta() {
   const t = tk(S.current), L = !t && !restoredLast && S.last && S.last.title ? S.last : null;   // L: the saved song, drawn before the library arrives
-  $('#p-title').textContent = t ? t.title : L ? L.title : 'Nothing Playing';
-  $('#p-artist').textContent = t ? t.artist : L ? L.artist : 'Pick a song to start';
+  // #p-title and #p-artist are in NO_TR so song names stay as they are, which means the empty-state text has to be translated here.
+  $('#p-title').textContent = t ? t.title : L ? L.title : tr('Nothing Playing');
+  $('#p-artist').textContent = t ? t.artist : L ? L.artist : tr('Pick a song to start');
   const img = $('#p-cover-img');
   if (t) { img.src = t.cover; img.hidden = false; } else if (L && L.cover) { img.src = L.cover; img.hidden = false; } else img.hidden = true;
   $$('.t-dur').forEach(e => { e.textContent = t ? fmt(t.duration) : L ? fmt(L.dur) : '0:00'; });

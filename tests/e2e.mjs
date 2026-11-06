@@ -862,8 +862,9 @@ try {
   const darkKept = await A.evaluate(() => document.documentElement.dataset.theme);
   check(darkNow[0] === 'dark' && darkNow[1] === 'rgb(11, 11, 12)' && darkKept === 'dark', 'dark mode turns on from Settings and stays after reloading', JSON.stringify([...darkNow, darkKept]));
   await A.click('[data-lang-opt="zh-Hans"]'); await A.waitForTimeout(2500);
-  const zh = await A.evaluate(() => [document.querySelector('.nav-btn[data-nav="home"] span').textContent, document.querySelector('#view h1').textContent, document.documentElement.lang, document.querySelector('#search-input').placeholder, document.querySelector('#side-list .li-create .li-name').textContent, document.querySelector('#side-list [data-open="liked"] .li-name').textContent]);
+  const zh = await A.evaluate(() => [document.querySelector('.nav-btn[data-nav="home"] span').textContent, document.querySelector('#view h1').textContent, document.documentElement.lang, document.querySelector('#search-input').placeholder, document.querySelector('#side-list .li-create .li-name').textContent, document.querySelector('#side-list [data-open="liked"] .li-name').textContent, document.getElementById('p-title').textContent, document.getElementById('p-artist').textContent]);
   await shot(A, 'settings-zh');
+  check(zh[6] !== 'Nothing Playing' && zh[7] !== 'Pick a song to start', 'the empty player bar is translated in 简体中文', JSON.stringify(zh.slice(6)));
   await A.click('.nav-btn[data-nav="library"]'); await A.waitForTimeout(400); await A.click('[data-chip="songs"]'); await A.waitForTimeout(400);
   const zhLib = await A.evaluate(() => [document.querySelector('[data-chip="songs"]').textContent, [...document.querySelectorAll('#view .t-name')].map(e => e.textContent)]);
   check(zh[0] === '首页' && zh[1] === '设置' && zh[2] === 'zh-Hans' && zh[3] === '搜索' && zh[4] === '新建' && zh[5] === '喜欢的歌曲' && zhLib[0] === '歌曲' && zhLib[1].includes('Rain on Glass'), 'switching to 简体中文 translates Allegro but not your song names', JSON.stringify({ zh, chip: zhLib[0] }));
