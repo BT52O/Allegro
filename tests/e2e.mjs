@@ -731,6 +731,35 @@ try {
   await A.click('#menu .mi:has-text("Remove Artist Photo")'); await settle(A, 250); await A.click('#cf-yes'); await settle(A, 800);
   data = await lib(A);
   check(!(data.state.artistPics || []).some(x => x.name === 'Mock Artist') && !!(await A.$('.vhead .art .artist-ph')), 'an artist photo can be removed');
+  // a song by two artists links to each artist's own page, and Go to Artist asks which one
+  const editArtist = async name => {
+    await A.click('.nav-btn[data-nav="uploads"]'); await settle(A, 400);
+    await A.click(`#view [data-edit-song="${sw.id}"]`); await settle(A, 400);
+    await A.fill('#se-artist', name); await A.click('#se-save');
+    await A.waitForFunction(() => document.getElementById('song-edit').hidden, null, { timeout: 10000 }).catch(() => {});
+    await settle(A, 400);
+  };
+  await editArtist('Mock Band & Guest Singer');
+  const duoRow = `#view .tr[data-id="${sw.id}"]`;
+  const duoLinks = await A.$$eval(`${duoRow} .t-artist [data-go-artist]`, x => x.map(e => e.dataset.goArtist));
+  const duoText = (await A.textContent(`${duoRow} .t-artist`)).trim();
+  await A.hover(`${duoRow} [data-go-artist="Guest Singer"]`); await shot(A, 'two-artists');
+  await A.click(`${duoRow} .more`, { force: true }); await settle(A, 250);
+  await A.click('#menu .mi:has-text("Go to Artist")'); await settle(A, 250);
+  const duoSub = await A.$$eval('#menu .mi span[data-nt]', x => x.map(e => e.textContent));
+  await A.keyboard.press('Escape'); await settle(A, 200);
+  await A.click(`${duoRow} [data-go-artist="Guest Singer"]`); await settle(A, 500);
+  const guestPage = [await A.textContent('.vhead h1'), await A.$$eval('#view .tr .t-name', x => x.map(e => e.textContent))];
+  await A.click('.nav-btn[data-nav="library"]'); await settle(A, 400);
+  await A.click('[data-chip="artists"]'); await settle(A, 300);
+  const duoCards = await A.$$eval('#view .card[data-open^="artist:"]', x => x.map(c => c.dataset.open));
+  await A.click('#view .card[data-open="artist:Mock Band"]'); await settle(A, 500);
+  const bandSongs = await A.$$eval('#view .tr .t-name', x => x.map(e => e.textContent));
+  check(JSON.stringify(duoLinks) === '["Mock Band","Guest Singer"]' && duoText === 'Mock Band & Guest Singer' && JSON.stringify(duoSub) === '["Mock Band","Guest Singer"]'
+    && guestPage[0] === 'Guest Singer' && guestPage[1].includes('Swapped Song') && bandSongs.includes('Swapped Song')
+    && duoCards.includes('artist:Guest Singer') && !duoCards.includes('artist:Mock Band & Guest Singer'),
+    'a song by two artists links to two artist pages', JSON.stringify({ duoLinks, duoText, duoSub, guestPage, bandSongs, duoCards }));
+  await editArtist('Mock Band');
 
   // the menu offers Edit Song in Uploads but not elsewhere
   await A.click('.nav-btn[data-nav="uploads"]'); await settle(A, 400);

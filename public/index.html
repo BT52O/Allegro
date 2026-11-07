@@ -494,6 +494,7 @@ body.touch-input .p-exp { display: none; }
 .p-meta { min-width: 0; display: flex; flex-direction: column; }
 .p-title { font-weight: 600; font-size: .92rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: left; }
 .p-artist { font-size: .8rem; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: left; }
+.p-artist .link, .s-artist .link, .t-artist .link { display: inline; }
 .p-center { display: flex; flex-direction: column; align-items: center; gap: 2px; max-width: 680px; width: 100%; justify-self: center; }
 .p-btns { display: flex; align-items: center; gap: 14px; }
 .cbtn { width: 36px; height: 36px; display: grid; place-items: center; color: var(--muted); border-radius: 50%; position: relative; }
@@ -787,7 +788,7 @@ html.breathe .s-art img { animation: s-breathe 17s ease-in-out infinite; }
   body.sheet-open .player { z-index: 35; background: rgb(0 0 0 / .22); -webkit-backdrop-filter: blur(20px); backdrop-filter: blur(20px);
     --ink: #fff; --muted: rgba(255, 255, 255, .66); --accent: #fff; --accent-ink: #111; --chip: rgba(255, 255, 255, .14); --hover: rgba(255, 255, 255, .1); --line: rgba(255, 255, 255, .14); color: #fff; }
   body.sheet-open .player .pbtn { background: #fff; color: rgb(var(--deep2, 36 36 40)); }
-  .sheet .s-info h2 { color: #fff; } .sheet .s-info .link { color: rgba(255, 255, 255, .78); } .sheet .s-info .like { color: rgba(255, 255, 255, .8); } .sheet .s-info .like.on { color: #fff; }
+  .sheet .s-info h2 { color: #fff; } .sheet .s-info .link, .sheet .s-artist { color: rgba(255, 255, 255, .78); } .sheet .s-info .like { color: rgba(255, 255, 255, .8); } .sheet .s-info .like.on { color: #fff; }
   .sheet .s-times { color: rgba(255, 255, 255, .7); }
   .sheet input[type="range"]::-webkit-slider-runnable-track { background: linear-gradient(to right, #fff var(--pct), rgba(255, 255, 255, .25) var(--pct)); }
   .sheet input[type="range"]::-webkit-slider-thumb { background: #fff; }
@@ -798,7 +799,7 @@ html.breathe .s-art img { animation: s-breathe 17s ease-in-out infinite; }
 .s-info { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .s-info > div { min-width: 0; }
 .s-info h2 { margin: 0; font: 800 clamp(1.4rem, 3vw, 1.9rem)/1.1 var(--f-display); letter-spacing: -.02em; overflow-wrap: anywhere; }
-.s-info .link { color: var(--muted); font-size: 1rem; }
+.s-info .link, .s-artist { color: var(--muted); font-size: 1rem; }
 .s-info .like { width: 44px; height: 44px; flex: none; }
 .s-info .like .ic { width: 26px; height: 26px; }
 .s-prog { display: flex; flex-direction: column; gap: 2px; }
@@ -916,11 +917,11 @@ img { -webkit-user-drag: none; user-select: none; }
   .s-art { position: relative; width: 100%; max-width: none; height: min(max(100vw, 55vh), 62vh); aspect-ratio: auto; border-radius: 0; box-shadow: none; flex: none; }
   .s-art img { -webkit-mask-image: linear-gradient(to bottom, #000 42%, rgb(0 0 0 / .65) 66%, rgb(0 0 0 / .2) 86%, transparent 100%); mask-image: linear-gradient(to bottom, #000 42%, rgb(0 0 0 / .65) 66%, rgb(0 0 0 / .2) 86%, transparent 100%); }
   .s-art::after { content: ""; position: absolute; inset: 0; pointer-events: none; background: linear-gradient(to bottom, rgba(0, 0, 0, .3), rgba(0, 0, 0, 0) 20%); }
-  .s-info h2, .s-info .link, .s-times { text-shadow: 0 1px 8px rgb(0 0 0 / .18); }
+  .s-info h2, .s-info .link, .s-artist, .s-times { text-shadow: 0 1px 8px rgb(0 0 0 / .18); }
   .s-info, .s-prog, .s-ctrls { padding: 0 24px; }
   .s-info { margin-top: auto; }
   .s-info h2 { color: #fff; font-size: clamp(1.6rem, 7.5vw, 2.1rem); }
-  .s-info .link { color: rgba(255, 255, 255, .82); font-size: 1.05rem; }
+  .s-info .link, .s-artist { color: rgba(255, 255, 255, .82); font-size: 1.05rem; }
   .s-info .like { color: rgba(255, 255, 255, .85); }
   .s-info .like.on { color: #fff; }
   .s-times { color: rgba(255, 255, 255, .72); }
@@ -1391,7 +1392,7 @@ body.touch-input .has-pen::after { display: none; }
       <button class="p-cover" id="p-cover" aria-label="Open now playing"><img id="p-cover-img" alt=""><span class="p-exp" aria-hidden="true"><i data-ic="expand"></i><i data-ic="collapse"></i></span></button>
       <div class="p-meta">
         <button class="p-title link" id="p-title">Nothing Playing</button>
-        <button class="p-artist link" id="p-artist"></button>
+        <div class="p-artist" id="p-artist"></div>
       </div>
       <button class="like" id="p-like" aria-label="Save to Liked Songs"><i data-ic="heart"></i></button>
     </div>
@@ -1447,7 +1448,7 @@ body.touch-input .has-pen::after { display: none; }
   <div class="sheet-body">
     <div class="s-main">
       <div class="s-art" id="s-art"><img id="s-cover" alt=""><span class="s-shine" aria-hidden="true"></span></div>
-      <div class="s-info"><div><h2 id="s-title"></h2><button class="link" id="s-artist"></button></div><button class="like" id="s-like" aria-label="Save to Liked Songs"><i data-ic="heart"></i></button></div>
+      <div class="s-info"><div><h2 id="s-title"></h2><div class="s-artist" id="s-artist"></div></div><button class="like" id="s-like" aria-label="Save to Liked Songs"><i data-ic="heart"></i></button></div>
       <div class="s-prog"><input type="range" class="seek" id="s-seek" min="0" max="1000" value="0" aria-label="Song position"><div class="s-times"><span class="t-cur">0:00</span><span class="t-dur">0:00</span></div></div>
       <div class="s-ctrls">
         <button class="cbtn" data-act="restart" aria-label="Play from the start"><i data-ic="restart"></i></button>
@@ -1738,7 +1739,7 @@ function tr(s) {
   return s;
 }
 // Names you chose (songs, artists, albums, playlists, folders) are left alone.
-const NO_TR = '[data-nt], .w-title, .w-row .link, .cm-text, .ly, .t-name, .t-artist .link, [data-go-artist], [data-go-album], .card-t, .li-name, .vhead h1, .qt-name, #p-title, #p-artist, #s-title, #s-artist, #s-ctx, [data-qctx], .q-from span, .qrow .t-artist, .fp-t b, .fp-head b, .sp-t b, .fd-path .link, .folder-head h1, .pl-break h3, .vh-head h2, .vh-break, .vh-t b, .se-hit b, .tr-card h3, .genre span, .q-name, .q-artist, .greet, input, textarea, select, script, style';
+const NO_TR = '[data-nt], .ar-sep, .w-title, .w-row .link, .cm-text, .ly, .t-name, .t-artist .link, [data-go-artist], [data-go-album], .card-t, .li-name, .vhead h1, .qt-name, #p-title, #p-artist, #s-title, #s-artist, #s-ctx, [data-qctx], .q-from span, .qrow .t-artist, .fp-t b, .fp-head b, .sp-t b, .fd-path .link, .folder-head h1, .pl-break h3, .vh-head h2, .vh-break, .vh-t b, .se-hit b, .tr-card h3, .genre span, .q-name, .q-artist, .greet, input, textarea, select, script, style';
 /* Each spot Allegro translates remembers the English it started with (and what it showed instead), so the language can
    change on the spot without reloading the page. A reload would stop the song that's playing. */
 const I18N_WAS = new WeakMap();
@@ -2397,8 +2398,10 @@ function rebuild() {
     if (!al.year && t.year) al.year = t.year;
     if (!al.released && t.released && t.released.slice(0, 4) === al.year) al.released = t.released;
     al.added = Math.max(al.added, t.added);
-    if (!artists.has(t.artist)) artists.set(t.artist, { name: t.artist, ids: [], albums: [] });
-    const ar = artists.get(t.artist); ar.ids.push(t.id); if (!ar.albums.includes(key)) ar.albums.push(key);
+    for (const n of artistsOf(t.artist)) {
+      if (!artists.has(n)) artists.set(n, { name: n, ids: [], albums: [] });
+      const ar = artists.get(n); ar.ids.push(t.id); if (!ar.albums.includes(key)) ar.albums.push(key);
+    }
     if (t.genre) { if (!genres.has(t.genre)) genres.set(t.genre, []); genres.get(t.genre).push(t.id); }
   }
   for (const al of albums.values()) {
@@ -2419,6 +2422,23 @@ const artistPic = name => S.artistPics.find(x => x.name === name);
 const artistPhoto = name => { const e = artistPic(name); return e ? `/api/artist-photo/${encodeURIComponent(e.id)}?v=${e.v}` : null; };
 const artistArt = a => a.cover ? `<img src="${esc(a.cover)}" alt="" loading="lazy">` : `<div class="artist-ph" aria-hidden="true">${ic('user')}</div>`;
 const artistsSorted = () => [...IDX.artists.values()].sort((a, b) => a.name.localeCompare(b.name));
+// A song by several artists ("GIRLSET & Kylie Cantrall", "A, B", "A feat. B", "A x B") links to each artist's own page.
+// "and" and "with" don't split, since they're often part of one name ("Florence and the Machine").
+const ARTIST_SEP = /(\s*(?:,|，|&|＆|、|;|；|\s\/\s|\s(?:feat|Feat|FEAT|ft|Ft|FT)\.?\s|\s(?:featuring|Featuring)\s|\sx\s|\s×\s)\s*)/;
+// The names and the separators between them, so links keep the separators as they were written.
+function artistBits(s) {
+  const raw = String(s || '').split(ARTIST_SEP), out = [];
+  for (let i = 0; i < raw.length; i += 2) { const n = raw[i].trim(); if (n) out.push({ n, sep: out.length ? raw[i - 1] : '' }); }
+  return out.length ? out : [{ n: String(s || '').trim() || 'Unknown artist', sep: '' }];
+}
+const artistsOf = s => [...new Set(artistBits(s).map(b => b.n))];
+const artistLinks = (s, bold) => artistBits(s).map(b => `${b.sep ? `<span class="ar-sep">${esc(b.sep)}</span>` : ''}<button class="link" data-go-artist="${esc(b.n)}">${bold ? `<b>${esc(b.n)}</b>` : esc(b.n)}</button>`).join('');
+// "Go to Artist" in menus: straight there for one artist, a list to pick from for several.
+function goArtistItem(s) {
+  const names = artistsOf(s);
+  if (names.length < 2) return { label: 'Go to Artist', icon: 'user', fn: () => go({ name: 'artist', key: names[0] }) };
+  return { label: 'Go to Artist', icon: 'user', sub: () => names.map(n => ({ label: n, nt: true, icon: 'user', fn: () => go({ name: 'artist', key: n }) })) };
+}
 function librarySorted() {
   const ids = [...S.tracks.keys()];
   const by = S.sort, T = tk;
@@ -2694,7 +2714,7 @@ async function selAct(act, btn) {
 }
 function trackRow(t, i, opt) {
   const liked = isLiked(t.id), n = opt.nums ? opt.nums[i] : opt.trackNo ? (t.trackNo || i + 1) : i + 1, c = opt.cols;
-  const artistLink = `<span class="t-artist">${t.kind === 'demo' ? '<b class="demo-tag">Demo</b>' : ''}<button class="link" data-go-artist="${esc(t.artist)}">${esc(t.artist)}</button></span>`;
+  const artistLink = `<span class="t-artist">${t.kind === 'demo' ? '<b class="demo-tag">Demo</b>' : ''}${artistLinks(t.artist)}</span>`;
   const cover = !c.has('cover') ? '' : opt.edit && t.kind === 'cloud' ? `<button class="tr-art-edit" data-edit-song="${esc(t.id)}" aria-label="Edit ${esc(t.title)}" title="Edit Song"><img src="${esc(t.cover)}" alt="" loading="lazy"><span class="pen">${ic('edit')}</span></button>` : `<img src="${esc(t.cover)}" alt="" loading="lazy">`;
   let cells = `<span class="c-n"><span class="num">${n}</span><span class="eq" aria-hidden="true"><i></i><i></i><i></i></span><span class="hov">${ic('play')}</span></span>`;
   if (c.has('cover') || c.has('title') || c.has('artist')) cells += `<span class="c-title">${cover}<span class="tt${c.has('title') ? '' : ' tt-artist-only'}">${c.has('title') ? `<span class="t-name">${esc(t.title)}</span>` : ''}${c.has('artist') ? artistLink : ''}</span></span>`;
@@ -2860,7 +2880,7 @@ function homeCharts() {
   const month = count(since), ever = count(0);
   const top = m => [...m.entries()].sort((a, b) => b[1] - a[1]).slice(0, 50).map(x => x[0]);
   const ranks = ids => ({ nums: ids.map((_, i) => i + 1) });
-  const artists = new Map(); for (const [id, n] of ever) { const a = tk(id).artist; artists.set(a, (artists.get(a) || 0) + n); }
+  const artists = new Map(); for (const [id, n] of ever) for (const a of artistsOf(tk(id).artist)) artists.set(a, (artists.get(a) || 0) + n);
   const topArtists = [...artists.entries()].sort((a, b) => b[1] - a[1]).map(x => IDX.artists.get(x[0])).filter(Boolean).slice(0, 10);
   if (!ever.size) return '<div class="empty"><h3>No charts yet</h3><p>Play some music and your most-played songs and artists will show up here.</p></div>';
   const m = top(month), e = top(ever);
@@ -3087,9 +3107,9 @@ const VIEWS = {
   album(v) {
     const a = IDX.albums.get(v.key);
     if (!a) return notFound('That album is no longer in your library.');
-    const key = 'album:' + a.key, ar = IDX.artists.get(a.artist);
+    const key = 'album:' + a.key, ar = artistsOf(a.artist).every(n => IDX.artists.has(n));
     return head({ art: `<img src="${esc(a.cover)}" alt="">`, type: 'Album', title: `<h1>${esc(a.name)}</h1>`, tintSrc: a.cover,
-      meta: `<button class="link" data-go-artist="${esc(ar ? a.artist : tk(a.ids[0]).artist)}"><b>${esc(a.artist)}</b></button>${a.year ? ` · <span class="released">${esc(a.released ? longDate(a.released) : a.year)}</span>` : ''} · <span>${plural(a.ids.length, 'song')}, ${fmtLong(totalDur(a.ids))}</span>` })
+      meta: `${ar ? artistLinks(a.artist, true) : `<button class="link" data-go-artist="${esc(artistsOf(tk(a.ids[0]).artist)[0])}"><b>${esc(a.artist)}</b></button>`}${a.year ? ` · <span class="released">${esc(a.released ? longDate(a.released) : a.year)}</span>` : ''} · <span>${plural(a.ids.length, 'song')}, ${fmtLong(totalDur(a.ids))}</span>` })
       + actions(key, `<button class="act-btn" data-ctx-more="${esc(key)}" aria-label="More options">${ic('more')}</button>`)
       + trackList(a.ids, { key, name: a.name }, { cover: false, trackNo: true });
   },
@@ -3278,14 +3298,15 @@ function updateMeta() {
   const t = tk(S.current), L = !t && !restoredLast && S.last && S.last.title ? S.last : null;   // L: the saved song, drawn before the library arrives
   // #p-title and #p-artist are in NO_TR so song names stay as they are, which means the empty-state text has to be translated here.
   $('#p-title').textContent = t ? t.title : L ? L.title : tr('Nothing Playing');
-  $('#p-artist').textContent = t ? t.artist : L ? L.artist : tr('Pick a song to start');
+  if (t) $('#p-artist').innerHTML = artistLinks(t.artist); else $('#p-artist').textContent = L ? L.artist : tr('Pick a song to start');
   const img = $('#p-cover-img');
   if (t) { img.src = t.cover; img.hidden = false; } else if (L && L.cover) { img.src = L.cover; img.hidden = false; } else img.hidden = true;
   $$('.t-dur').forEach(e => { e.textContent = t ? fmt(t.duration) : L ? fmt(L.dur) : '0:00'; });
   if (L && resumeAt && resumeAt.id === L.id && L.dur) { $$('.t-cur').forEach(c => { c.textContent = fmt(resumeAt.t); }); $$('.seek').forEach(s => { s.value = Math.round(Math.min(1, resumeAt.t / L.dur) * 1000); setPct(s); }); }
   $$('.seek').forEach(s => { s.disabled = !t; });
   if (t) {
-    $('#s-cover').src = bigCover(t);   // the full-size file, not the small copy lists use $('#s-title').textContent = t.title; $('#s-artist').textContent = t.artist;
+    $('#s-cover').src = bigCover(t);   // the full-size file, not the small copy lists use
+    $('#s-title').textContent = t.title; $('#s-artist').innerHTML = artistLinks(t.artist);
     $('#s-ctx').textContent = S.context ? S.context.name : t.album;
     Promise.resolve().then(drawQuality);
     if (!$('#sheet').hidden && SP.shownId !== t.id) { SP.shownId = t.id; SP.editWiki = SP.editLyr = false; SP.userScroll = 0; renderPanel(); }
@@ -3388,7 +3409,7 @@ function placeMenu(keep = false) {
 function drawMenu(items, title) {
   menuItems = items;
   $('#menu').innerHTML = (title ? `<div class="m-title">${esc(title)}</div>` : '') + items.map((it, i) => it.sep ? '<div class="m-sep"></div>' : it.head ? `<div class="m-title">${esc(it.head)}</div>`
-    : `<button class="mi${it.danger ? ' danger' : ''}" data-mi="${i}" role="menuitem">${ic(it.icon || 'music')}<span>${esc(it.label)}</span>${it.sub ? ic('fwd') : ''}</button>`).join('');
+    : `<button class="mi${it.danger ? ' danger' : ''}" data-mi="${i}" role="menuitem">${ic(it.icon || 'music')}<span${it.nt ? ' data-nt' : ''}>${esc(it.label)}</span>${it.sub ? ic('fwd') : ''}</button>`).join('');
 }
 function closeMenu() {
   closeFly();
@@ -3450,7 +3471,7 @@ function trackMenu(anchor, id, listInfo) {
     { label: 'Add to Playlist', icon: 'plus', sub: playlistSub([id]) },
     { label: liked ? 'Remove from Liked Songs' : 'Save to Liked Songs', icon: 'heart', fn: () => toggleLike(id) },
     { sep: true },
-    { label: 'Go to Artist', icon: 'user', fn: () => go({ name: 'artist', key: t.artist }) },
+    goArtistItem(t.artist),
     { label: 'Go to Album', icon: 'album', fn: () => go({ name: 'album', key: t.albumKey }) }
   ];
   if (listInfo && listInfo.ctx && listInfo.ctx.key === 'uploads' && t.kind === 'cloud' && cloud.canWrite) items.unshift({ label: 'Edit Song', icon: 'edit', fn: () => editSong(id) }, { sep: true });
@@ -3471,7 +3492,7 @@ function ctxMenu(anchor, key) {
     { label: 'Play Next', icon: 'playnext', fn: () => playNext(c.ids) }
   ];
   if (c.type !== 'playlist') items.push({ label: 'Add to Playlist', icon: 'plus', sub: playlistSub(c.ids) });
-  if (c.type === 'album') { const a = IDX.albums.get(key.slice(6)); items.push({ sep: true }, { label: 'Go to Artist', icon: 'user', fn: () => go({ name: 'artist', key: IDX.artists.has(a.artist) ? a.artist : tk(a.ids[0]).artist }) }); }
+  if (c.type === 'album') { const a = IDX.albums.get(key.slice(6)); items.push({ sep: true }, goArtistItem(artistsOf(a.artist).every(n => IDX.artists.has(n)) ? a.artist : tk(a.ids[0]).artist)); }
   if (c.type === 'artist' && cloud.canWrite) {
     const name = key.slice(7);
     items.push({ sep: true }, { label: artistPic(name) ? 'Change Artist Photo' : 'Choose Artist Photo', icon: 'edit', fn: () => pickArtistPhoto(name) });
@@ -3962,7 +3983,7 @@ function renderPanel() {
 
 /* --- Wiki: the song's details, like a little encyclopedia entry --- */
 function wikiHTML(t) {
-  const m = songMeta(t), ar = IDX.artists.get(t.artist), al = IDX.albums.get(t.albumKey);
+  const m = songMeta(t), al = IDX.albums.get(t.albumKey);
   if (SP.editWiki) return `<h2 class="w-title" data-nt>${esc(t.title)}</h2>
     <label class="sp-field">Lyricist<input id="w-lyricist" maxlength="200" value="${esc(m.lyricist || '')}"></label>
     <label class="sp-field">Composer<input id="w-composer" maxlength="200" value="${esc(m.composer || '')}"></label>
@@ -3979,7 +4000,7 @@ function wikiHTML(t) {
   ].join('');
   const canEdit = t.kind === 'cloud' && cloud.canWrite;
   return `<h2 class="w-title" data-nt>${esc(t.title)}</h2>${released ? `<p class="w-sub">Released ${esc(released)}</p>` : '<div style="height:14px"></div>'}
-    <div class="w-row"><span class="w-av">${ar && ar.cover ? `<img src="${esc(ar.cover)}" alt="">` : ic('user')}</span><span class="w-k">Artist</span><button class="link" data-go-artist="${esc(t.artist)}">${esc(t.artist)}</button></div>
+    ${artistsOf(t.artist).map(n => { const ar = IDX.artists.get(n); return `<div class="w-row"><span class="w-av">${ar && ar.cover ? `<img src="${esc(ar.cover)}" alt="">` : ic('user')}</span><span class="w-k">Artist</span><button class="link" data-go-artist="${esc(n)}">${esc(n)}</button></div>`; }).join('')}
     <div class="w-row"><span class="w-av sq">${al ? `<img src="${esc(al.cover)}" alt="">` : ic('album')}</span><span class="w-k">Album</span><button class="link" data-go-album="${esc(t.albumKey)}">${esc(t.album)}</button></div>
     ${credits ? `<div class="w-row"><span class="w-av">${ic('edit')}</span><span class="w-k">Credits</span><span class="w-credits">${credits}</span></div>` : ''}
     ${chips ? `<div class="w-chips">${chips}</div>` : ''}
@@ -6063,10 +6084,10 @@ $('#search-input').addEventListener('input', e => {
 $('#search-input').addEventListener('keydown', e => { if (e.key === 'Enter' && S.view.name !== 'search') go({ name: 'search' }); if (e.key === 'Escape') { e.target.value = ''; S.q = ''; if (S.view.name === 'search') render(); e.target.blur(); } });
 $('#p-cover').addEventListener('click', () => { if (sheetOpen()) closeSheet(); else if (innerWidth < 760 || S.current) openSheet(); });
 $('#p-title').addEventListener('click', () => { if (innerWidth < 760) { openSheet(); return; } const t = tk(S.current); if (t) go({ name: 'album', key: t.albumKey }); });
-$('#p-artist').addEventListener('click', () => { if (innerWidth < 760) { openSheet(); return; } const t = tk(S.current); if (t) go({ name: 'artist', key: t.artist }); });
+// On phones the whole line opens Now Playing; elsewhere each name is its own link (handled with the other artist links).
+$('#p-artist').addEventListener('click', e => { if (innerWidth < 760) { e.stopPropagation(); openSheet(); } });
 $('#p-like').addEventListener('click', () => { if (S.current) toggleLike(S.current); });
 $('#s-like').addEventListener('click', () => { if (S.current) toggleLike(S.current); });
-$('#s-artist').addEventListener('click', () => { const t = tk(S.current); if (t) go({ name: 'artist', key: t.artist }); });
 $('#s-ctx').addEventListener('click', () => { if (S.context && ctxInfo(S.context.key)) openKey(S.context.key); });
 $('#main').addEventListener('scroll', e => {
   const m = e.currentTarget; m.classList.toggle('scrolled', m.scrollTop > 10);
