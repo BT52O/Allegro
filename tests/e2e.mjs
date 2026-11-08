@@ -1219,14 +1219,14 @@ try {
       const row = document.querySelector('#view .pick-row'); if (!row) return null;
       const ps = [...row.querySelectorAll('.pick')], r = row.getBoundingClientRect(), L = ps.map(p => p.getBoundingClientRect());
       return { n: ps.length, col1: L.length >= 3 && Math.round(L[0].left) === Math.round(L[2].left) && L[1].top > L[0].top, col2: L.length >= 4 && L[3].left > L[0].right,
-        peek: L.some(b => b.left < r.right - 10 && b.right > r.right + 10) && ps.every(p => { const x = p.querySelector('.pick-tx').getBoundingClientRect(); return x.right <= r.right + 1 || x.left >= r.right - 1; }), labels: ps.map(p => p.querySelector('.pick-lb').textContent).filter(Boolean).length === ps.length,
+        peek: L.every(b => b.right <= r.right + 1 || b.left >= r.right - 1) && (() => { const a = document.querySelector('.pick-nav[data-dir="1"]'), ab = a.getBoundingClientRect(); return !a.disabled && getComputedStyle(a).opacity === '1' && ab.left >= r.right - 1; })(), labels: ps.map(p => p.querySelector('.pick-lb').textContent).filter(Boolean).length === ps.length,
         title: ps[1] && ps[1].querySelector('.pick-t').textContent };
     });
     await shot(A, 'home-picks');
     await A.click('#view .pick[data-pick="1"] .pick-t');
     await A.waitForFunction(t => document.getElementById('p-title').textContent === t && document.querySelector('#view .pick[data-pick="1"]').classList.contains('playing'), pk && pk.title, { timeout: 8000 }).catch(() => {});
     const played = await A.evaluate(() => [document.getElementById('p-title').textContent, document.querySelector('#view .pick[data-pick="1"]').classList.contains('playing')]);
-    check(pk && pk.n >= 4 && pk.col1 && pk.col2 && pk.peek && pk.labels && played[0] === pk.title && played[1], 'Home starts with songs in columns of three, the next column peeking in on the right; clicking one plays it', JSON.stringify({ pk, played }));
+    check(pk && pk.n >= 4 && pk.col1 && pk.col2 && pk.peek && pk.labels && played[0] === pk.title && played[1], 'Home starts with songs in columns of three, whole columns only, with an arrow on the right for more; clicking one plays it', JSON.stringify({ pk, played }));
   }
 
   // --- a playlist's own page shows its songs' full-size covers (as Now Playing does); lists keep the small copies
