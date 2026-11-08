@@ -1219,7 +1219,7 @@ try {
       const row = document.querySelector('#view .pick-row'); if (!row) return null;
       const ps = [...row.querySelectorAll('.pick')], r = row.getBoundingClientRect(), L = ps.map(p => p.getBoundingClientRect());
       return { n: ps.length, col1: L.length >= 3 && Math.round(L[0].left) === Math.round(L[2].left) && L[1].top > L[0].top, col2: L.length >= 4 && L[3].left > L[0].right,
-        peek: L.some(b => b.left < r.right - 10 && b.right > r.right + 10), labels: ps.map(p => p.querySelector('.pick-lb').textContent).filter(Boolean).length === ps.length,
+        peek: L.some(b => b.left < r.right - 10 && b.right > r.right + 10) && ps.every(p => { const x = p.querySelector('.pick-tx').getBoundingClientRect(); return x.right <= r.right + 1 || x.left >= r.right - 1; }), labels: ps.map(p => p.querySelector('.pick-lb').textContent).filter(Boolean).length === ps.length,
         title: ps[1] && ps[1].querySelector('.pick-t').textContent };
     });
     await shot(A, 'home-picks');

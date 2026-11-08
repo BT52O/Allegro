@@ -1303,31 +1303,34 @@ body.touch-input .has-pen::after { display: none; }
 @media (max-width: 759px) { .shelf-row { grid-auto-columns: 42vw; } .shelf-btn { display: none; } }
 
 /* Home's song picks: columns of three songs that scroll sideways, the next column peeking in on the right */
-.picks { position: relative; container-type: inline-size; margin: 4px 0 30px; }
-.pick-row { display: grid; grid-template-rows: repeat(3, auto); grid-auto-flow: column; grid-auto-columns: calc(100% - 56px); gap: 6px 16px;
+.picks { position: relative; container-type: inline-size; margin: 4px 0 18px; }
+/* The columns are sized so that exactly --peek of the next one shows: the edge of its covers, never cut-off words */
+.pick-row { --n: 1; --gap: 16px; --peek: 40px; display: grid; grid-template-rows: repeat(3, auto); grid-auto-flow: column; gap: 4px var(--gap);
+  grid-auto-columns: calc((100% - var(--peek) - var(--n) * var(--gap)) / var(--n));
   overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; overscroll-behavior-x: contain; }
 .pick-row::-webkit-scrollbar { display: none; }
-@container (min-width: 640px) { .pick-row { grid-auto-columns: calc((100% - 2 * 24px) / 2.3); gap: 6px 24px; } }
-@container (min-width: 1040px) { .pick-row { grid-auto-columns: calc((100% - 3 * 24px) / 3.3); } }
+@container (min-width: 640px) { .pick-row { --n: 2; --gap: 24px; } }
+@container (min-width: 1040px) { .pick-row { --n: 3; } }
 .pick { display: flex; align-items: center; gap: 14px; min-width: 0; padding: 6px; border-radius: 8px; cursor: pointer; scroll-snap-align: start; }
 .pick:hover { background: var(--hover); }
-.pick-art { flex: none; width: 64px; height: 64px; border-radius: 6px; object-fit: cover; box-shadow: 0 6px 16px -10px rgba(0, 0, 0, .55); }
-.pick-tx { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
-.pick-lb, .pick-a { font-size: .87rem; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.pick-t { font-size: 1.07rem; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pick-art { flex: none; width: 60px; height: 60px; border-radius: 6px; object-fit: cover; outline: 1px solid color-mix(in srgb, var(--ink) 7%, transparent); outline-offset: -1px; }
+.pick-tx { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.pick-lb, .pick-a { font-size: .85rem; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pick-t { font-size: 1.05rem; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .pick.playing .pick-t { font-weight: 700; }
 .pick-a .link { color: inherit; }
-.pick-play { flex: none; width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; color: #fff; background: var(--brand-gradient); box-shadow: 0 4px 12px -6px var(--brand-red); }
-.pick-play .ic { width: 18px; height: 18px; }
+.pick-play { flex: none; width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; color: #fff; background: var(--brand-gradient); }
+.pick-play .ic { width: 12px; height: 12px; }
 .pick-play:hover { transform: scale(1.08); }
-/* arrows for a mouse: they appear over the edges while you point at the picks */
-.pick-nav { position: absolute; top: calc(50% - 18px); width: 36px; height: 36px; background: var(--raise); color: var(--ink); box-shadow: var(--shadow); opacity: 0; pointer-events: none; transition: opacity .2s ease-out; }
+/* arrows for a mouse: they fade in over the edges while you point at the picks */
+.pick-nav { position: absolute; top: calc(50% - 16px); width: 32px; height: 32px; background: var(--raise); color: var(--ink); box-shadow: 0 2px 10px rgba(0, 0, 0, .18); opacity: 0; pointer-events: none; transition: opacity .2s ease-out; }
 .pick-nav:hover { background: var(--raise); }
-.pick-nav[data-dir="-1"] { left: -6px; } .pick-nav[data-dir="1"] { right: -6px; }
+.pick-nav .ic { width: 18px; height: 18px; }
+.pick-nav[data-dir="-1"] { left: 4px; } .pick-nav[data-dir="1"] { right: 4px; }
 .picks:hover .pick-nav:not(:disabled) { opacity: 1; pointer-events: auto; }
 .pick-nav:disabled { opacity: 0 !important; pointer-events: none; }
 body.touch-input .pick-nav { display: none; }
-@media (max-width: 759px) { .pick-nav { display: none; } .pick-art { width: 56px; height: 56px; } }
+@media (max-width: 759px) { .pick-nav { display: none; } .pick-art { width: 54px; height: 54px; } }
 
 /* ---------- page transitions ---------- */
 #view.enter-fwd > :not(.view-bg) { animation: page-in-fwd .38s cubic-bezier(.2, .8, .2, 1) both; }
