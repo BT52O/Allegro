@@ -202,6 +202,7 @@ try {
   await B.click('.sheet-top [data-act="sheet"]'); await settle(B, 400);
   check(npv[1] === 'rgb(255, 255, 255)' && npv[2] === npv[3] && npv[4] === 0 && !!npv[5] && npv[0].includes(`rgb(${npv[5].trim().split(' ').join(', ')})`), 'phone Now Playing: cover edge to edge on top, deep color from the art, white text', JSON.stringify(npv));
   await B.click('.tab[data-nav=home]'); await settle(B, 600);
+  await shot(B, 'phone-home-picks');
   check((await B.$$eval('#shelf-history .card-t', x => x.map(e => e.textContent))).includes('Test Album'), 'Track History shows the album you just played');
   await B.click('#shelf-history [data-open="history"]'); await settle(B, 600);
   check((await B.$$eval('#view .tr .t-name', x => x.map(e => e.textContent)))[0] === '晴天', 'View all lists recently played songs, newest first');
@@ -1210,6 +1211,23 @@ try {
   await A.click('[data-home-tab="home"]'); await settle(A, 300);
   check(tabsTxt.join('|') === 'Home|New Releases|Charts|Podcasts' && /Roboto/.test(font[0]) && font[1] === '500' && font[2] === '14px' && font[3] && charts[0].includes('Top Songs of All Time') && charts[1] > 0 && charts[2] === 'Charts' && fresh[0].includes('Newest Songs') && fresh[1] > 0,
     'Home has New Releases, Charts and Podcasts tabs instead of the greeting; the font is Roboto Medium at 14px', JSON.stringify({ tabsTxt, font, charts, fresh }));
+
+  // --- the top of Home: songs in columns of three, the next column peeking in on the right; clicking one plays it
+  {
+    await settle(A, 300);
+    const pk = await A.evaluate(() => {
+      const row = document.querySelector('#view .pick-row'); if (!row) return null;
+      const ps = [...row.querySelectorAll('.pick')], r = row.getBoundingClientRect(), L = ps.map(p => p.getBoundingClientRect());
+      return { n: ps.length, col1: L.length >= 3 && Math.round(L[0].left) === Math.round(L[2].left) && L[1].top > L[0].top, col2: L.length >= 4 && L[3].left > L[0].right,
+        peek: L.some(b => b.left < r.right - 10 && b.right > r.right + 10), labels: ps.map(p => p.querySelector('.pick-lb').textContent).filter(Boolean).length === ps.length,
+        title: ps[1] && ps[1].querySelector('.pick-t').textContent };
+    });
+    await shot(A, 'home-picks');
+    await A.click('#view .pick[data-pick="1"] .pick-t');
+    await A.waitForFunction(t => document.getElementById('p-title').textContent === t && document.querySelector('#view .pick[data-pick="1"]').classList.contains('playing'), pk && pk.title, { timeout: 8000 }).catch(() => {});
+    const played = await A.evaluate(() => [document.getElementById('p-title').textContent, document.querySelector('#view .pick[data-pick="1"]').classList.contains('playing')]);
+    check(pk && pk.n >= 4 && pk.col1 && pk.col2 && pk.peek && pk.labels && played[0] === pk.title && played[1], 'Home starts with songs in columns of three, the next column peeking in on the right; clicking one plays it', JSON.stringify({ pk, played }));
+  }
 
   // --- a playlist's own page shows its songs' full-size covers (as Now Playing does); lists keep the small copies
   {

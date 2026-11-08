@@ -1302,6 +1302,33 @@ body.touch-input .has-pen::after { display: none; }
 .shelf-empty { margin: 0; color: var(--muted); font-size: .9rem; }
 @media (max-width: 759px) { .shelf-row { grid-auto-columns: 42vw; } .shelf-btn { display: none; } }
 
+/* Home's song picks: columns of three songs that scroll sideways, the next column peeking in on the right */
+.picks { position: relative; container-type: inline-size; margin: 4px 0 30px; }
+.pick-row { display: grid; grid-template-rows: repeat(3, auto); grid-auto-flow: column; grid-auto-columns: calc(100% - 56px); gap: 6px 16px;
+  overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; overscroll-behavior-x: contain; }
+.pick-row::-webkit-scrollbar { display: none; }
+@container (min-width: 640px) { .pick-row { grid-auto-columns: calc((100% - 2 * 24px) / 2.3); gap: 6px 24px; } }
+@container (min-width: 1040px) { .pick-row { grid-auto-columns: calc((100% - 3 * 24px) / 3.3); } }
+.pick { display: flex; align-items: center; gap: 14px; min-width: 0; padding: 6px; border-radius: 8px; cursor: pointer; scroll-snap-align: start; }
+.pick:hover { background: var(--hover); }
+.pick-art { flex: none; width: 64px; height: 64px; border-radius: 6px; object-fit: cover; box-shadow: 0 6px 16px -10px rgba(0, 0, 0, .55); }
+.pick-tx { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.pick-lb, .pick-a { font-size: .87rem; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pick-t { font-size: 1.07rem; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pick.playing .pick-t { font-weight: 700; }
+.pick-a .link { color: inherit; }
+.pick-play { flex: none; width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; color: #fff; background: var(--brand-gradient); box-shadow: 0 4px 12px -6px var(--brand-red); }
+.pick-play .ic { width: 18px; height: 18px; }
+.pick-play:hover { transform: scale(1.08); }
+/* arrows for a mouse: they appear over the edges while you point at the picks */
+.pick-nav { position: absolute; top: calc(50% - 18px); width: 36px; height: 36px; background: var(--raise); color: var(--ink); box-shadow: var(--shadow); opacity: 0; pointer-events: none; transition: opacity .2s ease-out; }
+.pick-nav:hover { background: var(--raise); }
+.pick-nav[data-dir="-1"] { left: -6px; } .pick-nav[data-dir="1"] { right: -6px; }
+.picks:hover .pick-nav:not(:disabled) { opacity: 1; pointer-events: auto; }
+.pick-nav:disabled { opacity: 0 !important; pointer-events: none; }
+body.touch-input .pick-nav { display: none; }
+@media (max-width: 759px) { .pick-nav { display: none; } .pick-art { width: 56px; height: 56px; } }
+
 /* ---------- page transitions ---------- */
 #view.enter-fwd > :not(.view-bg) { animation: page-in-fwd .38s cubic-bezier(.2, .8, .2, 1) both; }
 #view.enter-back > :not(.view-bg) { animation: page-in-back .38s cubic-bezier(.2, .8, .2, 1) both; }
@@ -1315,7 +1342,7 @@ body.touch-input .has-pen::after { display: none; }
 @keyframes page-tint { from { opacity: 0; } }
 
 /* ---------- hover motion ---------- */
-.li, .tr, .qrow, .mi, .nav-btn, .card, .qt, .tr-card, .chip, .sl-chip, .circ, .cbtn, .act-btn, .like, .more, .qrm, .sl-sort, .mv, .link, .btn {
+.li, .tr, .pick, .pick-play, .qrow, .mi, .nav-btn, .card, .qt, .tr-card, .chip, .sl-chip, .circ, .cbtn, .act-btn, .like, .more, .qrm, .sl-sort, .mv, .link, .btn {
   transition: background-color .22s ease-out, color .22s ease-out, box-shadow .22s ease-out, transform .22s cubic-bezier(.2, .8, .2, 1);
 }
 .card-art img, .card-art .liked-art, .card-art .mosaic, .li.grid .li-art, .qt .art, .genre img {
@@ -1653,6 +1680,7 @@ const I18N = [
   ['No Versions Yet', '还没有版本', '還沒有版本'], ['Earlier version', '更早的版本', '更早的版本'], ['How it was before the changes above', '上面这些更改之前的样子', '上面這些變更之前的樣子'], ['Created the playlist', '创建了歌单', '建立了歌單'],
   ['Changed the description', '修改了简介', '修改了簡介'], ['Changed the cover photo', '更换了封面', '更換了封面'], ['Removed the cover photo', '移除了封面', '移除了封面'], ['Changed the song order', '调整了歌曲顺序', '調整了歌曲順序'], ['Small changes', '少量修改', '少量修改'],
   ['No songs in this version.', '此版本中没有歌曲。', '此版本中沒有歌曲。'], ["Couldn't Load the History", '无法加载历史', '無法載入歷史'], ['Removed', '已移除', '已移除'], ['A song no longer in your library', '已不在音乐库中的歌曲', '已不在音樂庫中的歌曲'],
+  ['Picks for You', '为你推荐', '為你推薦'], ['New Release', '新发行', '新發行'], ['From Liked Songs', '来自喜欢的歌曲', '來自喜歡的歌曲'], ['Not Played in a While', '好久没听了', '好久沒聽了'], ['Not Played Yet', '还没听过', '還沒聽過'],
   ['Today', '今天', '今天'], ['Yesterday', '昨天', '昨天'], ['Just now', '刚刚', '剛剛'], ['Demo', '示例', '範例'], ['Not Found', '找不到', '找不到'], ['Go Home', '返回首页', '返回首頁'],
   ['Nothing Played Yet', '还没有播放记录', '還沒有播放紀錄'], ['Songs you play will show up here.', '你播放的歌曲会显示在这里。', '你播放的歌曲會顯示在這裡。'], ['Playlists you play will show up here.', '你播放的歌单会显示在这里。', '你播放的歌單會顯示在這裡。'],
   ['Albums, singles and EPs you play will show up here.', '你播放的专辑、单曲和 EP 会显示在这里。', '你播放的專輯、單曲和 EP 會顯示在這裡。'], ['Songs You Like Will Appear Here', '你喜欢的歌曲会出现在这里', '你喜歡的歌曲會出現在這裡'], ['Tap the heart on any song to save it.', '点击任意歌曲上的爱心即可收藏。', '點擊任一歌曲上的愛心即可收藏。'],
@@ -1690,6 +1718,7 @@ const I18N = [
 ];
 const pickL = (h, t) => LANG === 'zh-Hant' ? t : h;
 const PAT = [
+  [/^No\. (\d+) This Month$/, m => `本月第 ${m[1]} 名`],
   [/^Streaming quality: (.+)$/, m => pickL(`音质：${m[1]}`, `音質：${m[1]}`)],
   [/^(\d+) songs?$/, m => pickL(`${m[1]} 首歌曲`, `${m[1]} 首歌曲`)], [/^(\d+) playlists?$/, m => pickL(`${m[1]} 个歌单`, `${m[1]} 個歌單`)],
   [/^(\d{4}) · (Album|EP|Single)$/, m => `${m[1]} · ${m[2] === 'Album' ? pickL('专辑', '專輯') : m[2] === 'EP' ? 'EP' : pickL('单曲', '單曲')}`],
@@ -1739,7 +1768,7 @@ function tr(s) {
   return s;
 }
 // Names you chose (songs, artists, albums, playlists, folders) are left alone.
-const NO_TR = '[data-nt], .ar-sep, .w-title, .w-row .link, .cm-text, .ly, .t-name, .t-artist .link, [data-go-artist], [data-go-album], .card-t, .li-name, .vhead h1, .qt-name, #p-title, #p-artist, #s-title, #s-artist, #s-ctx, [data-qctx], .q-from span, .qrow .t-artist, .fp-t b, .fp-head b, .sp-t b, .fd-path .link, .folder-head h1, .pl-break h3, .vh-head h2, .vh-break, .vh-t b, .se-hit b, .tr-card h3, .genre span, .q-name, .q-artist, .greet, input, textarea, select, script, style';
+const NO_TR = '[data-nt], .pick-t, .ar-sep, .w-title, .w-row .link, .cm-text, .ly, .t-name, .t-artist .link, [data-go-artist], [data-go-album], .card-t, .li-name, .vhead h1, .qt-name, #p-title, #p-artist, #s-title, #s-artist, #s-ctx, [data-qctx], .q-from span, .qrow .t-artist, .fp-t b, .fp-head b, .sp-t b, .fd-path .link, .folder-head h1, .pl-break h3, .vh-head h2, .vh-break, .vh-t b, .se-hit b, .tr-card h3, .genre span, .q-name, .q-artist, .greet, input, textarea, select, script, style';
 /* Each spot Allegro translates remembers the English it started with (and what it showed instead), so the language can
    change on the spot without reloading the page. A reload would stop the song that's playing. */
 const I18N_WAS = new WeakMap();
@@ -2505,7 +2534,7 @@ function unshuffle() {
   S.qi = Math.max(0, S.queue.indexOf(cur));
 }
 function pushRecent(key) {
-  if (!key || key === 'library' || key.startsWith('search')) return;
+  if (!key || key === 'library' || key === 'home-picks' || key.startsWith('search')) return;
   S.recent = [key, ...S.recent.filter(k => k !== key)].slice(0, 30);
 }
 const HISTORY_MAX = 48;
@@ -2846,6 +2875,39 @@ function homeRows() {
   return shelf('shelf-recent', 'Recently Played', pl, { empty: 'Playlists you play will show up here.' })
     + shelf('shelf-history', 'Track History', al, { viewAll: 'history', empty: 'Albums, singles and EPs you play will show up here.' });
 }
+/* ---- Home's song picks: a mix of songs from your own library, each with a small label saying why it's there.
+   The order mixes the reasons, so each column of three shows different ones. It's reshuffled once a day, not on every
+   visit, so the picks don't jump around while you use them. ---- */
+let PICKS = [];
+function seeded(seed) { return () => { seed = (seed + 0x6D2B79F5) | 0; let t = Math.imul(seed ^ (seed >>> 15), 1 | seed); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
+function songPicks(max = 15) {
+  const d = new Date(), rnd = seeded(d.getFullYear() * 10000 + (d.getMonth() + 1) * 100 + d.getDate());
+  const mix = a => { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+  const all = [...S.tracks.values()], since = Date.now() - 30 * 864e5;
+  const month = new Map(), lastPlay = new Map();
+  for (const h of S.history) { if (!S.tracks.has(h.id)) continue; if (h.at >= since) month.set(h.id, (month.get(h.id) || 0) + 1); lastPlay.set(h.id, Math.max(lastPlay.get(h.id) || 0, h.at)); }
+  const groups = [
+    [...month.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5).map((x, i) => [x[0], `No. ${i + 1} This Month`]),
+    all.slice().sort((a, b) => (b.added || 0) - (a.added || 0)).slice(0, 5).map(t => [t.id, 'Recently Added']),
+    all.filter(relKey).sort((a, b) => relKey(b).localeCompare(relKey(a))).slice(0, 5).map(t => [t.id, 'New Release']),
+    mix(live(S.liked)).slice(0, 5).map(id => [id, 'From Liked Songs']),
+    mix([...lastPlay.entries()].filter(x => x[1] < since).map(x => x[0])).slice(0, 5).map(id => [id, 'Not Played in a While']),
+    mix(all.filter(t => !lastPlay.has(t.id)).map(t => t.id)).slice(0, 5).map(id => [id, 'Not Played Yet'])
+  ].filter(g => g.length);
+  const out = [], seen = new Set();
+  for (let r = 0; out.length < max && groups.some(g => g.length > r); r++)
+    for (const g of groups) { const x = g[r]; if (x && !seen.has(x[0]) && tk(x[0]) && out.length < max) { seen.add(x[0]); out.push(x); } }
+  // anything left over fills the gap, so a small library still gets full columns
+  for (const t of mix(all)) { if (out.length >= max) break; if (!seen.has(t.id)) { seen.add(t.id); out.push([t.id, 'Recently Added']); } }
+  return out;
+}
+function homePicks() {
+  const picks = songPicks(); PICKS = picks.map(x => x[0]);
+  if (!picks.length) return '';
+  const rows = picks.map(([id, label], i) => { const t = tk(id); return `<div class="pick" data-pick="${i}" data-id="${esc(id)}" tabindex="0" role="button" aria-label="${esc(t.title)}"><img class="pick-art" src="${esc(t.cover)}" alt="" loading="lazy"><span class="pick-tx"><span class="pick-lb">${esc(label)}</span><span class="pick-t">${esc(t.title)}</span><span class="pick-a">${artistLinks(t.artist)}</span></span><button class="pick-play" data-pick-play="${esc(id)}" aria-label="Play ${esc(t.title)}">${ic('play')}</button></div>`; }).join('');
+  return `<section class="picks" aria-label="Picks for You"><div class="pick-row" data-shelf-row="picks">${rows}</div>`
+    + `<button class="circ pick-nav" data-shelf="picks" data-dir="-1" aria-label="Scroll left">${ic('back')}</button><button class="circ pick-nav" data-shelf="picks" data-dir="1" aria-label="Scroll right">${ic('fwd')}</button></section>`;
+}
 /* ---- Home's tabs: Home, New Releases, Charts, Podcasts (from your own library) ---- */
 // The underline slides from the tab you were on to the one you picked: each time Home is drawn it starts where it last
 // was and moves to the current tab.
@@ -2968,6 +3030,7 @@ const VIEWS = {
     if (tab === 'charts') return tabs + homeCharts();
     if (tab === 'podcasts') return tabs + `<div class="empty">${ic('mic')}<h3>No podcasts yet</h3><p>Podcasts aren't available in Allegro yet.</p></div>`;
     return `${tabs}
+      ${homePicks()}
       <div id="home-rows" class="home-rows">${homeRows()}</div>
       ${callout}
       <section class="sec"><div class="sec-head"><h2>Recently Added</h2><button class="link sm" data-open="library:songs">Show All</button></div>${trackList(recentIds, { key: 'library', name: 'Recently Added' }, { noHead: true })}</section>`;
@@ -3259,7 +3322,7 @@ function sortMenu(anchor) {
   placeMenu();
 }
 function markPlaying() {
-  $$('.tr').forEach(r => r.classList.toggle('playing', r.dataset.id === S.current));
+  $$('.tr, .pick').forEach(r => r.classList.toggle('playing', r.dataset.id === S.current));
   $$('.li').forEach(r => r.classList.toggle('playing', !!S.context && r.dataset.open === S.context.key));
 }
 function syncPlayIcons() {
@@ -3272,6 +3335,7 @@ function syncPlayIcons() {
     setIcon(b, on ? 'pause' : 'play');
     b.classList.toggle('on', !!on || b.closest('.tr-card') !== null);
   });
+  $$('[data-pick-play]').forEach(b => { const on = playing && S.current === b.dataset.pickPlay; setIcon(b, on ? 'pause' : 'play'); });
 }
 function syncLikes() {
   $$('[data-like]').forEach(b => { const on = isLiked(b.dataset.like); b.classList.toggle('on', on); b.setAttribute('aria-pressed', on); setIcon(b, on ? 'heartFill' : 'heart'); b.setAttribute('aria-label', (on ? 'Remove from' : 'Save to') + ' Liked Songs'); });
@@ -5997,6 +6061,8 @@ document.addEventListener('click', e => {
   const cm = T.closest('[data-ctx-more]'); if (cm) { ctxMenu(cm, cm.dataset.ctxMore); return; }
   const ga = T.closest('[data-go-artist]'); if (ga) { go({ name: 'artist', key: ga.dataset.goArtist }); return; }
   const gal = T.closest('[data-go-album]'); if (gal) { go({ name: 'album', key: gal.dataset.goAlbum }); return; }
+  const pk = T.closest('.pick[data-pick]');
+  if (pk) { if (pk.dataset.id === S.current) toggle(); else playIds(PICKS, +pk.dataset.pick, { key: 'home-picks', name: 'Picks for You' }); return; }
   const cp = T.closest('[data-card-play],[data-ctx-play]');
   if (cp) { const k = cp.dataset.cardPlay || cp.dataset.ctxPlay; if (S.context && S.context.key === k && S.current) toggle(); else playCtx(k); return; }
   const one = T.closest('[data-play-one]'); if (one) { const t = tk(one.dataset.playOne); if (t) playIds([t.id], 0, { key: 'search', name: 'Search results' }); return; }
@@ -6053,7 +6119,7 @@ document.addEventListener('keydown', e => {
   if (e.key === 'Escape') { if (crop) { cropClose(null); return; } if (!$('#lightbox').hidden) { closeLightbox(); return; } if (fdlg) { closeFd(); return; } if (bk) { closeBk(); return; } if (fk) { closeFk(); return; } if (sp) { closeSp(); return; } if (se) { closeSe(); return; } if (pe) { closePe(); return; } if (!$('#menu').hidden) { closeMenu(); return; } if (!$('#sheet').hidden) { closeSheet(); return; } if (S.renaming) { S.renaming = null; render(); } return; }
   if (e.target.id === 'rename-input' && e.key === 'Enter') { e.preventDefault(); commitRename(); return; }
   const el = e.target;
-  if ((e.key === 'Enter' || e.key === ' ') && el.matches && el.matches('.tr, .card, .qt, [data-open][tabindex], [data-qi], [data-qh]')) { e.preventDefault(); el.click(); return; }
+  if ((e.key === 'Enter' || e.key === ' ') && el.matches && el.matches('.tr, .pick, .card, .qt, [data-open][tabindex], [data-qi], [data-qh]')) { e.preventDefault(); el.click(); return; }
   if (el.closest && el.closest('input, select, textarea, button, [contenteditable]')) return;
   if (e.code === 'Space') { e.preventDefault(); toggle(); }
   else if (e.key === 'ArrowRight' && audio.duration) audio.currentTime = Math.min(audio.duration, audio.currentTime + 5);
