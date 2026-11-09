@@ -991,6 +991,10 @@ img { -webkit-user-drag: none; user-select: none; }
 .who-name { display: flex; align-items: center; justify-content: center; gap: 5px; max-width: 100%; }
 .who-name > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .who-name .ic { width: 15px; height: 15px; flex: none; }
+.who-av { position: relative; display: block; border-radius: 50%; }
+.who-edit { position: absolute; inset: 0; display: grid; place-items: center; border-radius: 50%; background: rgba(0, 0, 0, .45); color: #fff; pointer-events: none; }
+.who-edit .ic { width: 34px; height: 34px; }
+.who-av:has(.who-edit) .pf-av > b { visibility: hidden; }   /* the pencil replaces the initial; photos stay, dimmed */
 .who-add .pf-av { background: var(--chip); color: var(--muted); box-shadow: inset 0 0 0 2px var(--line); }
 .who-add .pf-av .ic { width: 42px; height: 42px; }
 .who-one { display: flex; flex-direction: column; align-items: center; gap: 10px; font-weight: 600; }
@@ -1815,6 +1819,7 @@ const I18N = [
   ['Allegro can have up to 20 profiles.', 'Allegro 最多可以有 20 个个人资料。', 'Allegro 最多可以有 20 個個人檔案。'],
   ['Pick a profile first.', '请先选择一个个人资料。', '請先選擇一個個人檔案。'],
   ['Switch Profile', '切换个人资料', '切換個人檔案'],
+  ['Manage Profiles', '管理个人资料', '管理個人檔案'],
   ['Edit Profile', '编辑个人资料', '編輯個人檔案'],
   ['Delete Profile', '删除个人资料', '刪除個人檔案'],
   ['Choose a photo', '选择照片', '選擇照片'],
@@ -6064,7 +6069,9 @@ async function initCloud() {
 }
 let cloudStarted = false;
 async function openLibrary() {
-  $('#gate').hidden = true; hideWho();
+  $('#gate').hidden = true; hideWho(); WHO.manage = WHO.edit = false;
+  let edit = false; try { edit = sessionStorage.getItem('allegro.editProfile') === '1'; sessionStorage.removeItem('allegro.editProfile'); } catch (e) {}
+  if (edit) setTimeout(openPfEdit, 0);   // picked from Manage Profiles
   await loadLibrary(true);
   if (!cloud.songsLoaded) { bootDone.cloud = true; tryRestoreLast(); }
   if (cloudStarted) return;
@@ -6103,7 +6110,7 @@ function drawAcct() {
   const b = $('#acct-btn'), p = cloud.profile; if (!p) return;
   b.classList.add('has-pf'); b.innerHTML = pfAvatar(p);
 }
-const WHO = { mode: 'pick', list: [], pinSet: true, sel: null, color: 0, err: '', busy: false };
+const WHO = { mode: 'pick', list: [], pinSet: true, sel: null, color: 0, err: '', busy: false, manage: false, edit: false };
 function hideWho() { $('#who').hidden = true; document.body.classList.remove('who-open'); }
 async function showWho(mode) {
   WHO.mode = mode; WHO.err = '';
@@ -6121,10 +6128,12 @@ function drawWho() {
   const logo = `<div class="gate-logo"><span class="brand-gradient"><span class="clef" aria-hidden="true"><span class="brand-glyph">&#x1D11E;</span></span><span class="brand-name">Allegro</span></span></div>`;
   const err = `<p class="gate-err" id="who-err" role="alert">${esc(WHO.err)}</p>`;
   if (WHO.mode === 'pick') {
-    const list = WHO.list.filter(p => !pendingPfDel.has(p.id));
-    c.innerHTML = `${logo}<h1>Who's listening?</h1>
-      <div class="who-grid">${list.map(p => `<button class="who-tile" data-who="${esc(p.id)}" aria-label="${esc(p.name)}${p.admin ? ', locked' : ''}">${pfAvatar(p)}<span class="who-name"><span data-nt>${esc(p.name)}</span>${p.admin ? ic('lock') : ''}</span></button>`).join('')}${list.length < MAX_PROFILES ? `<button class="who-tile who-add" data-who-new><span class="pf-av">${ic('plus')}</span><span class="who-name"><span>Add Profile</span></span></button>` : ''}</div>
-      ${err}<div class="who-foot"><button class="btn ghost-sm" data-who-out>Sign Out</button></div>`;
+    const list = WHO.list.filter(p => !pendingPfDel.has(p.id)), M = WHO.manage;
+    // Manage Profiles puts a pencil on every profile; picking one opens it (the Admin still needs the PIN) with Edit Profile open
+    const tile = p => `<button class="who-tile" data-who="${esc(p.id)}" aria-label="${esc(p.name)}${M ? ', Edit Profile' : p.admin ? ', locked' : ''}"><span class="who-av">${pfAvatar(p)}${M ? `<span class="who-edit">${ic('edit')}</span>` : ''}</span><span class="who-name"><span data-nt>${esc(p.name)}</span>${p.admin ? ic('lock') : ''}</span></button>`;
+    c.innerHTML = `${logo}<h1>${M ? 'Manage Profiles' : "Who's listening?"}</h1>
+      <div class="who-grid">${list.map(tile).join('')}${list.length < MAX_PROFILES && !M ? `<button class="who-tile who-add" data-who-new><span class="pf-av">${ic('plus')}</span><span class="who-name"><span>Add Profile</span></span></button>` : ''}</div>
+      ${err}<div class="who-foot">${M ? '<button class="btn" data-who-manage>Done</button>' : '<button class="btn ghost-sm" data-who-manage>Manage Profiles</button><button class="btn ghost-sm" data-who-out>Sign Out</button>'}</div>`;
     return;
   }
   if (WHO.mode === 'pin') {
@@ -6164,6 +6173,7 @@ const colorDots = (on, attr) => PF_COLORS.map((col, i) => `<button type="button"
 function whoErr(m) { WHO.err = m || ''; const e = $('#who-err'); if (e) e.textContent = WHO.err; }
 async function selectProfile(id, pin) {
   await flushPfDel();
+  try { if (WHO.edit) sessionStorage.setItem('allegro.editProfile', '1'); else sessionStorage.removeItem('allegro.editProfile'); } catch (e) {}
   await api('profile/select', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id, pin }) });
   await enterProfile();
 }
@@ -6171,12 +6181,14 @@ $('#who').addEventListener('click', async e => {
   const t = e.target.closest('[data-who]');
   if (t) {
     const p = WHO.list.find(x => x.id === t.dataset.who); if (!p) return;
+    WHO.edit = WHO.manage;
     if (p.admin) { WHO.mode = 'pin'; WHO.err = WHO.pinSet ? '' : "The Admin PIN isn't set yet. Set it from a device that's already in the Admin profile."; drawWho(); return; }
     try { await selectProfile(p.id); } catch (ex) { whoErr(ex.message); }
     return;
   }
+  if (e.target.closest('[data-who-manage]')) { WHO.manage = !WHO.manage; WHO.err = ''; drawWho(); return; }
   if (e.target.closest('[data-who-new]')) { showWho('new'); return; }
-  if (e.target.closest('[data-who-back]')) { showWho('pick'); return; }
+  if (e.target.closest('[data-who-back]')) { WHO.edit = false; showWho('pick'); return; }
   if (e.target.closest('[data-who-out]')) { signOut(); return; }
   const dot = e.target.closest('[data-who-color]');
   if (dot) {
@@ -6584,7 +6596,7 @@ $('#sl-search').addEventListener('input', e => { S.libQ = e.target.value; render
 $('#sl-search').addEventListener('blur', e => { if (!e.target.value) { e.target.hidden = true; $('#sl-search-wrap').classList.remove('open'); } });
 $('#sl-search').addEventListener('keydown', e => { if (e.key === 'Escape') { e.target.value = ''; S.libQ = ''; renderSide(); e.target.blur(); } });
 $('#acct-btn').addEventListener('click', e => openMenu(e.currentTarget, [
-  ...(cloud.profile ? [{ head: cloud.profile.name }, { label: 'Switch Profile', icon: 'user', fn: switchProfile }, { sep: true }] : []),
+  ...(cloud.profile ? [{ head: cloud.profile.name }, { label: 'Edit Profile', icon: 'edit', fn: openPfEdit }, { label: 'Switch Profile', icon: 'user', fn: switchProfile }, { sep: true }] : []),
   { label: 'Settings', icon: 'gear', fn: () => go({ name: 'settings' }) },
   { sep: true }, { head: 'Allegro Account' },
   { label: 'Sign Out', icon: 'user', fn: signOut }

@@ -905,7 +905,7 @@ try {
   await A.click('#menu .mi:has-text("Settings")'); await settle(A, 500);
   const setH1 = await A.textContent('#view h1');
   await shot(A, 'settings');
-  check(acctMenu.join('|') === 'the Admin|Switch Profile|Settings|Allegro Account|Sign Out' && setH1 === 'Settings', 'the account menu names the profile, offers Switch Profile, and Settings opens the Settings page', JSON.stringify(acctMenu));
+  check(acctMenu.join('|') === 'the Admin|Edit Profile|Switch Profile|Settings|Allegro Account|Sign Out' && setH1 === 'Settings', 'the account menu names the profile, offers Edit Profile and Switch Profile, and Settings opens the Settings page', JSON.stringify(acctMenu));
   await A.click('#set-demos'); await settle(A, 800);
   data = await lib(A);
   const demoOff = [(data.state.prefs || []).includes('hideDemos'), await A.evaluate(() => document.querySelector('#set-demos').getAttribute('aria-checked'))];
@@ -968,8 +968,8 @@ try {
   await A.click('.nav-btn[data-nav="library"]'); await settle(A, 400); await A.click('[data-chip="songs"]'); await settle(A, 400);
   const zhLib = await A.evaluate(() => [document.querySelector('[data-chip="songs"]').textContent, [...document.querySelectorAll('#view .t-name')].map(e => e.textContent)]);
   check(zh[0] === '首页' && zh[1] === '设置' && zh[2] === 'zh-Hans' && zh[3] === '搜索' && zh[4] === '新建' && zh[5] === '喜欢的歌曲' && zhLib[0] === '歌曲' && zhLib[1].includes('Rain on Glass'), 'switching to 简体中文 translates Allegro but not your song names', JSON.stringify({ zh, chip: zhLib[0] }));
-  // the menu is in Chinese now: Settings comes after Switch Profile
-  await A.click('#acct-btn'); await settle(A, 250); await A.click('#menu .mi >> nth=1'); await settle(A, 500);
+  // the menu is in Chinese now: Settings comes after Edit Profile and Switch Profile
+  await A.click('#acct-btn'); await settle(A, 250); await A.click('#menu .mi >> nth=2'); await settle(A, 500);
   await A.click('[data-lang-opt="zh-Hant"]'); await settle(A, 2500);
   const zht = await A.evaluate(() => [document.querySelector('.nav-btn[data-nav="home"] span').textContent, document.querySelector('#view h1').textContent]);
   await A.click('[data-lang-opt="en"]'); await settle(A, 2500);
@@ -1324,6 +1324,27 @@ try {
     const cDelOther = adminCm ? await C.evaluate(async ([id, cid]) => (await fetch(`/api/comments/${id}/${cid}`, { method: 'DELETE' })).status, [tagged.id, adminCm.id]) : 0;
     check(!!adminCm && !!samCm && adminCm.name === 'the Admin' && adminCm.mine && samCm.name === 'Sam' && !samCm.mine && cDelOther === 403,
       "comments show who wrote them, and a friend can't delete someone else's", JSON.stringify({ cms, cDelOther }));
+    // Manage Profiles on the picker: a pencil on each profile opens it with Edit Profile, to rename it and add a photo
+    await C.click('#acct-btn'); await settle(C, 250); await C.click('#menu .mi:has-text("Switch Profile")');
+    await C.waitForSelector('[data-who-manage]', { timeout: 20000 }).catch(() => {});
+    await C.click('[data-who-manage]'); await settle(C, 200);
+    const manage = [await C.textContent('#who-card h1'), await C.$$eval('.who-edit', x => x.length), !!(await C.$('[data-who-new]'))];
+    await shot(C, 'profiles-manage');
+    await C.click(`[data-who="${cSes.profile.id}"]`);
+    await C.waitForFunction(() => !document.getElementById('pf-edit').hidden, null, { timeout: 20000 }).catch(() => {});
+    const editOpen = await C.evaluate(() => !document.getElementById('pf-edit').hidden && document.getElementById('pf-name').value);
+    await C.fill('#pf-name', 'Sammy');
+    await C.setInputFiles('#pf-file', join(fixtures, 'cover.png'));
+    await C.waitForSelector('#cropper:not([hidden])', { timeout: 8000 }).catch(() => {});
+    await settle(C, 300); await C.click('#crop-apply'); await settle(C, 600);
+    await shot(C, 'profiles-edit');
+    await C.click('#pf-save'); await C.waitForFunction(() => document.getElementById('pf-edit').hidden, null, { timeout: 10000 }).catch(() => {});
+    await settle(C, 800);
+    const renamed = await C.evaluate(async () => (await (await fetch('/api/session')).json()).profile);
+    const acctImg = await C.evaluate(() => { const i = document.querySelector('#acct-btn .pf-av img'); return i ? [i.getAttribute('src'), i.complete && i.naturalWidth > 0] : null; });
+    check(manage.join('|') === 'Manage Profiles|2|false' && editOpen === 'Sam' && renamed && renamed.name === 'Sammy' && renamed.photo > 0 && acctImg && acctImg[0].includes('/api/profile-photo/') && acctImg[1],
+      'Manage Profiles opens a profile with Edit Profile to rename it and add a photo', JSON.stringify({ manage, editOpen, renamed, acctImg }));
+
     // the Admin sees Sam in Settings and can delete the profile, with Undo
     await A.click('#acct-btn'); await settle(A, 250); await A.click('#menu .mi:has-text("Settings")');
     await A.waitForSelector('[data-pf-del]', { timeout: 8000 }).catch(() => {});
