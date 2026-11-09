@@ -16,7 +16,7 @@ These notes keep us from stepping on each other. Read them before changing anyth
 
 ## The project
 
-A private, single-user music website, in the style of Spotify and Tidal. Live at https://allegro.allegro-music.workers.dev
+A private music website in the style of Spotify and Tidal, shared with friends through profiles (see CLAUDE.md). Live at https://allegro.allegro-music.workers.dev
 
 | Path | What it is |
 |---|---|
@@ -27,8 +27,8 @@ A private, single-user music website, in the style of Spotify and Tidal. Live at
 | `public/vendor/` | Third-party browser libraries (pinyin-pro, opencc-js), with their licenses. |
 | `.github/workflows/deploy.yml` | Runs the tests on every push and pull request; deploys from `main` only. |
 
-Storage: R2 bucket `allegro-music` (`audio/`, `cover/`, `cover-sm/`, `plcover/`, `arphoto/`, `lyrics/`, `lyrics-x/`)
-and D1 database `allegro` (`songs`, `kv`, `playlist_versions`, `song_comments`). Workers AI is bound as `AI`.
+Storage: R2 bucket `allegro-music` (`audio/`, `cover/`, `cover-sm/`, `plcover/`, `arphoto/`, `pfphoto/`, `lyrics/`, `lyrics-x/`)
+and D1 database `allegro` (`songs`, `kv`, `playlist_versions`, `song_comments`, `profiles`). Workers AI is bound as `AI`.
 
 ## Rules
 

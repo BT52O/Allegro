@@ -48,5 +48,17 @@ if (start > -1 && end > start) {
   check(noComma.length === 0, 'every line of the I18N table ends with a comma', noComma.slice(0, 3).map(l => l.slice(0, 60)).join(' ; '));
 }
 
+// 3. The PAT table (text with numbers or names). A missing comma there turns a row into an index the same way,
+// and the whole language switch then throws.
+{
+  const ps = html.indexOf('const PAT = ['), pe = html.indexOf('\n];', ps);
+  let pats = null;
+  try { pats = new Function('const pickL = (a, b) => a, tr1 = x => x;' + html.slice(ps, pe + 3) + '\nreturn PAT;')(); } catch (e) { check(false, 'the PAT table evaluates', e.message); }
+  if (pats) {
+    const bad = pats.map((r, i) => [r, i]).filter(([r]) => !Array.isArray(r) || r.length !== 2 || !(r[0] instanceof RegExp) || typeof r[1] !== 'function');
+    check(bad.length === 0, `every PAT row is [/pattern/, m => ...] (${pats.length} rows)`, bad.slice(0, 3).map(([, i]) => `row ${i + 1}${i > 0 ? ` (after ${pats[i - 1] && pats[i - 1][0]})` : ''}`).join(' ; '));
+  }
+}
+
 console.log(failures ? `\n${failures} check(s) failed` : '\nAll fast checks passed');
 process.exit(failures ? 1 : 0);

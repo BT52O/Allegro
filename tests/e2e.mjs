@@ -1,5 +1,5 @@
 // End-to-end test: runs the real Worker locally (wrangler dev, local R2 + D1) and drives it with Chromium.
-// Covers first-time setup, sign-in, MP3 upload with tag reading, streaming, sync between two "devices",
+// Covers first-time setup, the Admin PIN and profiles, sign-in, MP3 upload with tag reading, streaming, sync between two "devices",
 // playlist editing and drag-to-reorder, removal, and that nothing is reachable without signing in.
 import { spawn, execFileSync } from 'node:child_process';
 import { mkdtempSync, rmSync, writeFileSync, existsSync, readFileSync, copyFileSync } from 'node:fs';
@@ -12,7 +12,7 @@ import { chromium } from 'playwright';
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const fixtures = join(root, 'tests', 'fixtures');
 const PORT = 8799, URL = `http://127.0.0.1:${PORT}/`;
-const SETUP_CODE = 'TEST-CODE-0001', PASSWORD = 'correct horse battery';
+const SETUP_CODE = 'TEST-CODE-0001', PASSWORD = 'correct horse battery', ADMIN_PIN = '246810';
 const state = mkdtempSync(join(tmpdir(), 'allegro-e2e-'));
 const wrangler = join(root, 'node_modules', 'wrangler', 'bin', 'wrangler.js');
 const env = { ...process.env, CI: '1', WRANGLER_SEND_METRICS: 'false' };
@@ -155,6 +155,18 @@ try {
     check((await A.textContent('#gate-err')).includes('not right'), 'wrong setup code is rejected');
     await A.fill('#gate-code', SETUP_CODE); await A.click('#gate-btn'); await settle(A, 1500);
     check(!(await A.isVisible('#gate')), 'setup with the right code signs you in');
+    // the owner chooses the 6-digit Admin PIN right after setup
+    await A.waitForSelector('#who-pin2', { timeout: 10000 }).catch(() => {});
+    const pinTitle = await A.textContent('#who-card h1').catch(() => '');
+    await shot(A, 'admin-pin-setup');
+    await A.fill('#who-pin', ADMIN_PIN); await A.fill('#who-pin2', '135790'); await A.click('#who-go');
+    const pinMismatch = await A.textContent('#who-err');
+    await A.fill('#who-pin2', ADMIN_PIN); await A.click('#who-go');
+    await A.waitForFunction(() => localStorage.getItem('allegro.profile') === 'admin' && document.getElementById('who').hidden && document.querySelector('#acct-btn .pf-av'), null, { timeout: 20000 }).catch(() => {});
+    await settle(A, 1500);
+    const aSes = await A.evaluate(async () => (await fetch('/api/session')).json());
+    check(pinTitle === 'Create Your Admin PIN' && pinMismatch.includes("don't match") && aSes.admin && aSes.profile && aSes.profile.name === 'the Admin',
+      'after setup the owner creates the Admin PIN and lands in the Admin profile', JSON.stringify({ pinTitle, pinMismatch, aSes }));
   } else {
     console.log('SKIP  setup flow (a local .dev.vars already exists, so the setup code is unknown to the test)');
   }
@@ -188,7 +200,17 @@ try {
   check(await B.isVisible('#gate') && !(await B.isVisible('#gate-code')), 'second device asks for the password only');
   await B.fill('#gate-pw', 'not the password'); await B.click('#gate-btn'); await B.waitForFunction(() => document.getElementById('gate-err').textContent.trim(), null, { timeout: 10000 }).catch(() => {});
   check((await B.textContent('#gate-err')).includes('Wrong password'), 'wrong password is rejected');
-  await B.fill('#gate-pw', PASSWORD); await B.click('#gate-btn'); await settle(B, 2000);
+  await B.fill('#gate-pw', PASSWORD); await B.click('#gate-btn');
+  await B.waitForSelector('.who-tile', { timeout: 10000 }).catch(() => {});
+  const bTiles = await B.$$eval('.who-tile .who-name', x => x.map(e => e.textContent.trim()));
+  check(bTiles.join('|') === 'the Admin|Add Profile' && await B.isVisible('.who-tile[data-who="admin"] .ic'), "the password opens Who's listening?, with the Admin profile locked", JSON.stringify(bTiles));
+  await B.click('[data-who="admin"]'); await B.fill('#who-pin', '000000');   // six digits submit on their own
+  await B.waitForFunction(() => document.getElementById('who-err') && document.getElementById('who-err').textContent.trim(), null, { timeout: 10000 }).catch(() => {});
+  const bPinErr = await B.textContent('#who-err');
+  await B.fill('#who-pin', ADMIN_PIN);
+  await B.waitForFunction(() => localStorage.getItem('allegro.profile') === 'admin' && document.getElementById('who').hidden, null, { timeout: 20000 }).catch(() => {});
+  await settle(B, 2000);
+  check(bPinErr.includes('Wrong PIN') && (await B.evaluate(async () => (await (await fetch('/api/session')).json()).admin)), 'a wrong Admin PIN is refused; the right one opens the Admin profile', bPinErr);
   await B.click('.tab[data-nav=library]'); await B.click('[data-chip="songs"]'); await settle(B, 400);
   const names = await B.$$eval('.tr .t-name', x => x.map(e => e.textContent));
   check(names.includes('晴天') && names.includes('Untagged Song'), 'songs appear on the second device');
@@ -883,7 +905,7 @@ try {
   await A.click('#menu .mi:has-text("Settings")'); await settle(A, 500);
   const setH1 = await A.textContent('#view h1');
   await shot(A, 'settings');
-  check(acctMenu.join('|') === 'Settings|Allegro Account|Sign Out' && setH1 === 'Settings', 'Settings sits above Allegro Account and opens the Settings page', JSON.stringify(acctMenu));
+  check(acctMenu.join('|') === 'the Admin|Switch Profile|Settings|Allegro Account|Sign Out' && setH1 === 'Settings', 'the account menu names the profile, offers Switch Profile, and Settings opens the Settings page', JSON.stringify(acctMenu));
   await A.click('#set-demos'); await settle(A, 800);
   data = await lib(A);
   const demoOff = [(data.state.prefs || []).includes('hideDemos'), await A.evaluate(() => document.querySelector('#set-demos').getAttribute('aria-checked'))];
@@ -946,7 +968,8 @@ try {
   await A.click('.nav-btn[data-nav="library"]'); await settle(A, 400); await A.click('[data-chip="songs"]'); await settle(A, 400);
   const zhLib = await A.evaluate(() => [document.querySelector('[data-chip="songs"]').textContent, [...document.querySelectorAll('#view .t-name')].map(e => e.textContent)]);
   check(zh[0] === '首页' && zh[1] === '设置' && zh[2] === 'zh-Hans' && zh[3] === '搜索' && zh[4] === '新建' && zh[5] === '喜欢的歌曲' && zhLib[0] === '歌曲' && zhLib[1].includes('Rain on Glass'), 'switching to 简体中文 translates Allegro but not your song names', JSON.stringify({ zh, chip: zhLib[0] }));
-  await A.click('#acct-btn'); await settle(A, 250); await A.click('#menu .mi >> nth=0'); await settle(A, 500);
+  // the menu is in Chinese now: Settings comes after Switch Profile
+  await A.click('#acct-btn'); await settle(A, 250); await A.click('#menu .mi >> nth=1'); await settle(A, 500);
   await A.click('[data-lang-opt="zh-Hant"]'); await settle(A, 2500);
   const zht = await A.evaluate(() => [document.querySelector('.nav-btn[data-nav="home"] span').textContent, document.querySelector('#view h1').textContent]);
   await A.click('[data-lang-opt="en"]'); await settle(A, 2500);
@@ -1255,6 +1278,74 @@ try {
     const coverPath = '/api/cover/' + encodeURIComponent(song.id) + '?';
     check(!!pl && srcs[0].startsWith(coverPath) && !srcs[0].includes('s=1') && srcs[1].startsWith(coverPath) && srcs[1].includes('s=1'),
       'a playlist page uses full-size song covers, like Now Playing; the sidebar keeps the small copy', JSON.stringify({ pl: !!pl, srcs }));
+  }
+
+  // --- profiles: a friend signs in with the shared password and makes their own profile
+  {
+    const C = await device({ width: 1280, height: 800 });
+    await C.fill('#gate-pw', 'brand new pass 1'); await C.click('#gate-btn');
+    await C.waitForSelector('.who-tile', { timeout: 10000 }).catch(() => {});
+    await shot(C, 'profiles-picker');
+    await C.click('[data-who-new]'); await C.fill('#who-name', 'Sam'); await C.click('[data-who-color="2"]');
+    await shot(C, 'profiles-new');
+    await C.click('#who-go');
+    await C.waitForFunction(() => (localStorage.getItem('allegro.profile') || 'admin') !== 'admin' && document.getElementById('who').hidden && document.querySelector('#acct-btn .pf-av'), null, { timeout: 20000 }).catch(() => {});
+    await settle(C, 2000);
+    const cSes = await C.evaluate(async () => (await fetch('/api/session')).json());
+    const aBefore = await lib(A), cLib = await lib(C);
+    const cPls = (cLib.state.playlists || []).map(p => p.id), aPls = aBefore.state.playlists.map(p => p.id);
+    check(cSes.profile && cSes.profile.name === 'Sam' && !cSes.admin && cLib.songs.length === aBefore.songs.length && cLib.songs.length >= 2 && !(cLib.state.liked || []).length && !cPls.some(id => aPls.includes(id)),
+      "a new profile opens straight away, shares the songs, and starts with its own empty likes", JSON.stringify({ cSes, songs: [cLib.songs.length, aBefore.songs.length], cPls, liked: cLib.state.liked }));
+    // likes and playlists stay with each profile
+    await C.evaluate(async id => fetch('/api/state', { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ liked: [id], playlists: [{ id: 'pl-sam-1', name: 'Sam Mix', desc: '', ids: [id] }] }) }), untagged.id);
+    const aAfter = await lib(A), cAfter = await lib(C);
+    check(JSON.stringify(aAfter.state.liked) === JSON.stringify(aBefore.state.liked) && !aAfter.state.playlists.some(p => p.id === 'pl-sam-1') && cAfter.state.liked.join() === untagged.id && cAfter.state.playlists.some(p => p.name === 'Sam Mix') && cAfter.state.artistPics.length === aAfter.state.artistPics.length,
+      "a friend's likes and playlists don't touch the Admin's; artist photos are shared", JSON.stringify({ a: aAfter.state.liked, c: cAfter.state.liked }));
+    // friends can't delete songs or change the password, in the app or on the server
+    await C.evaluate(() => document.querySelector('.nav-btn[data-nav=library], .tab[data-nav=library]').click());
+    await C.click('[data-chip="songs"]'); await settle(C, 500);
+    await C.click(`#view .tr[data-id="${tagged.id}"] .more`, { force: true }); await settle(C, 250);
+    const cMenu = await C.$$eval('#menu .mi', x => x.map(e => e.textContent.trim()));
+    await C.keyboard.press('Escape'); await settle(C, 150);
+    const cDel = await C.evaluate(async id => (await fetch('/api/songs/' + id, { method: 'DELETE' })).status, tagged.id);
+    const cPw = await C.evaluate(async () => (await fetch('/api/password', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ current: 'brand new pass 1', next: 'taken over 123' }) })).status);
+    const stillThere = (await lib(A)).songs.some(x => x.id === tagged.id);
+    await C.click('#acct-btn'); await settle(C, 250);
+    const cAcct = await C.$$eval('#menu > *', x => x.map(e => e.textContent.trim()).filter(Boolean));
+    await C.click('#menu .mi:has-text("Settings")'); await settle(C, 600);
+    const cSettings = [await C.isVisible('#pw-form'), await C.isVisible('#pin-form'), await C.isVisible('[data-pf-act="delete-own"]')];
+    await shot(C, 'profiles-friend-settings');
+    check(cMenu.length > 3 && !cMenu.includes('Remove from Library') && cDel === 403 && cPw === 403 && stillThere && cAcct[0] === 'Sam' && cSettings.join() === 'false,false,true',
+      'only the Admin can delete songs or change the password; a friend can delete their own profile', JSON.stringify({ cMenu, cDel, cPw, stillThere, cAcct, cSettings }));
+    // comments carry the profile's name; friends can delete only their own
+    await C.evaluate(async id => fetch('/api/comments/' + id, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ text: 'Sam was here' }) }), tagged.id);
+    const cms = await A.evaluate(async id => (await (await fetch('/api/comments/' + id)).json()).comments, tagged.id);
+    const adminCm = cms.find(c => c.text === 'This chorus is great'), samCm = cms.find(c => c.text === 'Sam was here');
+    const cDelOther = adminCm ? await C.evaluate(async ([id, cid]) => (await fetch(`/api/comments/${id}/${cid}`, { method: 'DELETE' })).status, [tagged.id, adminCm.id]) : 0;
+    check(!!adminCm && !!samCm && adminCm.name === 'the Admin' && adminCm.mine && samCm.name === 'Sam' && !samCm.mine && cDelOther === 403,
+      "comments show who wrote them, and a friend can't delete someone else's", JSON.stringify({ cms, cDelOther }));
+    // the Admin sees Sam in Settings and can delete the profile, with Undo
+    await A.click('#acct-btn'); await settle(A, 250); await A.click('#menu .mi:has-text("Settings")');
+    await A.waitForSelector('[data-pf-del]', { timeout: 8000 }).catch(() => {});
+    await shot(A, 'profiles-admin-settings');
+    const listed = await A.$$eval('.set-pf-item', x => x.map(e => e.textContent.trim()));
+    await A.click('[data-pf-del]'); await settle(A, 250); await A.click('#cf-yes'); await settle(A, 400);
+    const hidden = !(await A.$('[data-pf-del]'));
+    await A.click('#toast-act'); await settle(A, 400);
+    const back = !!(await A.$('[data-pf-del]'));
+    check(listed.length === 1 && listed[0].includes('Sam') && hidden && back, "the Admin's Settings list friends' profiles; deleting one can be undone", JSON.stringify({ listed, hidden, back }));
+    // a friend can't open the Admin profile by guessing: six wrong PINs lock it for a while
+    const tries = [];
+    for (let i = 0; i < 6; i++) tries.push(await C.evaluate(async () => (await fetch('/api/profile/select', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id: 'admin', pin: '000000' }) })).status));
+    const locked = await C.evaluate(async pin => { const r = await fetch('/api/profile/select', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id: 'admin', pin }) }); return [r.status, (await r.json()).error]; }, ADMIN_PIN);
+    check(tries.every(t => t === 403) && locked[0] === 429 && locked[1].includes('Too many'), 'six wrong Admin PINs lock the Admin profile for 10 minutes', JSON.stringify({ tries, locked }));
+    // once the profile is deleted, that device goes back to the picker
+    const samId = cSes.profile.id;
+    const gone = await A.evaluate(async id => (await fetch('/api/profiles/' + id, { method: 'DELETE' })).status, samId);
+    const cAfterDel = await C.evaluate(async () => { const r = await fetch('/api/library'); return [r.status, (await r.json()).pick]; });
+    await C.reload(); await C.waitForSelector('.who-tile', { timeout: 15000 }).catch(() => {});
+    const tilesAfter = await C.$$eval('.who-tile .who-name', x => x.map(e => e.textContent.trim()));
+    check(gone === 200 && cAfterDel[0] === 401 && cAfterDel[1] === true && tilesAfter.join('|') === 'the Admin|Add Profile', 'a deleted profile is gone from the picker and its device has to pick again', JSON.stringify({ gone, cAfterDel, tilesAfter }));
   }
 
   // --- nothing is reachable without a session

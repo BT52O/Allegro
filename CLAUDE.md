@@ -5,7 +5,7 @@ this repo, and the rules for interface text, deleting, themes and phones.
 
 ## The owner and how to work with them
 
-- Allegro is the owner's private, single-user music site in the style of Spotify and Tidal. They send screenshots
+- Allegro is the owner's private music site in the style of Spotify and Tidal, shared with friends through profiles. They send screenshots
   (often of Tidal) and say "make it look like this". Match the reference closely, then show a screenshot of the result.
 - Reply in English unless they write in Chinese.
 - **No em dashes**, in replies or in anything they can see in the app. Use periods, commas, colons or parentheses.
@@ -25,7 +25,7 @@ this repo, and the rules for interface text, deleting, themes and phones.
   - `audio/`: original files
   - `audio-96/` and `audio-320/`: MP3 streaming copies (made in the browser, see `makeCopies`)
   - `cover/` and `cover-sm/` (600px)
-  - `plcover/`, `arphoto/`
+  - `plcover/`, `arphoto/`, `pfphoto/` (profile photos)
   - `lyrics/`, `lyrics-x/` (cached translations and romanizations)
 - D1 database `allegro`. The schema is in `migrations/`. Add a new numbered file; never edit an old one.
 - Workers AI is bound as `AI`:
@@ -34,6 +34,21 @@ this repo, and the rules for interface text, deleting, themes and phones.
 - Browser libraries live in `public/vendor/` with their licenses: pinyin-pro, opencc-js, and wasm-media-encoders (the
   LAME MP3 encoder as WASM). Nothing loads from a CDN at runtime.
 - Live site: https://allegro.allegro-music.workers.dev. Repo: `BT52O/Allegro`.
+
+## Profiles
+
+- One shared password opens Allegro, then "Who's listening?" picks a profile. Friends share one music library;
+  each profile has its own playlists, likes, history, folders and columns.
+- `admin` is the owner's profile ("the Admin"), locked with a 6-digit PIN (kv `adminPin`, 6 wrong tries lock it for
+  10 min). Only the Admin can delete songs, change the shared password, change the PIN, or delete other profiles.
+  Anyone can upload and edit song info.
+- Data: D1 `profiles` table; library state in kv `state` (the Admin, kept from before profiles) or `state:<id>`.
+  `artistPics` is shared and always lives in `state`. Comments record `profile`.
+- The session cookie (v2) carries the profile id and, for the Admin, a fingerprint of the PIN. Old v1 cookies are
+  the owner's and are treated as the Admin.
+- In the app, per-profile localStorage keys go through `pk()`: the Admin keeps the original key names, others get
+  `@<id>`. The current profile on this device is `allegro.profile`. Opening a different profile reloads the page.
+- Song deletes in the UI check `canDelete(t)`.
 
 ## Deploying
 
@@ -88,8 +103,8 @@ grep -n FAIL /tmp/e2e.log
 - **Popups:** the player bar's right side uses `prPop(wrap, {hover})` with white `.pr-pop` cards.
 - **Order:** new items go at the front (`unshift`): folders, songs added to playlists.
 - **Saving:** `save()` writes localStorage (`STORE_KEY`) and syncs state to the server through `pushState`.
-  - Per-device settings use their own keys: `allegro.speed`, `allegro.lyx`, `allegro.quality`, `allegro.pos`,
-    `allegro.qskip`.
+  - Per-device settings use their own keys: `allegro.quality`, `allegro.qskip`, `allegro.theme`, `allegro.lang`.
+    Per-profile ones go through `pk()`: `allegro.speed`, `allegro.lyx`, `allegro.pos`, `allegro.place.v1`.
 - **Fonts and sizes:** the font is Roboto (`html{font-size:15px}`). Phones are under 760px.
 - **Editing scripts:** big edits work best as a Python script with `assert s.count(old) == 1` before each replace.
   - Check the app script after editing: extract the `<script>` contents and run `node --check` on them.

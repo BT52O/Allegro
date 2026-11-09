@@ -971,6 +971,60 @@ img { -webkit-user-drag: none; user-select: none; }
 .gate-card .btn:disabled { opacity: .5; }
 .gate-err { margin: 0; min-height: 1.3em; color: #b3261e; font-size: .9rem; }
 .topbar .acct { flex: none; background: color-mix(in srgb, var(--ink) 8%, transparent); color: var(--ink); width: 38px; height: 38px; }
+/* ---------- profiles ---------- */
+.pf-av { --pf: #777; flex: none; display: grid; place-items: center; border-radius: 50%; overflow: hidden; background: var(--pf); color: #fff; font-weight: 700; aspect-ratio: 1; line-height: 1; }
+.pf-av img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.topbar .acct.has-pf { background: none; padding: 0; }
+.topbar .acct .pf-av { width: 34px; height: 34px; font-size: .95rem; }
+.topbar .acct.has-pf:hover .pf-av { box-shadow: 0 0 0 2px var(--ink); }
+.who { position: fixed; inset: 0; z-index: 61; display: flex; justify-content: center; align-items: safe center; overflow-y: auto; background: var(--bg); padding: 32px max(16px, env(safe-area-inset-right, 0px)) 32px max(16px, env(safe-area-inset-left, 0px)); }
+.who[hidden] { display: none; }
+.who-card { width: min(100%, 760px); display: flex; flex-direction: column; align-items: center; gap: 24px; text-align: center; }
+.who-card h1 { margin: 0; font: 700 clamp(1.6rem, 4vw, 2.4rem) var(--f-display); letter-spacing: -.02em; }
+.who-card .gate-msg { max-width: 44ch; }
+.who-grid { display: flex; flex-wrap: wrap; justify-content: center; gap: 24px; }
+.who-tile { width: 124px; display: flex; flex-direction: column; align-items: center; gap: 10px; color: var(--muted); font-weight: 600; }
+.who-tile .pf-av { width: 108px; font-size: 2.7rem; transition: transform .15s, box-shadow .15s; }
+.who-tile:hover, .who-tile:focus-visible { color: var(--ink); }
+.who-tile:hover .pf-av, .who-tile:focus-visible .pf-av { transform: scale(1.04); box-shadow: 0 0 0 3px var(--ink); }
+.who-tile:focus-visible { outline: none; }
+.who-name { display: flex; align-items: center; justify-content: center; gap: 5px; max-width: 100%; }
+.who-name > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.who-name .ic { width: 15px; height: 15px; flex: none; }
+.who-add .pf-av { background: var(--chip); color: var(--muted); box-shadow: inset 0 0 0 2px var(--line); }
+.who-add .pf-av .ic { width: 42px; height: 42px; }
+.who-one { display: flex; flex-direction: column; align-items: center; gap: 10px; font-weight: 600; }
+.who-one .pf-av { width: 84px; font-size: 2.1rem; }
+.who-form { width: min(100%, 360px); display: flex; flex-direction: column; gap: 14px; text-align: left; }
+.who-form .btn { height: 48px; }
+.who-form .btn:disabled { opacity: .5; }
+.who-form .btn.ghost-sm { height: 40px; align-self: center; padding: 0 18px; }
+.who-foot { display: flex; justify-content: center; gap: 10px; }
+.who-foot .btn { height: 38px; padding: 0 18px; }
+.field input.pin-in { letter-spacing: .5em; text-indent: .5em; text-align: center; font-size: 1.35rem; font-variant-numeric: tabular-nums; }
+.pf-colors { display: flex; flex-wrap: wrap; gap: 10px; }
+.pf-color { width: 30px; height: 30px; border-radius: 50%; background: var(--pf); }
+.pf-color.on { box-shadow: 0 0 0 2px var(--panel), 0 0 0 4px var(--ink); }
+.pf-photo-row { display: flex; align-items: center; gap: 18px; }
+.pf-photo-row .pf-av { width: 88px; font-size: 2.2rem; }
+.pf-photo-btn { border-radius: 50%; }
+.cm-av.pf-av { font-size: 1.2rem; }
+.set-pf { display: flex; align-items: center; gap: 14px; min-width: 0; }
+.set-pf .pf-av { width: 48px; font-size: 1.3rem; }
+.set-btns { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; }
+.set-pf-list { display: flex; flex-direction: column; gap: 8px; min-width: min(100%, 260px); }
+.set-pf-item { display: flex; align-items: center; gap: 10px; }
+.set-pf-item .pf-av { width: 32px; font-size: .9rem; }
+.set-pf-item > span:not(.pf-av) { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
+.set-pf-item .btn { height: 32px; padding: 0 12px; font-size: .82rem; }
+body.who-open .toast { z-index: 70; }
+@media (max-width: 759px) {
+  .who-grid { gap: 16px; }
+  .who-tile { width: 100px; }
+  .who-tile .pf-av { width: 88px; font-size: 2.2rem; }
+  .set-row:has(.set-pf) { flex-wrap: wrap; }
+}
+@media (prefers-reduced-motion: reduce) { .who-tile .pf-av { transition: none; } }
 
 /* ---------- crop photo ---------- */
 .crop-scrim { z-index: 75; }
@@ -1511,6 +1565,19 @@ body.touch-input .has-pen::after { display: none; }
     <p class="gate-err" id="gate-err" role="alert"></p>
   </form>
 </div>
+<div class="who" id="who" hidden><div class="who-card" id="who-card"></div></div>
+<div class="modal-scrim" id="pf-edit" hidden>
+  <form class="modal fd-modal" id="pf-edit-form" role="dialog" aria-modal="true" aria-labelledby="pf-title" novalidate>
+    <div class="modal-head"><h2 id="pf-title">Edit Profile</h2><button type="button" class="circ" id="pf-close" aria-label="Close"><i data-ic="close"></i></button></div>
+    <div class="pf-photo-row"><button type="button" class="pf-photo-btn" id="pf-photo" aria-label="Choose a photo"><span class="pf-av" id="pf-av"></span></button>
+      <div class="pe-actions"><button type="button" class="pill-btn" id="pf-pick">Choose Photo</button><button type="button" class="pill-btn" id="pf-rm">Remove Photo</button></div></div>
+    <label class="field">Name<input id="pf-name" maxlength="40" autocomplete="off"></label>
+    <div class="field"><span id="pf-color-label">Color</span><div class="pf-colors" id="pf-colors" role="radiogroup" aria-labelledby="pf-color-label"></div></div>
+    <p class="gate-err" id="pf-err" role="alert"></p>
+    <div class="modal-foot"><button class="btn" type="submit" id="pf-save">Save</button></div>
+  </form>
+</div>
+<input type="file" id="pf-file" class="sr-only" accept="image/jpeg,image/png,image/webp,image/gif" tabindex="-1" aria-hidden="true">
 <div class="modal-scrim" id="pl-edit" hidden>
   <form class="modal" id="pl-edit-form" role="dialog" aria-modal="true" aria-labelledby="pe-title" novalidate>
     <div class="modal-head"><h2 id="pe-title">Edit Details</h2><button type="button" class="circ" id="pe-close" aria-label="Close"><i data-ic="close"></i></button></div>
@@ -1723,9 +1790,63 @@ const I18N = [
   ['Prepare All Songs', '准备所有歌曲', '準備所有歌曲'], ['Preparing songs', '正在准备歌曲', '正在準備歌曲'], ['Stop', '停止', '停止'],
   ['Format', '格式', '格式'], ['Bit depth', '位深', '位元深度'], ['Sample rate', '采样率', '取樣率'], ['Bitrate', '码率', '位元率'], ['Channels', '声道', '聲道'], ['Mono', '单声道', '單聲道'], ['Stereo', '立体声', '立體聲'], ['File size', '文件大小', '檔案大小'],
   ['Playback Speed', '播放速度', '播放速度'], ['Preserve Pitch', '保持音调', '保持音調'], ['Playback speed', '播放速度', '播放速度'], ['Back to normal speed', '恢复正常速度', '恢復正常速度'],
+  // profiles
+  ['Who\'s listening?', '谁在听？', '誰在聽？'],
+  ['Add Profile', '添加个人资料', '新增個人檔案'],
+  ['Admin PIN', '管理员 PIN 码', '管理員 PIN 碼'],
+  ['Back', '返回', '返回'],
+  ['Create Your Admin PIN', '创建你的管理员 PIN 码', '建立你的管理員 PIN 碼'],
+  ['Choose 6 digits. Friends share the password, but only you can open the Admin profile, and only the Admin can delete songs.', '请选择 6 位数字。朋友们共用密码，但只有你能打开管理员个人资料，也只有管理员能删除歌曲。', '請選擇 6 位數字。朋友們共用密碼，但只有你能開啟管理員個人檔案，也只有管理員能刪除歌曲。'],
+  ['Save PIN', '保存 PIN 码', '儲存 PIN 碼'],
+  ['Color', '颜色', '顏色'],
+  ['Create Profile', '创建个人资料', '建立個人檔案'],
+  ['The PIN needs exactly 6 digits.', 'PIN 码必须是 6 位数字。', 'PIN 碼必須是 6 位數字。'],
+  ['The PINs don\'t match.', '两次输入的 PIN 码不一致。', '兩次輸入的 PIN 碼不一致。'],
+  ['Give the profile a name.', '请给个人资料起个名字。', '請為個人檔案取個名字。'],
+  ['Wrong PIN.', 'PIN 码错误。', 'PIN 碼錯誤。'],
+  ['The Admin PIN isn\'t set yet. Set it from a device that\'s already in the Admin profile.', '管理员 PIN 码还没有设置。请在已打开管理员个人资料的设备上设置。', '管理員 PIN 碼尚未設定。請在已開啟管理員個人檔案的裝置上設定。'],
+  ['That profile is gone.', '这个个人资料已不存在。', '這個個人檔案已不存在。'],
+  ['Only the Admin can delete songs.', '只有管理员能删除歌曲。', '只有管理員能刪除歌曲。'],
+  ['Only the Admin can change the password.', '只有管理员能更改密码。', '只有管理員能變更密碼。'],
+  ['Only the Admin can do that.', '只有管理员能这样做。', '只有管理員能這樣做。'],
+  ['You can only change your own profile.', '你只能更改自己的个人资料。', '你只能變更自己的個人檔案。'],
+  ['You can only delete your own comments.', '你只能删除自己的评论。', '你只能刪除自己的評論。'],
+  ['The Admin profile can\'t be deleted.', '管理员个人资料无法删除。', '管理員個人檔案無法刪除。'],
+  ['Allegro can have up to 20 profiles.', 'Allegro 最多可以有 20 个个人资料。', 'Allegro 最多可以有 20 個個人檔案。'],
+  ['Pick a profile first.', '请先选择一个个人资料。', '請先選擇一個個人檔案。'],
+  ['Switch Profile', '切换个人资料', '切換個人檔案'],
+  ['Edit Profile', '编辑个人资料', '編輯個人檔案'],
+  ['Delete Profile', '删除个人资料', '刪除個人檔案'],
+  ['Choose a photo', '选择照片', '選擇照片'],
+  ['locked', '已锁定', '已鎖定'],
+  ['Former Profile', '已删除的个人资料', '已刪除的個人檔案'],
+  ['Delete your profile?', '删除你的个人资料？', '刪除你的個人檔案？'],
+  ['Your playlists, likes and history will be deleted. Songs you added stay in the library for everyone.', '你的歌单、喜欢的歌曲和播放历史将被删除。你添加的歌曲会留在音乐库中，大家都能听。', '你的歌單、喜歡的歌曲和播放歷史將被刪除。你加入的歌曲會留在音樂庫中，大家都能聽。'],
+  ['Their playlists, likes and history will be deleted. Songs they added stay in the library.', '他们的歌单、喜欢的歌曲和播放历史将被删除。他们添加的歌曲会留在音乐库中。', '他們的歌單、喜歡的歌曲和播放歷史將被刪除。他們加入的歌曲會留在音樂庫中。'],
+  ['Deleted your profile', '已删除你的个人资料', '已刪除你的個人檔案'],
+  ['Profile saved', '个人资料已保存', '個人檔案已儲存'],
+  ['Couldn\'t delete that profile. Try again.', '无法删除这个个人资料，请重试。', '無法刪除這個個人檔案，請重試。'],
+  ['Couldn\'t save.', '无法保存。', '無法儲存。'],
+  ['The Admin profile. Only the Admin can delete songs, delete other profiles and change the password.', '管理员个人资料。只有管理员能删除歌曲、删除其他个人资料和更改密码。', '管理員個人檔案。只有管理員能刪除歌曲、刪除其他個人檔案和變更密碼。'],
+  ['Your own playlists, likes and history. The songs are shared with everyone.', '你自己的歌单、喜欢的歌曲和播放历史。歌曲是大家共享的。', '你自己的歌單、喜歡的歌曲和播放歷史。歌曲是大家共享的。'],
+  ['Go back to the list of profiles on this device.', '在此设备上返回个人资料列表。', '在此裝置上返回個人檔案清單。'],
+  ['The 6 digits that open the Admin profile. Changing it closes the Admin profile on your other devices.', '用来打开管理员个人资料的 6 位数字。更改后，你的其他设备会退出管理员个人资料。', '用來開啟管理員個人檔案的 6 位數字。變更後，你的其他裝置會退出管理員個人檔案。'],
+  ['Current PIN', '当前 PIN 码', '目前 PIN 碼'],
+  ['New PIN (6 digits)', '新 PIN 码（6 位数字）', '新 PIN 碼（6 位數字）'],
+  ['New PIN again', '再次输入新 PIN 码', '再次輸入新 PIN 碼'],
+  ['Change PIN', '更改 PIN 码', '變更 PIN 碼'],
+  ['Profiles', '个人资料', '個人檔案'],
+  ['Everyone who listens with the shared password. Deleting a profile deletes its playlists and likes.', '使用共享密码收听的每个人。删除个人资料会同时删除它的歌单和喜欢的歌曲。', '使用共享密碼收聽的每個人。刪除個人檔案會同時刪除它的歌單和喜歡的歌曲。'],
+  ['Nobody else has made a profile yet.', '还没有其他人创建个人资料。', '還沒有其他人建立個人檔案。'],
+  ['Type your current PIN.', '请输入当前 PIN 码。', '請輸入目前 PIN 碼。'],
+  ['PIN changed.', 'PIN 码已更改。', 'PIN 碼已變更。'],
+  ['Your current PIN is not right.', '当前 PIN 码不正确。', '目前 PIN 碼不正確。'],
+  ['Couldn\'t change the PIN.', '无法更改 PIN 码。', '無法變更 PIN 碼。'],
+  ['The shared password everyone uses to open Allegro. Changing it signs out every device, including your friends\'.', '大家用来打开 Allegro 的共享密码。更改后，所有设备都会退出登录，包括朋友们的设备。', '大家用來開啟 Allegro 的共享密碼。變更後，所有裝置都會登出，包括朋友們的裝置。'],
 ];
 const pickL = (h, t) => LANG === 'zh-Hant' ? t : h;
 const PAT = [
+  [/^Deleted (.+)'s profile$/, m => pickL(`已删除“${m[1]}”的个人资料`, `已刪除「${m[1]}」的個人檔案`)],
   [/^No\. (\d+) This Month$/, m => `本月第 ${m[1]} 名`],
   [/^Streaming quality: (.+)$/, m => pickL(`音质：${m[1]}`, `音質：${m[1]}`)],
   [/^(\d+) songs?$/, m => pickL(`${m[1]} 首歌曲`, `${m[1]} 首歌曲`)], [/^(\d+) playlists?$/, m => pickL(`${m[1]} 个歌单`, `${m[1]} 個歌單`)],
@@ -1749,7 +1870,10 @@ const PAT = [
   [/^Renamed page break “(.+)” to “(.+)”$/, m => pickL(`将分段“${m[1]}”重命名为“${m[2]}”`, `將分段「${m[1]}」重新命名為「${m[2]}」`)], [/^and (\d+) more$/, m => pickL(`还有 ${m[1]} 项`, `還有 ${m[1]} 項`)],
   [/^Released (.+)$/, m => `${tr1(m[1]) || m[1]}${pickL('发行', '發行')}`], [/^Played (\d+) times?$/, m => `${pickL('播放了', '播放了')} ${m[1]} ${pickL('次', '次')}`],
   [/^Volume (\d+)$/, m => pickL(`第 ${m[1]} 卷`, `第 ${m[1]} 卷`)], [/^Uploading (\d+) of (\d+): (.+)$/, m => pickL(`正在上传第 ${m[1]}/${m[2]} 首：${m[3]}`, `正在上傳第 ${m[1]}/${m[2]} 首：${m[3]}`)],
-  [/^Uploaded (\d+) songs?\. .*$/, m => pickL(`已上传 ${m[1]} 首歌曲，可在所有设备上播放`, `已上傳 ${m[1]} 首歌曲，可在所有裝置上播放`)], [/^Adding (\d+) songs?…$/, m => pickL(`正在添加 ${m[1]} 首歌曲…`, `正在加入 ${m[1]} 首歌曲…`)]
+  [/^Uploaded (\d+) songs?\. .*$/, m => pickL(`已上传 ${m[1]} 首歌曲，可在所有设备上播放`, `已上傳 ${m[1]} 首歌曲，可在所有裝置上播放`)], [/^Adding (\d+) songs?…$/, m => pickL(`正在添加 ${m[1]} 首歌曲…`, `正在加入 ${m[1]} 首歌曲…`)],
+  [/^Too many wrong PINs\. Try again in (\d+) min\.$/, m => pickL(`错误次数太多，请在 ${m[1]} 分钟后重试。`, `錯誤次數太多，請在 ${m[1]} 分鐘後重試。`)],
+  [/^Delete (.+)\?$/, m => pickL(`删除“${m[1]}”？`, `刪除「${m[1]}」？`)],
+  [/^Color (\d+)$/, m => pickL(`颜色 ${m[1]}`, `顏色 ${m[1]}`)],
 ];
 let I18N_IDX = 0, I18N_MAP = new Map();
 function useLang(code) {
@@ -1849,6 +1973,7 @@ const STROKE = {
   clock: '<circle cx="12" cy="12" r="8"/><path d="M12 7.5V12l3 2"/>',
   music: '<path d="M9 18V6l10-2v12"/><circle cx="6.5" cy="18" r="2.5"/><circle cx="16.5" cy="16" r="2.5"/>',
   close: '<path d="M6 6l12 12M18 6 6 18"/>',
+  lock: '<rect x="5" y="10.5" width="14" height="9.5" rx="2"/><path d="M8.5 10.5V7.5a3.5 3.5 0 0 1 7 0v3"/>',
   upload: '<path d="M12 16V4M7 9l5-5 5 5M5 20h14"/>',
   lyrics: '<path d="M4 6h16M4 11h11M4 16h7"/><circle cx="17" cy="17.5" r="2.5"/><path d="M19.5 17.5V10l2-1"/>',
   chart: '<path d="M4 19h16M7 15l4-4 3 3 5-6"/>',
@@ -1947,7 +2072,16 @@ const S = {
   libSort: 'custom', libOrder: [], history: [], artistPics: [], listCols: [], folders: [], prefs: [], libView: 'list', libFilter: null, libQ: '', sideCollapsed: false
 };
 let IDX = { albums: new Map(), artists: new Map(), genres: new Map() };
-const STORE_KEY = 'waxwing.state.v1';
+/* Profiles: each one keeps its own copy of its library on this device. The Admin uses the original keys, so the
+   owner's data from before profiles carries straight over; every other profile adds "@<profile id>". */
+const PID = (() => { try {
+  const v = localStorage.getItem('allegro.profile');
+  if (v !== null) return v;
+  return localStorage.getItem('waxwing.state.v1') ? 'admin' : '';   // a device used before profiles existed is the owner's
+} catch (e) { return ''; } })();
+const pk = k => PID === 'admin' ? k : k + '@' + (PID || 'none');
+const setPid = id => { try { localStorage.setItem('allegro.profile', id || ''); } catch (e) {} };
+const STORE_KEY = pk('waxwing.state.v1');
 let firstRun = true;
 try {
   const p = JSON.parse(localStorage.getItem(STORE_KEY) || 'null');
@@ -1983,7 +2117,7 @@ function lastSnap() {
   return { ctx: S.context && S.context.key, ctxName: S.context && S.context.name, id: S.current, queue: qi < 0 ? [S.current] : q, qi: Math.max(0, qi),
     title: t.title, artist: t.artist, cover: t.cover && !t.cover.startsWith('data:') && !t.cover.startsWith('blob:') ? t.cover : '', dur: t.duration || 0 };
 }
-const POS_KEY = 'allegro.pos';
+const POS_KEY = pk('allegro.pos');
 let resumeAt = null;   // { id, t }: where to start the restored song when play is pressed
 try { const p = JSON.parse(localStorage.getItem(POS_KEY) || 'null'); if (p && p.id && p.t >= 0) resumeAt = p; } catch (e) {}
 function curPos() {
@@ -2714,7 +2848,7 @@ function drawSelBar(cur) {
   const bar = $('#selbar'), n = SEL.ids.size;
   if (!cur || !n) { bar.classList.remove('show'); bar.inert = true; return; }
   const ids = cur.L.ids.filter(x => SEL.ids.has(x)), allLiked = ids.every(isLiked);
-  const deletable = ids.every(id => { const t = tk(id); return t && (t.kind === 'file' || (t.kind === 'cloud' && cloud.canWrite)); });
+  const deletable = ids.every(id => canDelete(tk(id)));
   const b = (act, icon, label, cls = '') => `<button class="sb-btn${cls}" data-selact="${act}" title="${label}">${ic(icon)}<span>${label}</span></button>`;
   bar.innerHTML = `<span class="sb-count">${n === 1 ? '1 song selected' : n + ' songs selected'}</span>`
     + b('play', 'play', 'Play') + b('next', 'playnext', 'Play Next') + b('queue', 'addq', 'Add to Queue') + b('playlist', 'plus', 'Add to Playlist')
@@ -3083,15 +3217,15 @@ const VIEWS = {
     const demos = !pref('hideDemos'), nCols = S.listCols.length;
     const toggle = (id, on, label) => `<button class="switch${on ? ' on' : ''}" id="${id}" role="switch" aria-checked="${on}" aria-label="${esc(label)}"><i></i></button>`;
     return `<h1 class="page-title">Settings</h1>
-      <section class="set-sec"><h2>Account</h2>
-        <div class="set-row"><div><h3>Password</h3><p>Change the password you use to sign in. Your other devices will need to sign in again.</p></div>
+      <section class="set-sec"><h2>Account</h2>${profileRows()}
+        ${cloud.admin ? `<div class="set-row"><div><h3>Password</h3><p>The shared password everyone uses to open Allegro. Changing it signs out every device, including your friends'.</p></div>
           <form class="pw-form" id="pw-form" novalidate autocomplete="off">
             <input type="password" id="pw-cur" placeholder="Current password" autocomplete="current-password" aria-label="Current password">
             <input type="password" id="pw-new" placeholder="New password (8+ characters)" autocomplete="new-password" aria-label="New password">
             <input type="password" id="pw-new2" placeholder="New password again" autocomplete="new-password" aria-label="New password again">
             <p class="pw-msg" id="pw-msg" role="status"></p>
             <button class="btn" type="submit" id="pw-save">Change Password</button>
-          </form></div>
+          </form></div>` : ''}
         <div class="set-row"><div><h3>Sign Out</h3><p>Sign out of Allegro on this device.</p></div><button class="btn ghost-sm" data-action="sign-out">Sign Out</button></div>
       </section>
       <section class="set-sec"><h2>Appearance</h2>
@@ -3258,7 +3392,7 @@ function render(scrollTop) {
   savePlace();
 }
 // Reloading keeps you where you were: the page you had open and how far down you'd scrolled.
-const PLACE_KEY = 'allegro.place.v1';
+const PLACE_KEY = pk('allegro.place.v1');
 let placeTop = null, placeTimer = 0;
 function savePlace() {
   if (placeTop !== null) return;   // still waiting to put you back
@@ -3554,7 +3688,7 @@ function trackMenu(anchor, id, listInfo) {
     p.ids.splice(idx, 1); save(); render(); renderSide();
     toast(`Removed from ${p.name}`, { label: 'Undo', fn: () => { p.ids.splice(idx, 0, id); save(); render(); } });
   } });
-  if (t.kind === 'file' || (t.kind === 'cloud' && cloud.canWrite)) items.push({ sep: true }, { label: 'Remove from Library', icon: 'trash', danger: true, fn: () => removeTrack(id) });
+  if (canDelete(t)) items.push({ sep: true }, { label: 'Remove from Library', icon: 'trash', danger: true, fn: () => removeTrack(id) });
   openMenu(anchor, items, `${t.title} · ${t.artist}`);
 }
 function ctxMenu(anchor, key) {
@@ -4330,9 +4464,9 @@ const lySegs = text => (String(text).match(LY_SEG) || []).map(x => /^\s+$/.test(
    Chinese is turned into pinyin right in the browser (pinyin-pro), Korean into Revised Romanization by a small built-in
    converter, and anything else (Japanese, say) goes to a language model on the server, as do translations. */
 let LYX = { tr: false, rom: false, sc: false };
-try { Object.assign(LYX, JSON.parse(localStorage.getItem('allegro.lyx') || '{}')); } catch (e) {}
+try { Object.assign(LYX, JSON.parse(localStorage.getItem(pk('allegro.lyx')) || '{}')); } catch (e) {}
 const lyxMode = () => LYX.rom || LYX.tr || LYX.sc ? 'on' : 'off';
-const saveLyx = () => { try { localStorage.setItem('allegro.lyx', JSON.stringify({ tr: !!LYX.tr, rom: !!LYX.rom, sc: !!LYX.sc })); } catch (e) {} };
+const saveLyx = () => { try { localStorage.setItem(pk('allegro.lyx'), JSON.stringify({ tr: !!LYX.tr, rom: !!LYX.rom, sc: !!LYX.sc })); } catch (e) {} };
 const lyxTexts = () => { const L = SP.lyr || {}; return (L.lines && L.lines.length ? L.lines : L.plain || []).map(l => l.text || ''); };
 const lyxKey = (t, texts) => t.id + ':' + LANG + ':' + hash(texts.join('\n'));
 function lyxNeeds(texts) {
@@ -4457,7 +4591,7 @@ function lyrLoop() {
   SP.raf = requestAnimationFrame(tick);
 }
 
-/* --- Comments: your own notes on a song, saved online --- */
+/* --- Comments on a song, saved online. Everyone sees them, with the name of the profile that wrote each one. --- */
 async function loadComments(t) {
   SP.cm = { id: t.id, loading: true };
   let res;
@@ -4473,8 +4607,13 @@ function commentsHTML(t) {
   if (C.loading || C.id !== t.id) list = '<p class="sp-msg">Loading…</p>';
   else if (C.err) list = `<p class="sp-msg">${esc(C.err)}</p>`;
   else if (!C.list.length) list = '<p class="sp-msg">No comments yet. Write the first one.</p>';
-  else list = C.list.map(c => `<div class="cm"><span class="cm-av">${ic('user')}</span><div><div class="cm-name">You</div><p class="cm-text" data-nt>${esc(c.text)}</p>
-      <div class="cm-foot"><span>${ymd(c.at)}</span><span class="cm-btns"><button class="cm-like${c.liked ? ' on' : ''}" data-cm-like="${c.id}" aria-pressed="${!!c.liked}" aria-label="Like">${ic(c.liked ? 'heartFill' : 'heart')}<span>${c.liked ? 1 : 0}</span></button><button class="cm-del" data-cm-del="${c.id}" aria-label="Delete">${ic('trash')}</button></span></div></div></div>`).join('');
+  else list = C.list.map(c => {
+    const av = c.name ? pfAvatar({ id: c.profile, name: c.name, color: c.color, photo: c.photo }, 'cm-av') : `<span class="cm-av">${ic('user')}</span>`;
+    const who = c.mine ? 'You' : c.name ? `<span data-nt>${esc(c.name)}</span>` : 'Former Profile';
+    const del = c.mine || cloud.admin ? `<button class="cm-del" data-cm-del="${c.id}" aria-label="Delete">${ic('trash')}</button>` : '';
+    return `<div class="cm">${av}<div><div class="cm-name">${who}</div><p class="cm-text" data-nt>${esc(c.text)}</p>
+      <div class="cm-foot"><span>${ymd(c.at)}</span><span class="cm-btns"><button class="cm-like${c.liked ? ' on' : ''}" data-cm-like="${c.id}" aria-pressed="${!!c.liked}" aria-label="Like">${ic(c.liked ? 'heartFill' : 'heart')}<span>${c.liked ? 1 : 0}</span></button>${del}</span></div></div></div>`;
+  }).join('');
   return `<h3 class="cm-head">Comments</h3>${box}${list}`;
 }
 
@@ -5703,7 +5842,7 @@ window.addEventListener('pagehide', () => { [...pendingDeletes].forEach(sendDele
 // Deleting several songs at once: one question, one Undo.
 async function removeTracks(ids0) {
   if (ids0.length === 1) return removeTrack(ids0[0]);
-  const list = ids0.map(tk).filter(t => t && (t.kind === 'file' || (t.kind === 'cloud' && cloud.canWrite)));
+  const list = ids0.map(tk).filter(canDelete);
   if (!list.length) return false;
   if (!(await askDelete(`Delete ${list.length} songs?`, 'These songs will be removed from your library and every playlist, and their files deleted.'))) return false;
   const live = list.filter(t => tk(t.id)), gone = new Set(live.map(t => t.id));
@@ -5723,7 +5862,7 @@ async function removeTracks(ids0) {
 }
 async function removeTrack(id) {
   const t = tk(id);
-  if (!t || !(t.kind === 'file' || (t.kind === 'cloud' && cloud.canWrite))) return false;
+  if (!canDelete(t)) return false;
   if (!(await askDelete(`Delete ${t.title}?`, 'The song will be removed from your library and every playlist, and its file deleted.'))) return false;
   if (!tk(id)) return false;
   const likedAt = S.liked.indexOf(id), inPl = S.playlists.map(p => [p, p.ids.indexOf(id)]).filter(x => x[1] >= 0);
@@ -5747,7 +5886,9 @@ async function removeTrack(id) {
 }
 
 /* ================= your online library (Allegro server: R2 + D1) ================= */
-const cloud = { canWrite: false, stateLoaded: false, lastJSON: null, usage: null, writing: false, again: false, songsLoaded: false, sig: '' };
+const cloud = { canWrite: false, stateLoaded: false, lastJSON: null, usage: null, writing: false, again: false, songsLoaded: false, sig: '', profile: null, admin: false };
+// Songs saved online are shared by every profile, so only the Admin can delete them. Songs only on this device are yours.
+const canDelete = t => !!t && (t.kind === 'file' || (t.kind === 'cloud' && cloud.canWrite && cloud.admin));
 const FREE_BYTES = 10e9; // Cloudflare R2 free tier
 let userActed = false;
 document.addEventListener('pointerdown', () => { userActed = true; }, true);
@@ -5761,7 +5902,11 @@ async function api(path, opts = {}) {
   let r;
   try { r = await fetch('/api/' + path, { credentials: 'same-origin', ...opts }); }
   catch (e) { throw Object.assign(new Error("can't reach Allegro, check your connection"), { status: 0 }); }
-  if (r.status === 401 && !/^(login|setup|session)$/.test(path)) { cloud.canWrite = false; showGate(false); }
+  if (r.status === 401 && !/^(login|setup|session)$/.test(path)) {
+    let b = {}; try { b = await r.clone().json(); } catch (e) {}
+    cloud.canWrite = false;
+    if (b.pick) showWho('pick'); else showGate(false);
+  }
   if (!r.ok) {
     let m = ''; try { m = (await r.json()).error; } catch (e) {}
     throw Object.assign(new Error(m || ('error ' + r.status)), { status: r.status });
@@ -5902,23 +6047,316 @@ $('#gate-form').addEventListener('submit', async e => {
     else await api('login', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ password: pw }) });
     $('#gate-pw').value = ''; $('#gate-pw2').value = ''; $('#gate-code').value = '';
     $('#gate').hidden = true;
-    await loadLibrary(true);
+    await enterProfile();
   } catch (ex) { err.textContent = ex.message || 'Sign-in failed.'; }
   btn.disabled = false;
 });
 async function signOut() {
+  await flushPfDel();
   try { await api('logout', { method: 'POST' }); } catch (e) {}
+  setPid('');
   location.reload();
 }
 async function initCloud() {
   let s;
   try { s = await api('session'); } catch (e) { toast("Can't reach Allegro right now. Check your connection."); bootDone.cloud = true; tryRestoreLast(); return; }
-  if (!s.signedIn) { showGate(s.needsSetup); return; }
+  if (await routeSession(s)) await openLibrary();
+}
+let cloudStarted = false;
+async function openLibrary() {
+  $('#gate').hidden = true; hideWho();
   await loadLibrary(true);
   if (!cloud.songsLoaded) { bootDone.cloud = true; tryRestoreLast(); }
+  if (cloudStarted) return;
+  cloudStarted = true;
   setInterval(() => { if (document.visibilityState === 'visible') loadLibrary(); }, 60000);
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') loadLibrary(); });
 }
+// Decides what a signed-in device shows: the password screen, the Admin PIN setup, the profile picker, or the
+// music. Returns true once a profile is open. Opening a different profile than the one this page started with
+// reloads the page, so the queue, place and settings all come from that profile's own copy on this device.
+async function routeSession(s) {
+  if (!s.signedIn) { showGate(s.needsSetup); return false; }
+  if (s.needsPin) { showWho('setpin'); return false; }
+  if (!s.profile) { showWho('pick'); return false; }
+  if (s.profile.id !== PID) { setPid(s.profile.id); location.reload(); return false; }
+  cloud.profile = s.profile; cloud.admin = !!s.admin;
+  drawAcct();
+  return true;
+}
+async function enterProfile() {
+  let s;
+  try { s = await api('session'); } catch (e) { toast(e.message); return; }
+  if (await routeSession(s)) await openLibrary();
+}
+
+/* ================= profiles ================= */
+const PF_COLORS = ['#d9480f', '#1971c2', '#2b8a3e', '#862e9c', '#c2255c', '#0b7285', '#b35c00', '#5f3dc4'];
+const MAX_PROFILES = 20;
+const pfColor = p => PF_COLORS[((p && p.color) || 0) % PF_COLORS.length];
+const pfInitial = name => { const n = [...String(name || '').replace(/^the\s+/i, '').trim()]; return esc((n[0] || '?').toUpperCase()); };
+const pfPhotoUrl = p => '/api/profile-photo/' + encodeURIComponent(p.id) + '?v=' + p.photo;
+function pfAvatar(p, cls = '') {
+  return `<span class="pf-av ${cls}" style="--pf:${pfColor(p)}" aria-hidden="true">${p && p.photo ? `<img src="${esc(pfPhotoUrl(p))}" alt="">` : `<b data-nt>${pfInitial(p && p.name)}</b>`}</span>`;
+}
+function drawAcct() {
+  const b = $('#acct-btn'), p = cloud.profile; if (!p) return;
+  b.classList.add('has-pf'); b.innerHTML = pfAvatar(p);
+}
+const WHO = { mode: 'pick', list: [], pinSet: true, sel: null, color: 0, err: '', busy: false };
+function hideWho() { $('#who').hidden = true; document.body.classList.remove('who-open'); }
+async function showWho(mode) {
+  WHO.mode = mode; WHO.err = '';
+  $('#gate').hidden = true; $('#who').hidden = false; document.body.classList.add('who-open');
+  closeMenu();
+  if (mode === 'pick') {
+    $('#who-card').innerHTML = '';
+    try { const r = await api('profiles'); WHO.list = r.profiles; WHO.pinSet = r.pinSet; } catch (e) { WHO.err = e.message; }
+  }
+  if (mode === 'new') WHO.color = WHO.list.length % PF_COLORS.length;
+  drawWho();
+}
+function drawWho() {
+  const c = $('#who-card');
+  const logo = `<div class="gate-logo"><span class="brand-gradient"><span class="clef" aria-hidden="true"><span class="brand-glyph">&#x1D11E;</span></span><span class="brand-name">Allegro</span></span></div>`;
+  const err = `<p class="gate-err" id="who-err" role="alert">${esc(WHO.err)}</p>`;
+  if (WHO.mode === 'pick') {
+    const list = WHO.list.filter(p => !pendingPfDel.has(p.id));
+    c.innerHTML = `${logo}<h1>Who's listening?</h1>
+      <div class="who-grid">${list.map(p => `<button class="who-tile" data-who="${esc(p.id)}" aria-label="${esc(p.name)}${p.admin ? ', locked' : ''}">${pfAvatar(p)}<span class="who-name"><span data-nt>${esc(p.name)}</span>${p.admin ? ic('lock') : ''}</span></button>`).join('')}${list.length < MAX_PROFILES ? `<button class="who-tile who-add" data-who-new><span class="pf-av">${ic('plus')}</span><span class="who-name"><span>Add Profile</span></span></button>` : ''}</div>
+      ${err}<div class="who-foot"><button class="btn ghost-sm" data-who-out>Sign Out</button></div>`;
+    return;
+  }
+  if (WHO.mode === 'pin') {
+    const p = WHO.list.find(x => x.admin) || { id: 'admin', name: 'the Admin', color: 0, photo: 0 };
+    c.innerHTML = `<div class="who-one">${pfAvatar(p)}<span data-nt>${esc(p.name)}</span></div>
+      <form class="who-form" id="who-form" novalidate>
+        <label class="field">Admin PIN<input id="who-pin" class="pin-in" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="6" autocomplete="off"></label>
+        <button class="btn" type="submit" id="who-go">Open</button>${err}
+        <button type="button" class="btn ghost-sm" data-who-back>Back</button>
+      </form>`;
+    setTimeout(() => $('#who-pin') && $('#who-pin').focus(), 30);
+    return;
+  }
+  if (WHO.mode === 'setpin') {
+    c.innerHTML = `${logo}<h1>Create Your Admin PIN</h1>
+      <p class="gate-msg">Choose 6 digits. Friends share the password, but only you can open the Admin profile, and only the Admin can delete songs.</p>
+      <form class="who-form" id="who-form" novalidate>
+        <label class="field">Admin PIN<input id="who-pin" class="pin-in" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="6" autocomplete="off"></label>
+        <label class="field">Type It Again<input id="who-pin2" class="pin-in" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="6" autocomplete="off"></label>
+        <button class="btn" type="submit" id="who-go">Save PIN</button>${err}
+      </form>`;
+    setTimeout(() => $('#who-pin') && $('#who-pin').focus(), 30);
+    return;
+  }
+  // new profile
+  c.innerHTML = `<h1>Add Profile</h1>
+    <form class="who-form" id="who-form" novalidate>
+      <div class="who-one" id="who-preview">${pfAvatar({ name: '', color: WHO.color })}</div>
+      <label class="field">Name<input id="who-name" maxlength="40" autocomplete="off"></label>
+      <div class="field"><span id="who-color-label">Color</span><div class="pf-colors" role="radiogroup" aria-labelledby="who-color-label">${colorDots(WHO.color, 'who-color')}</div></div>
+      <button class="btn" type="submit" id="who-go">Create Profile</button>${err}
+      <button type="button" class="btn ghost-sm" data-who-back>Back</button>
+    </form>`;
+  setTimeout(() => $('#who-name') && $('#who-name').focus(), 30);
+}
+const colorDots = (on, attr) => PF_COLORS.map((col, i) => `<button type="button" class="pf-color${i === on ? ' on' : ''}" style="--pf:${col}" data-${attr}="${i}" role="radio" aria-checked="${i === on}" aria-label="Color ${i + 1}"></button>`).join('');
+function whoErr(m) { WHO.err = m || ''; const e = $('#who-err'); if (e) e.textContent = WHO.err; }
+async function selectProfile(id, pin) {
+  await flushPfDel();
+  await api('profile/select', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id, pin }) });
+  await enterProfile();
+}
+$('#who').addEventListener('click', async e => {
+  const t = e.target.closest('[data-who]');
+  if (t) {
+    const p = WHO.list.find(x => x.id === t.dataset.who); if (!p) return;
+    if (p.admin) { WHO.mode = 'pin'; WHO.err = WHO.pinSet ? '' : "The Admin PIN isn't set yet. Set it from a device that's already in the Admin profile."; drawWho(); return; }
+    try { await selectProfile(p.id); } catch (ex) { whoErr(ex.message); }
+    return;
+  }
+  if (e.target.closest('[data-who-new]')) { showWho('new'); return; }
+  if (e.target.closest('[data-who-back]')) { showWho('pick'); return; }
+  if (e.target.closest('[data-who-out]')) { signOut(); return; }
+  const dot = e.target.closest('[data-who-color]');
+  if (dot) {
+    WHO.color = +dot.dataset.whoColor;
+    $$('#who [data-who-color]').forEach(d => { const on = d === dot; d.classList.toggle('on', on); d.setAttribute('aria-checked', on); });
+    $('#who-preview').innerHTML = pfAvatar({ name: $('#who-name').value, color: WHO.color });
+  }
+});
+$('#who').addEventListener('input', e => {
+  if (e.target.id === 'who-name') { $('#who-preview').innerHTML = pfAvatar({ name: e.target.value, color: WHO.color }); return; }
+  if (e.target.classList.contains('pin-in')) {
+    e.target.value = e.target.value.replace(/\D/g, '').slice(0, 6);
+    // six digits on the unlock screen open the profile straight away, like a phone's lock screen
+    if (WHO.mode === 'pin' && e.target.value.length === 6) $('#who-form').requestSubmit();
+  }
+});
+$('#who').addEventListener('submit', async e => {
+  if (e.target.id !== 'who-form') return;
+  e.preventDefault();
+  if (WHO.busy) return;
+  const go = $('#who-go');
+  const run = async fn => { WHO.busy = true; go.disabled = true; whoErr(''); try { await fn(); } catch (ex) { whoErr(ex.message); } WHO.busy = false; if (go.isConnected) go.disabled = false; };
+  if (WHO.mode === 'pin') {
+    const pin = $('#who-pin').value;
+    if (pin.length !== 6) { whoErr('The PIN needs exactly 6 digits.'); return; }
+    await run(() => selectProfile('admin', pin));
+    if (WHO.err && $('#who-pin')) { $('#who-pin').value = ''; $('#who-pin').focus(); }
+  } else if (WHO.mode === 'setpin') {
+    const pin = $('#who-pin').value;
+    if (pin.length !== 6) { whoErr('The PIN needs exactly 6 digits.'); return; }
+    if (pin !== $('#who-pin2').value) { whoErr("The PINs don't match."); return; }
+    await run(async () => { await api('admin-pin', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ pin }) }); await enterProfile(); });
+  } else if (WHO.mode === 'new') {
+    const name = $('#who-name').value.trim();
+    if (!name) { whoErr('Give the profile a name.'); return; }
+    await run(async () => {
+      const r = await api('profiles', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name, color: WHO.color }) });
+      WHO.list.push(r.profile);
+      await selectProfile(r.profile.id);
+    });
+  }
+});
+async function switchProfile() {
+  savePos();
+  audio.pause();
+  await pushState().catch(() => {});
+  try { await api('profile/leave', { method: 'POST' }); } catch (e) { toast(e.message); return; }
+  setPid('');
+  location.reload();
+}
+
+/* Deleting a profile waits out the Undo window before it reaches the server, like deleting songs. */
+const pendingPfDel = new Map();   // id -> timer
+function sendPfDel(id, keepalive) {
+  clearTimeout(pendingPfDel.get(id)); pendingPfDel.delete(id);
+  return fetch('/api/profiles/' + encodeURIComponent(id), { method: 'DELETE', credentials: 'same-origin', keepalive: !!keepalive }).then(r => { if (!r.ok) throw new Error(); }).catch(() => toast("Couldn't delete that profile. Try again."));
+}
+async function flushPfDel() { await Promise.all([...pendingPfDel.keys()].map(id => sendPfDel(id))); }
+window.addEventListener('pagehide', () => { [...pendingPfDel.keys()].forEach(id => sendPfDel(id, true)); });
+async function deleteProfile(p) {
+  const own = cloud.profile && p.id === cloud.profile.id;
+  if (p.admin || (!own && !cloud.admin)) return;
+  if (!(await askDelete(own ? 'Delete your profile?' : `Delete ${p.name}?`, own
+    ? 'Your playlists, likes and history will be deleted. Songs you added stay in the library for everyone.'
+    : 'Their playlists, likes and history will be deleted. Songs they added stay in the library.'))) return;
+  pendingPfDel.set(p.id, setTimeout(() => sendPfDel(p.id), UNDO_MS + 1000));
+  if (own) { audio.pause(); await showWho('pick'); } else render();
+  toast(own ? 'Deleted your profile' : `Deleted ${p.name}'s profile`, { label: 'Undo', fn: () => {
+    clearTimeout(pendingPfDel.get(p.id)); pendingPfDel.delete(p.id);
+    if (own) hideWho(); else render();
+  } });
+}
+
+/* Settings: your profile, the Admin PIN and (for the Admin) everyone else's profiles. */
+let pfAll = null, pfAllAt = 0;
+async function loadPfAll() { try { pfAll = (await api('profiles')).profiles; } catch (e) { pfAll = pfAll || []; } if (S.view.name === 'settings') render(); }
+function profileRows() {
+  const p = cloud.profile; if (!p) return '';
+  // friends can add profiles at any time, so the list is fetched again when Settings is drawn (at most every few seconds)
+  if (cloud.admin && Date.now() - pfAllAt > 5000) { pfAllAt = Date.now(); pfAll = pfAll || []; loadPfAll(); }
+  const others = (pfAll || []).filter(x => !x.admin && !pendingPfDel.has(x.id));
+  return `<div class="set-row"><div class="set-pf">${pfAvatar(p)}<div><h3 data-nt>${esc(p.name)}</h3><p>${cloud.admin ? 'The Admin profile. Only the Admin can delete songs, delete other profiles and change the password.' : 'Your own playlists, likes and history. The songs are shared with everyone.'}</p></div></div>
+      <div class="set-btns"><button class="btn ghost-sm" data-pf-act="edit">Edit Profile</button>${cloud.admin ? '' : '<button class="btn ghost-sm" data-pf-act="delete-own">Delete Profile</button>'}</div></div>
+    <div class="set-row"><div><h3>Switch Profile</h3><p>Go back to the list of profiles on this device.</p></div><button class="btn ghost-sm" data-pf-act="switch">Switch Profile</button></div>
+    ${cloud.admin ? `<div class="set-row"><div><h3>Admin PIN</h3><p>The 6 digits that open the Admin profile. Changing it closes the Admin profile on your other devices.</p></div>
+      <form class="pw-form" id="pin-form" novalidate autocomplete="off">
+        <input type="password" class="pin-num" id="pin-cur" inputmode="numeric" maxlength="6" placeholder="Current PIN" aria-label="Current PIN">
+        <input type="password" class="pin-num" id="pin-new" inputmode="numeric" maxlength="6" placeholder="New PIN (6 digits)" aria-label="New PIN">
+        <input type="password" class="pin-num" id="pin-new2" inputmode="numeric" maxlength="6" placeholder="New PIN again" aria-label="New PIN again">
+        <p class="pw-msg" id="pin-msg" role="status"></p>
+        <button class="btn" type="submit" id="pin-save">Change PIN</button>
+      </form></div>
+    <div class="set-row"><div><h3>Profiles</h3><p>${others.length ? 'Everyone who listens with the shared password. Deleting a profile deletes its playlists and likes.' : 'Nobody else has made a profile yet.'}</p></div>
+      ${others.length ? `<div class="set-pf-list">${others.map(x => `<div class="set-pf-item">${pfAvatar(x)}<span data-nt>${esc(x.name)}</span><button class="btn ghost-sm" data-pf-del="${esc(x.id)}">Delete</button></div>`).join('')}</div>` : ''}</div>` : ''}`;
+}
+document.addEventListener('click', e => {
+  const a = e.target.closest('[data-pf-act]');
+  if (a) {
+    if (a.dataset.pfAct === 'edit') openPfEdit();
+    else if (a.dataset.pfAct === 'switch') switchProfile();
+    else if (a.dataset.pfAct === 'delete-own') deleteProfile(cloud.profile);
+    return;
+  }
+  const d = e.target.closest('[data-pf-del]');
+  if (d) { const p = (pfAll || []).find(x => x.id === d.dataset.pfDel); if (p) deleteProfile(p); }
+});
+document.addEventListener('input', e => { if (e.target.classList && e.target.classList.contains('pin-num')) e.target.value = e.target.value.replace(/\D/g, '').slice(0, 6); });
+document.addEventListener('submit', async e => {
+  if (e.target.id !== 'pin-form') return;
+  e.preventDefault();
+  const cur = $('#pin-cur').value, nw = $('#pin-new').value, msg = $('#pin-msg');
+  const say = (t, ok) => { msg.textContent = t; msg.className = 'pw-msg ' + (ok ? 'good' : 'bad'); };
+  if (cur.length !== 6) return say('Type your current PIN.');
+  if (nw.length !== 6) return say('The PIN needs exactly 6 digits.');
+  if (nw !== $('#pin-new2').value) return say("The PINs don't match.");
+  $('#pin-save').disabled = true;
+  try { await api('admin-pin', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ current: cur, pin: nw }) }); $('#pin-form').reset(); say('PIN changed.', true); }
+  catch (ex) { say(ex.message || "Couldn't change the PIN."); }
+  if ($('#pin-save')) $('#pin-save').disabled = false;
+});
+
+/* Edit Profile: name, color and an optional photo */
+let pfe = null;
+function drawPfeAv() { $('#pf-av').outerHTML = `<span class="pf-av" id="pf-av" style="--pf:${PF_COLORS[pfe.color]}" aria-hidden="true">${pfe.preview ? `<img src="${esc(pfe.preview)}" alt="">` : pfe.photo && !pfe.remove ? `<img src="${esc(pfPhotoUrl({ id: pfe.id, photo: pfe.photo }))}" alt="">` : `<b data-nt>${pfInitial($('#pf-name').value)}</b>`}</span>`; $('#pf-rm').hidden = !(pfe.preview || (pfe.photo && !pfe.remove)); }
+function openPfEdit() {
+  const p = cloud.profile; if (!p) return;
+  pfe = { id: p.id, color: p.color % PF_COLORS.length, photo: p.photo, file: null, preview: null, remove: false, back: document.activeElement };
+  $('#pf-name').value = p.name; $('#pf-err').textContent = '';
+  $('#pf-colors').innerHTML = colorDots(pfe.color, 'pf-color');
+  drawPfeAv();
+  $('#pf-edit').hidden = false;
+  setTimeout(() => $('#pf-name').focus(), 30);
+}
+function closePfEdit() {
+  if (!pfe) return;
+  if (pfe.preview) URL.revokeObjectURL(pfe.preview);
+  $('#pf-edit').hidden = true;
+  try { pfe.back && pfe.back.focus && pfe.back.focus(); } catch (e) {}
+  pfe = null;
+}
+$('#pf-close').addEventListener('click', closePfEdit);
+$('#pf-edit').addEventListener('click', e => {
+  if (e.target.id === 'pf-edit') { closePfEdit(); return; }
+  const dot = e.target.closest('[data-pf-color]');
+  if (dot && pfe) { pfe.color = +dot.dataset.pfColor; $$('#pf-colors .pf-color').forEach(d => { const on = d === dot; d.classList.toggle('on', on); d.setAttribute('aria-checked', on); }); drawPfeAv(); }
+});
+$('#pf-edit').addEventListener('keydown', e => { if (e.key === 'Escape' && !crop) { e.preventDefault(); closePfEdit(); } });
+$('#pf-name').addEventListener('input', () => { if (pfe && !pfe.preview && !(pfe.photo && !pfe.remove)) drawPfeAv(); });
+$('#pf-photo').addEventListener('click', () => $('#pf-file').click());
+$('#pf-pick').addEventListener('click', () => $('#pf-file').click());
+$('#pf-rm').addEventListener('click', () => { if (!pfe) return; if (pfe.preview) URL.revokeObjectURL(pfe.preview); pfe.preview = null; pfe.file = null; pfe.remove = true; drawPfeAv(); });
+$('#pf-file').addEventListener('change', e => {
+  const f = e.target.files[0]; e.target.value = '';
+  if (!f || !pfe) return;
+  const bad = coverFileProblem(f); if (bad) { $('#pf-err').textContent = bad; return; }
+  cropImage(f).then(blob => {
+    if (!blob || !pfe) return;
+    if (pfe.preview) URL.revokeObjectURL(pfe.preview);
+    pfe.file = blob; pfe.remove = false; pfe.preview = URL.createObjectURL(blob); $('#pf-err').textContent = '';
+    drawPfeAv();
+  }, err => { $('#pf-err').textContent = err.message; });
+});
+$('#pf-edit-form').addEventListener('submit', async e => {
+  e.preventDefault();
+  if (!pfe) return;
+  const name = $('#pf-name').value.trim();
+  if (!name) { $('#pf-err').textContent = 'Give the profile a name.'; return; }
+  $('#pf-save').disabled = true;
+  try {
+    const body = { name, color: pfe.color };
+    if (pfe.file) { await api('profile-photo/' + encodeURIComponent(pfe.id), { method: 'PUT', headers: { 'content-type': pfe.file.type || 'image/jpeg' }, body: pfe.file }); body.photo = Date.now(); }
+    else if (pfe.remove) body.photo = 0;
+    const r = await api('profiles/' + encodeURIComponent(pfe.id), { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
+    cloud.profile = r.profile; drawAcct();
+    if (pfAll) pfAll = pfAll.map(x => x.id === r.profile.id ? r.profile : x);
+    closePfEdit(); render(); toast('Profile saved');
+    if (spTab === 'comments' && SP.cm && SP.cm.id) { SP.cm = { id: null }; renderPanel(); }
+  } catch (ex) { $('#pf-err').textContent = ex.message || "Couldn't save."; }
+  $('#pf-save').disabled = false;
+});
 
 let restoredLast = false;
 const bootDone = { idb: false, cloud: false };
@@ -6146,6 +6584,7 @@ $('#sl-search').addEventListener('input', e => { S.libQ = e.target.value; render
 $('#sl-search').addEventListener('blur', e => { if (!e.target.value) { e.target.hidden = true; $('#sl-search-wrap').classList.remove('open'); } });
 $('#sl-search').addEventListener('keydown', e => { if (e.key === 'Escape') { e.target.value = ''; S.libQ = ''; renderSide(); e.target.blur(); } });
 $('#acct-btn').addEventListener('click', e => openMenu(e.currentTarget, [
+  ...(cloud.profile ? [{ head: cloud.profile.name }, { label: 'Switch Profile', icon: 'user', fn: switchProfile }, { sep: true }] : []),
   { label: 'Settings', icon: 'gear', fn: () => go({ name: 'settings' }) },
   { sep: true }, { head: 'Allegro Account' },
   { label: 'Sign Out', icon: 'user', fn: signOut }
@@ -6225,7 +6664,7 @@ $('#vol-btn').addEventListener('click', () => { S.muted = !S.muted; applyVolume(
 
 // playback speed, 0.5x to 2x, with or without keeping the pitch (turn it off for a Nightcore sound)
 const SPD = { rate: 1, pitch: true };
-try { Object.assign(SPD, JSON.parse(localStorage.getItem('allegro.speed') || '{}')); } catch (e) {}
+try { Object.assign(SPD, JSON.parse(localStorage.getItem(pk('allegro.speed')) || '{}')); } catch (e) {}
 function applySpeed(save2) {
   SPD.rate = Math.max(.5, Math.min(2, Math.round(SPD.rate * 100) / 100));
   audio.defaultPlaybackRate = SPD.rate; audio.playbackRate = SPD.rate;
@@ -6235,7 +6674,7 @@ function applySpeed(save2) {
   $('#spd-btn').classList.toggle('changed', SPD.rate !== 1);
   const r = $('#spd'); r.value = Math.round(SPD.rate * 100); setPct(r);
   $('#spd-pitch').checked = SPD.pitch;
-  if (save2) try { localStorage.setItem('allegro.speed', JSON.stringify(SPD)); } catch (e) {}
+  if (save2) try { localStorage.setItem(pk('allegro.speed'), JSON.stringify(SPD)); } catch (e) {}
 }
 const openSpd = prPop($('#spd-wrap'), { hover: false });
 $('#spd-btn').addEventListener('click', () => openSpd(!$('#spd-wrap').classList.contains('open')));
@@ -6497,7 +6936,7 @@ try {
 async function boot() {
   if (!pref('hideDemos')) addDemoTracks();
   if (firstRun) {
-    S.playlists.push({ id: 'pl-example', name: 'Late Night Study', desc: 'Example playlist. Rename it, delete it, or add your own songs.', ids: ['demo-2-0', 'demo-0-1', 'demo-1-2', 'demo-0-0', 'demo-2-1'], created: Date.now() });
+    S.playlists.push({ id: PID === 'admin' ? 'pl-example' : 'pl-ex-' + (PID || 'none'), name: 'Late Night Study', desc: 'Example playlist. Rename it, delete it, or add your own songs.', ids: ['demo-2-0', 'demo-0-1', 'demo-1-2', 'demo-0-0', 'demo-2-1'], created: Date.now() });
     S.liked = ['demo-1-0', 'demo-0-0'];
     S.recent = ['album:' + 'Neon Ferry · Night Bus'];
   }
