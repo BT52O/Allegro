@@ -781,11 +781,12 @@ html.breathe .s-art img { animation: s-breathe 17s ease-in-out infinite; }
   .sheet-top .circ.on { color: #fff; background: rgba(255, 255, 255, .28); }
   .s-from .eyebrow { color: rgba(255, 255, 255, .7); } .s-from .link { color: #fff; }
   .sheet { padding-bottom: calc(var(--pbar, 96px) + 44px); }
-  /* The cover is as big as the height allows, and the panel takes the width that's left (up to one and a half
-     covers), so a wide screen is used edge to edge instead of leaving big empty bands down both sides. --side is the
-     space at each side (the sheet's own 20px counts toward it); the gap between cover and panel is never smaller. */
-  .sheet-body { --side: clamp(20px, 6vw - 52px, 96px); grid-template-columns: var(--np, minmax(0, 1fr)) minmax(0, calc(var(--np, 70vh) * 1.5)); justify-content: center;
-    gap: max(clamp(24px, 3vw, 48px), var(--side)); max-width: none; padding: 12px calc(var(--side) - 20px) 0; }
+  /* The cover is as big as the height allows and the panel is a touch wider. Whatever width is left over is shared
+     out in three equal parts: left of the cover, between the two, and right of the panel. So the three gaps always
+     match, on any screen. The body reaches the screen's edges (past the sheet's own 20px) to measure them from there,
+     and --g is the smallest the gaps ever get. */
+  .sheet-body { --g: clamp(24px, 3vw, 48px); grid-template-columns: var(--np, minmax(0, 1fr)) minmax(0, calc(var(--np, 70vh) * 1.05)); justify-content: space-evenly;
+    gap: var(--g); max-width: none; width: auto; align-self: stretch; margin: 0 -20px; padding: 12px var(--g) 0; }
   .s-main { max-width: none; justify-content: center; align-items: center; }
   .sheet-body { align-items: center; }
   /* the cover and the Wiki / Lyrics / Comments panel are the same height, side by side */
@@ -1456,7 +1457,7 @@ html.np-grad .s-bg::after { content: ""; position: absolute; inset: 0; backgroun
    no dark glass of its own: its buttons sit straight on the blur. */
 @media (min-width: 760px) {
   /* position: so the cover places itself against the whole sheet. The columns stay two halves: the cover owns the left one. */
-  html.np-grad .sheet-body { position: static; grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr); gap: clamp(24px, 3vw, 48px); max-width: 1600px; padding: 12px 0 0; }
+  html.np-grad .sheet-body { position: static; grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr); justify-content: normal; max-width: 1600px; width: 100%; align-self: auto; margin: 0 auto; padding: 12px 0 0; }
   html.np-grad .sheet-top { z-index: 2; }
   html.np-grad .s-art { position: absolute; left: 0; top: 0; bottom: var(--pbar, 96px); width: 50%; height: auto; align-self: stretch; max-width: none; aspect-ratio: auto; border-radius: 0; box-shadow: none; transform: none;
     -webkit-mask-image: linear-gradient(to right, rgb(0 0 0 / .5), #000 9%, #000 62%, transparent 99%), linear-gradient(to bottom, transparent, #000 13%, #000 87%, transparent);

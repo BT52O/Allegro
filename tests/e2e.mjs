@@ -1028,10 +1028,10 @@ try {
   await A.click(`#view .tr[data-id="${tagged.id}"] .t-name`); await settle(A, 800);
   await A.click('#p-cover'); await settle(A, 800);
   const np = await A.evaluate(() => [getComputedStyle(document.getElementById('s-panel')).display, [...document.querySelectorAll('[data-sp-tab]')].map(b => b.textContent).join('|'), (document.querySelector('.w-title') || {}).textContent, [...document.querySelectorAll('.w-row .w-k')].map(e => e.textContent).join('|')]);
-  // the cover and the panel use the screen's width: equal, small margins at both sides, the panel at least as wide as the cover
+  // the three gaps match: left of the cover, between cover and panel, right of the panel; the panel is about as wide as the cover
   const wide = await A.evaluate(() => { const a = document.getElementById('s-art').getBoundingClientRect(), p = document.getElementById('s-panel').getBoundingClientRect();
     return [Math.round(a.left), Math.round(innerWidth - p.right), Math.round(a.width), Math.round(p.width), Math.round(a.height - p.height), Math.round(p.left - a.right)]; });
-  check(wide[0] <= 100 && Math.abs(wide[0] - wide[1]) <= 2 && wide[3] >= wide[2] && wide[4] === 0 && wide[5] >= 24, 'desktop Now Playing: the cover and panel spread across the width with small, equal side margins', JSON.stringify(wide));
+  check(Math.abs(wide[0] - wide[1]) <= 2 && Math.abs(wide[0] - wide[5]) <= 2 && wide[3] >= wide[2] && wide[3] <= wide[2] * 1.06 && wide[4] === 0 && wide[5] >= 24, 'desktop Now Playing: the gaps beside and between the cover and panel are equal', JSON.stringify(wide));
   const bar = await A.evaluate(() => { const pl = document.getElementById('player').getBoundingClientRect(), sh = document.getElementById('sheet'), art = document.getElementById('s-art').getBoundingClientRect(), tab = document.querySelector('.sp-tab').getBoundingClientRect();
     const top = document.elementFromPoint(pl.left + pl.width / 2, pl.top + pl.height / 2);
     return [!!top && !!top.closest('#player'), getComputedStyle(document.querySelector('.s-ctrls')).display, art.bottom <= pl.top, Math.round(tab.height), getComputedStyle(document.querySelector('#player .p-title')).color]; });
