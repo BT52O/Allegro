@@ -905,7 +905,15 @@ try {
   await A.click('#menu .mi:has-text("Settings")'); await settle(A, 500);
   const setH1 = await A.textContent('#view h1');
   await shot(A, 'settings');
-  check(acctMenu.join('|') === 'the Admin|Edit Profile|Switch Profile|Settings|Allegro Account|Sign Out' && setH1 === 'Settings', 'the account menu names the profile, offers Edit Profile and Switch Profile, and Settings opens the Settings page', JSON.stringify(acctMenu));
+  check(acctMenu.join('|') === 'the Admin|My Profile|Switch Profile|Settings|Allegro Account|Sign Out' && setH1 === 'Settings', 'the account menu names the profile, offers My Profile and Switch Profile, and Settings opens the Settings page', JSON.stringify(acctMenu));
+  // My Profile: a page with the profile's photo and name, its playlists, and an Edit Profile button
+  await A.click('#acct-btn'); await settle(A, 250); await A.click('#menu .mi:has-text("My Profile")'); await settle(A, 500);
+  const myPf = await A.evaluate(() => ({ h1: document.querySelector('#view .vhead h1')?.textContent, av: !!document.querySelector('#view .vhead .art.round .pf-av'), liked: !!document.querySelector('#view .cards [data-open="liked"]') }));
+  await shot(A, 'my-profile');
+  await A.click('#view .pv-actions [data-pf-act="edit"]');
+  const myPfEdit = await A.waitForFunction(() => !document.getElementById('pf-edit').hidden && document.getElementById('pf-name').value === 'the Admin', null, { timeout: 5000 }).then(() => true, () => false);
+  await A.click('#pf-close'); await settle(A, 250);
+  check(myPf.h1 === 'the Admin' && myPf.av && myPf.liked && myPfEdit, 'My Profile opens a page for the profile, and its Edit Profile button opens the editor', JSON.stringify({ myPf, myPfEdit }));
   await A.click('#set-demos'); await settle(A, 800);
   data = await lib(A);
   const demoOff = [(data.state.prefs || []).includes('hideDemos'), await A.evaluate(() => document.querySelector('#set-demos').getAttribute('aria-checked'))];
@@ -968,7 +976,7 @@ try {
   await A.click('.nav-btn[data-nav="library"]'); await settle(A, 400); await A.click('[data-chip="songs"]'); await settle(A, 400);
   const zhLib = await A.evaluate(() => [document.querySelector('[data-chip="songs"]').textContent, [...document.querySelectorAll('#view .t-name')].map(e => e.textContent)]);
   check(zh[0] === '首页' && zh[1] === '设置' && zh[2] === 'zh-Hans' && zh[3] === '搜索' && zh[4] === '新建' && zh[5] === '喜欢的歌曲' && zhLib[0] === '歌曲' && zhLib[1].includes('Rain on Glass'), 'switching to 简体中文 translates Allegro but not your song names', JSON.stringify({ zh, chip: zhLib[0] }));
-  // the menu is in Chinese now: Settings comes after Edit Profile and Switch Profile
+  // the menu is in Chinese now: Settings comes after My Profile and Switch Profile
   await A.click('#acct-btn'); await settle(A, 250); await A.click('#menu .mi >> nth=2'); await settle(A, 500);
   await A.click('[data-lang-opt="zh-Hant"]'); await settle(A, 2500);
   const zht = await A.evaluate(() => [document.querySelector('.nav-btn[data-nav="home"] span').textContent, document.querySelector('#view h1').textContent]);

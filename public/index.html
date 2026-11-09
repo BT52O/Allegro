@@ -279,6 +279,8 @@ body.is-playing .li.grid.playing .spk { display: grid; }
 .vhead .vhead-text > :nth-child(2) { margin-top: auto; }   /* title on top; description and details along the bottom */
 .vhead .art { width: clamp(150px, 26cqi, 232px); aspect-ratio: 1; flex: none; border-radius: 8px; overflow: hidden; box-shadow: 0 20px 50px -20px rgba(0,0,0,.6); }
 .vhead .art.round { border-radius: 50%; }
+.vhead .art .pv-av { width: 100%; height: 100%; font-size: clamp(3.5rem, 11cqi, 6rem); }
+.pv-actions .btn .ic { width: 16px; height: 16px; }
 .vhead-text { min-width: 0; display: flex; flex-direction: column; gap: 6px; }
 .vhead h1 { margin: 0; font: 800 clamp(2rem, 7cqi, 5rem)/.98 var(--f-display); letter-spacing: -.035em; text-wrap: balance; overflow-wrap: anywhere; }
 .vhead .meta { font-size: .9rem; font-weight: 600; color: var(--muted); display: flex; flex-wrap: wrap; gap: 4px 6px; align-items: center; }
@@ -1819,6 +1821,7 @@ const I18N = [
   ['Allegro can have up to 20 profiles.', 'Allegro 最多可以有 20 个个人资料。', 'Allegro 最多可以有 20 個個人檔案。'],
   ['Pick a profile first.', '请先选择一个个人资料。', '請先選擇一個個人檔案。'],
   ['Switch Profile', '切换个人资料', '切換個人檔案'],
+  ['My Profile', '我的个人资料', '我的個人檔案'], ['Profile', '个人资料', '個人檔案'], ['No profile is open on this device.', '这台设备上没有打开的个人资料。', '這部裝置上沒有開啟的個人檔案。'],
   ['Manage Profiles', '管理个人资料', '管理個人檔案'],
   ['Edit Profile', '编辑个人资料', '編輯個人檔案'],
   ['Delete Profile', '删除个人资料', '刪除個人檔案'],
@@ -1854,7 +1857,7 @@ const PAT = [
   [/^Deleted (.+)'s profile$/, m => pickL(`已删除“${m[1]}”的个人资料`, `已刪除「${m[1]}」的個人檔案`)],
   [/^No\. (\d+) This Month$/, m => `本月第 ${m[1]} 名`],
   [/^Streaming quality: (.+)$/, m => pickL(`音质：${m[1]}`, `音質：${m[1]}`)],
-  [/^(\d+) songs?$/, m => pickL(`${m[1]} 首歌曲`, `${m[1]} 首歌曲`)], [/^(\d+) playlists?$/, m => pickL(`${m[1]} 个歌单`, `${m[1]} 個歌單`)],
+  [/^(\d+) songs?$/, m => pickL(`${m[1]} 首歌曲`, `${m[1]} 首歌曲`)], [/^(\d+) playlists?$/, m => pickL(`${m[1]} 个歌单`, `${m[1]} 個歌單`)], [/^(\d+) liked songs?$/, m => pickL(`${m[1]} 首喜欢的歌曲`, `${m[1]} 首喜歡的歌曲`)],
   [/^(\d{4}) · (Album|EP|Single)$/, m => `${m[1]} · ${m[2] === 'Album' ? pickL('专辑', '專輯') : m[2] === 'EP' ? 'EP' : pickL('单曲', '單曲')}`],
   [/^(\d+) EPs?$/, m => pickL(`${m[1]} 张 EP`, `${m[1]} 張 EP`)], [/^(\d+) singles?$/, m => pickL(`${m[1]} 首单曲`, `${m[1]} 首單曲`)],
   [/^(\d+) folders?$/, m => pickL(`${m[1]} 个文件夹`, `${m[1]} 個資料夾`)], [/^(\d+) albums?$/, m => pickL(`${m[1]} 张专辑`, `${m[1]} 張專輯`)], [/^(\d+) lists?$/, m => pickL(`${m[1]} 个列表`, `${m[1]} 個清單`)],
@@ -3120,9 +3123,9 @@ function qtile(key) {
   return `<div class="qt" data-open="${esc(key)}" tabindex="0" role="link"><div class="art${c.round ? ' round' : ''}">${c.art}</div><span class="qt-name">${esc(c.name)}</span><button class="card-play" data-card-play="${esc(key)}" aria-label="Play ${esc(c.name)}">${ic('play')}</button></div>`;
 }
 const artistPenFor = name => `<span class="pl-pen" data-artist-pen="${esc(name)}" role="button" aria-label="Choose a photo for ${esc(name)}" title="Choose Photo">${ic('edit')}</span>`;
-function head({ art, round, type, title, meta, desc, tintSrc, editable, penId, artistPen }) {
+function head({ art, round, type, title, meta, desc, tintSrc, editable, penId, artistPen, pen }) {
   return `<div class="view-bg" ${tintSrc ? `data-tint-src="${esc(tintSrc)}"` : ''}></div>
-  <header class="vhead${editable ? ' editable' : ''}"><div class="art${round ? ' round' : ''}${penId || artistPen ? ' has-pen' : ''}"${editable ? ' title="Edit Details"' : artistPen ? ' title="Choose Photo"' : ''}>${art}${penId ? penFor(penId) : ''}${artistPen ? artistPenFor(artistPen) : ''}</div><div class="vhead-text" data-type="${esc(type)}">${title}${desc ? `<p class="desc">${esc(desc)}</p>` : ''}<div class="meta">${meta}</div></div></header>`;
+  <header class="vhead${editable ? ' editable' : ''}"><div class="art${round ? ' round' : ''}${penId || artistPen || pen ? ' has-pen' : ''}"${editable ? ' title="Edit Details"' : artistPen ? ' title="Choose Photo"' : ''}>${art}${penId ? penFor(penId) : ''}${artistPen ? artistPenFor(artistPen) : ''}${pen || ''}</div><div class="vhead-text" data-type="${esc(type)}">${title}${desc ? `<p class="desc">${esc(desc)}</p>` : ''}<div class="meta">${meta}</div></div></header>`;
 }
 const actions = (key, extra = '') => `<div class="actions"><button class="big-play" data-ctx-play="${esc(key)}" aria-label="Play">${ic('play')}</button><button class="act-btn${S.shuffle ? ' on' : ''}" data-act="shuffle" aria-label="Shuffle" aria-pressed="${S.shuffle}">${ic('shuffle')}</button>${extra}</div>`;
 const fileCount = () => { let n = 0; for (const t of S.tracks.values()) if (t.kind === 'file' || t.kind === 'cloud') n++; return n; };
@@ -3181,6 +3184,19 @@ const VIEWS = {
       <div id="home-rows" class="home-rows">${homeRows()}</div>
       ${callout}
       <section class="sec"><div class="sec-head"><h2>Recently Added</h2><button class="link sm" data-open="library:songs">Show All</button></div>${trackList(recentIds, { key: 'library', name: 'Recently Added' }, { noHead: true })}</section>`;
+  },
+  // My Profile: the open profile's photo and name, its playlists and what it played lately (like Tidal's profile page)
+  profile() {
+    const p = cloud.profile;
+    if (!p) return notFound('No profile is open on this device.');
+    const seen = new Set(), recent = [];
+    for (const h of S.history) { if (recent.length >= 5) break; if (S.tracks.has(h.id) && !seen.has(h.id)) { seen.add(h.id); recent.push(h.id); } }
+    const pen = `<span class="pl-pen" data-pf-act="edit" role="button" aria-label="Edit Profile" title="Edit Profile">${ic('edit')}</span>`;
+    return head({ art: pfAvatar(p, 'pv-av'), round: true, type: 'Profile', title: `<h1 data-nt>${esc(p.name)}</h1>`, pen,
+      meta: `<span>${plural(S.playlists.length, 'playlist')}</span> · <span>${plural(live(S.liked).length, 'liked song')}</span>` })
+      + `<div class="actions pv-actions"><button class="btn ghost" data-pf-act="edit">${ic('edit')}Edit Profile</button></div>`
+      + `<section class="sec"><div class="sec-head"><h2>Playlists</h2><button class="link sm" data-open="library:playlists">Show All</button></div><div class="cards">${likedCard()}${S.playlists.map(plCard).join('')}</div></section>`
+      + `<section class="sec"><div class="sec-head"><h2>Recently Played</h2>${recent.length ? '<button class="link sm" data-open="history">Show All</button>' : ''}</div>${recent.length ? trackList(recent, { key: 'history', name: 'Track History' }, { noHead: true }) : '<p class="sm">Songs you play will show up here.</p>'}</section>`;
   },
   plhistory(v) {
     const p = S.playlists.find(x => x.id === v.key);
@@ -6570,6 +6586,7 @@ document.addEventListener('click', e => {
   const ac = T.closest('[data-action]');
   if (ac) { if (ac.dataset.action === 'add') addMenu(ac); else if (ac.dataset.action === 'create') createMenu(ac); else if (ac.dataset.action === 'new-pl') newPlaylist(); else if (ac.dataset.action === 'upload-local') uploadLocal(ac); else if (ac.dataset.action === 'fill-info') fillMissingInfo(ac); return; }
   if (S.view.name === 'playlist' && T.closest('.vhead .art')) { editPlaylist(S.view.key); return; }
+  if (S.view.name === 'profile' && T.closest('.vhead .art') && !T.closest('[data-pf-act]')) { openPfEdit(); return; }
   const op = T.closest('[data-open]'); if (op) { openKey(op.dataset.open); return; }
 });
 document.addEventListener('keydown', e => {
@@ -6596,7 +6613,7 @@ $('#sl-search').addEventListener('input', e => { S.libQ = e.target.value; render
 $('#sl-search').addEventListener('blur', e => { if (!e.target.value) { e.target.hidden = true; $('#sl-search-wrap').classList.remove('open'); } });
 $('#sl-search').addEventListener('keydown', e => { if (e.key === 'Escape') { e.target.value = ''; S.libQ = ''; renderSide(); e.target.blur(); } });
 $('#acct-btn').addEventListener('click', e => openMenu(e.currentTarget, [
-  ...(cloud.profile ? [{ head: cloud.profile.name }, { label: 'Edit Profile', icon: 'edit', fn: openPfEdit }, { label: 'Switch Profile', icon: 'user', fn: switchProfile }, { sep: true }] : []),
+  ...(cloud.profile ? [{ head: cloud.profile.name }, { label: 'My Profile', icon: 'user', fn: () => go({ name: 'profile' }) }, { label: 'Switch Profile', icon: 'user', fn: switchProfile }, { sep: true }] : []),
   { label: 'Settings', icon: 'gear', fn: () => go({ name: 'settings' }) },
   { sep: true }, { head: 'Allegro Account' },
   { label: 'Sign Out', icon: 'user', fn: signOut }
