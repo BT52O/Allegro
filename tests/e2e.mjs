@@ -914,6 +914,7 @@ try {
   const myPfEdit = await A.waitForFunction(() => !document.getElementById('pf-edit').hidden && document.getElementById('pf-name').value === 'the Admin', null, { timeout: 5000 }).then(() => true, () => false);
   await A.click('#pf-close'); await settle(A, 250);
   check(myPf.h1 === 'the Admin' && myPf.av && myPf.liked && myPfEdit, 'My Profile opens a page for the profile, and its Edit Profile button opens the editor', JSON.stringify({ myPf, myPfEdit }));
+  await A.click('#acct-btn'); await settle(A, 250); await A.click('#menu .mi:has-text("Settings")'); await settle(A, 500);
   await A.click('#set-demos'); await settle(A, 800);
   data = await lib(A);
   const demoOff = [(data.state.prefs || []).includes('hideDemos'), await A.evaluate(() => document.querySelector('#set-demos').getAttribute('aria-checked'))];
