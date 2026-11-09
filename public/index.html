@@ -1446,16 +1446,19 @@ html.np-grad .sheet > .s-bg { display: block; position: absolute; inset: 0; over
 html.np-grad .s-bg img { position: absolute; left: -25%; top: -25%; width: 150%; height: 150%; max-width: none; object-fit: cover; filter: blur(80px) saturate(1.35); transform: translateZ(0); }
 html.np-grad .s-bg img:not([src]) { display: none; }
 html.np-grad .s-bg::after { content: ""; position: absolute; inset: 0; background: rgba(0, 0, 0, .2); }
-/* On computers the cover also fills the left half, edge to edge, and melts into the blur around it (as Apple Music
-   does); the Wiki / Queue / Lyrics / Comments panel keeps the right half and the player bar stays along the bottom. */
+/* On computers the cover also fills the left half, from the top down to the player bar, and melts into the blur
+   around it (as Apple Music does); the Wiki / Queue / Lyrics / Comments panel keeps the right half. The cover stops
+   where the player bar starts, so the bar never sits on top of the picture, and with nothing under it the bar needs
+   no dark glass of its own: its buttons sit straight on the blur. */
 @media (min-width: 760px) {
   html.np-grad .sheet-body { position: static; }   /* so the cover places itself against the whole sheet */
   html.np-grad .sheet-top { z-index: 2; }
-  html.np-grad .s-art { position: absolute; left: 0; top: 0; bottom: 0; width: 50%; height: auto; align-self: stretch; max-width: none; aspect-ratio: auto; border-radius: 0; box-shadow: none; transform: none;
+  html.np-grad .s-art { position: absolute; left: 0; top: 0; bottom: var(--pbar, 96px); width: 50%; height: auto; align-self: stretch; max-width: none; aspect-ratio: auto; border-radius: 0; box-shadow: none; transform: none;
     -webkit-mask-image: linear-gradient(to right, rgb(0 0 0 / .5), #000 9%, #000 62%, transparent 99%), linear-gradient(to bottom, transparent, #000 13%, #000 87%, transparent);
     -webkit-mask-composite: source-in; mask-image: linear-gradient(to right, rgb(0 0 0 / .5), #000 9%, #000 62%, transparent 99%), linear-gradient(to bottom, transparent, #000 13%, #000 87%, transparent); mask-composite: intersect; }
   html.np-grad .s-art::after, html.np-grad .s-shine { display: none; }
   html.np-grad .s-panel { align-self: stretch; height: auto; }
+  html.np-grad body.sheet-open .player { background: none; -webkit-backdrop-filter: none; backdrop-filter: none; }
 }
 
 @media (prefers-reduced-motion: reduce) {
