@@ -296,13 +296,38 @@ try {
   await A.keyboard.press('Escape'); await settle(A, 300);
   check(bubbles.join('|') === 'Remove Photo|View Full Image' && lbOk && lbClosed, 'Edit details has Remove photo and View full image buttons', JSON.stringify(bubbles));
   const before = await A.$$eval('#view .tl .tr', x => x.map(e => e.dataset.id));
-  const r0 = await (await A.$('#view .tl .tr >> nth=0')).boundingBox(), r2 = await (await A.$('#view .tl .tr >> nth=2')).boundingBox();
-  await A.mouse.move(r0.x + 20, r0.y + r0.height / 2); await A.mouse.down();   // grab by the number, clear of any links
-  await A.mouse.move(r0.x + 30, r0.y + 30, { steps: 4 }); await A.mouse.move(r2.x + 40, r2.y + r2.height * .8, { steps: 8 });
-  await A.mouse.up(); await settle(A, 1200);
+  const dragRow = async () => {
+    const r0 = await (await A.$('#view .tl .tr >> nth=0')).boundingBox(), r2 = await (await A.$('#view .tl .tr >> nth=2')).boundingBox();
+    await A.mouse.move(r0.x + 20, r0.y + r0.height / 2); await A.mouse.down();   // grab by the number, clear of any links
+    await A.mouse.move(r0.x + 30, r0.y + 30, { steps: 4 }); await A.mouse.move(r2.x + 40, r2.y + r2.height * .8, { steps: 8 });
+    await A.mouse.up(); await settle(A, 1200);
+  };
+  // outside edit mode, dragging does nothing
+  await dragRow();
+  const still = await A.$$eval('#view .tl .tr', x => x.map(e => e.dataset.id));
+  const savedStill = (await lib(A)).state.playlists.find(p => p.id === 'pl-example').ids.filter(x => !x.startsWith('brk:'));
+  check(still.join() === before.join() && savedStill.slice(0, 3).join() === before.slice(0, 3).join() && !(await A.$('#view .tl .grip')), 'songs cannot be dragged outside edit mode');
+  // Edit opens edit mode: handles show, Edit Details does not open, the button reads Done
+  await A.click('#side-list [data-open="playlist:pl-example"]'); await settle(A, 500);
+  await A.click('.actions [data-pl-edit]'); await settle(A, 300);
+  const editUi = [await A.textContent('.actions [data-pl-edit] span'), (await A.$$('#view .tl .tr .grip')).length === before.length, await A.isVisible('#pl-edit'), await A.$eval('.actions [data-pl-edit]', e => e.getAttribute('aria-pressed'))];
+  await shot(A, 'playlist-edit-mode');
+  check(editUi[0] === 'Done' && editUi[1] && !editUi[2] && editUi[3] === 'true', 'Edit opens edit mode with a handle on every song', JSON.stringify(editUi));
+  await dragRow();
   data = await lib(A);
   const order = data.state.playlists.find(p => p.id === 'pl-example').ids;
-  check(order[2] === before[0] && order[0] === before[1], 'dragging a song reorders the playlist and saves', JSON.stringify(order.slice(0, 3)));
+  check(order[2] === before[0] && order[0] === before[1], 'in edit mode, dragging a song reorders the playlist and saves', JSON.stringify(order.slice(0, 3)));
+  const stillEditing = await A.textContent('.actions [data-pl-edit] span');
+  await A.click('.actions [data-pl-edit]'); await settle(A, 300);
+  const doneUi = [stillEditing, await A.textContent('.actions [data-pl-edit] span'), !(await A.$('#view .tl .grip')), !(await A.$('#view .tl.reorder'))];
+  await A.click('.actions [data-pl-edit]'); await settle(A, 300);
+  await A.keyboard.press('Escape'); await settle(A, 300);
+  doneUi.push(!(await A.$('#view .tl .grip')));
+  await A.click('.actions [data-pl-edit]'); await settle(A, 300);
+  await A.click('#side-list [data-open="liked"]').catch(() => {}); await settle(A, 400);
+  await A.click('#side-list [data-open="playlist:pl-example"]'); await settle(A, 500);
+  doneUi.push(!(await A.$('#view .tl .grip')));
+  check(doneUi[0] === 'Done' && doneUi[1] === 'Edit' && doneUi.slice(2).every(Boolean), 'Done, Escape, or leaving the playlist closes edit mode', JSON.stringify(doneUi));
 
   // --- page breaks: + > Add a Page Break, after a chosen song, numbering restarts; rename; + > Add a Song
   await A.click('#side-list [data-open="playlist:pl-example"]'); await settle(A, 500);
@@ -489,7 +514,7 @@ try {
   await A.click('.folder-head [data-folder-add]'); await settle(A, 250);
   await A.click('#menu .mi:has-text("Add Playlists")'); await settle(A, 400);
   await A.click(`#fk-list [data-fk-add="${madeId}"]`); await settle(A, 300);
-  await A.click('#fk-done'); await settle(A, 600);
+  await A.click('#fk-done'); await settle(A, 2500);   // let saving finish first, so the page isn't redrawn mid-drag
   {
     const c = await (await A.$(`#view .folder-cards .card[data-open="playlist:${madeId}"]`)).boundingBox(), t = await (await A.$(`#view .folder-cards .card[data-open="folder:${sub.id}"]`)).boundingBox();
     await A.mouse.move(c.x + c.width / 2, c.y + 60); await A.mouse.down();

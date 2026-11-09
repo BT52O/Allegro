@@ -1177,6 +1177,12 @@ body.touch-input .sel-box { opacity: 1; }
 .sb-x .ic { width: 18px; height: 18px; }
 @media (max-width: 1100px) { .sb-btn span { display: none; } .sb-btn { padding: 0 10px; } }
 .tl.reorder .tr { cursor: grab; -webkit-user-select: none; user-select: none; }
+.grip { display: grid; place-items: center; width: 28px; height: 28px; color: var(--muted); touch-action: none; }
+.grip .ic { width: 18px; height: 18px; }
+.tr:hover .grip, .pl-break:hover .grip { color: var(--ink); }
+.pl-break-end { display: flex; align-items: center; gap: 4px; }
+.pl-ic.on { background: var(--ink); color: var(--panel); }
+.pl-ic.on:hover { background: color-mix(in srgb, var(--ink) 86%, var(--panel)); }
 .tl.reorder .tr img { -webkit-user-drag: none; }
 body.dragging-row, body.dragging-row * { cursor: grabbing !important; }
 body.dragging-row .tr:hover { background: transparent; }
@@ -1718,7 +1724,7 @@ const I18N = [
   ['Next Up', '接下来', '接下來'], ['Play Next', '下一首播放', '下一首播放'], ['Add to Queue', '添加到播放队列', '加入播放佇列'], ['Add to Playlist', '添加到歌单', '加入歌單'],
   ['Save to Liked Songs', '添加到喜欢的歌曲', '加入喜歡的歌曲'], ['Remove from Liked Songs', '从喜欢的歌曲中移除', '從喜歡的歌曲中移除'], ['Saved to Liked Songs', '已添加到喜欢的歌曲', '已加入喜歡的歌曲'], ['Removed from Liked Songs', '已从喜欢的歌曲中移除', '已從喜歡的歌曲中移除'],
   ['Go to Artist', '查看艺人', '查看藝人'], ['Go to Album', '查看专辑', '查看專輯'], ['Remove from This Playlist', '从此歌单中移除', '從此歌單中移除'], ['Remove from Library', '从音乐库中移除', '從音樂庫中移除'],
-  ['Edit Details', '编辑详情', '編輯詳情'], ['Delete Playlist', '删除歌单', '刪除歌單'], ['Move to Folder', '移到文件夹', '移到資料夾'], ['Version History', '版本历史', '版本歷史'],
+  ['Edit Details', '编辑详情', '編輯詳情'], ['Drag to Move', '拖动以移动', '拖曳以移動'], ['Delete Playlist', '删除歌单', '刪除歌單'], ['Move to Folder', '移到文件夹', '移到資料夾'], ['Version History', '版本历史', '版本歷史'],
   ['New Playlist', '新歌单', '新歌單'], ['New Folder', '新文件夹', '新資料夾'], ['New Folder Here', '在此新建文件夹', '在此新增資料夾'], ['Remove from Folder', '移出文件夹', '移出資料夾'],
   ['Rename', '重命名', '重新命名'], ['Delete Folder', '删除文件夹', '刪除資料夾'], ['Add Playlists', '添加歌单', '加入歌單'], ['Add to This Folder', '添加到此文件夹', '加入此資料夾'],
   ['Create Playlist', '新建歌单', '新增歌單'], ['Create Folder', '新建文件夹', '新增資料夾'], ['Rename Folder', '重命名文件夹', '重新命名資料夾'], ['Name', '名称', '名稱'], ['Description', '简介', '簡介'],
@@ -2000,6 +2006,7 @@ const STROKE = {
   noteplus: '<circle cx="7" cy="17.5" r="2.5"/><path d="M9.5 17.5V4.5l3.5 1.6"/><path d="M17.5 9v8M13.5 13h8"/>',
   addq: '<path d="M4 6h12M4 11h12M4 16h7M18 14v6M15 17h6"/>',
   list: '<path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01"/>',
+  grip: '<path d="M5 9h14M5 15h14"/>',
   speaker: '<path d="M4 9.5h3.5L12 6v12l-4.5-3.5H4z"/><path d="M15.5 9.5a3.5 3.5 0 0 1 0 5"/>',
   loader: '<path d="M12 3a9 9 0 1 0 9 9"/>',
   compass: '<circle cx="12" cy="12" r="8.6"/><path d="m15.6 8.4-2.1 5.1-5.1 2.1 2.1-5.1z"/>',
@@ -2902,8 +2909,9 @@ function trackRow(t, i, opt) {
   cells += `<span class="c-like"><button class="like${liked ? ' on' : ''}" data-like="${esc(t.id)}" aria-pressed="${liked}" aria-label="${liked ? 'Remove from' : 'Save to'} Liked Songs">${ic(liked ? 'heartFill' : 'heart')}</button></span>`;
   if (c.has('duration')) cells += `<span class="c-dur">${fmt(t.duration)}</span>`;
   cells += `<span class="c-more"><button class="more" data-more="${esc(t.id)}" aria-label="More options for ${esc(t.title)}">${ic('more')}</button></span>`;
-  const picked = opt.selKey != null && SEL.key === opt.selKey && SEL.ids.has(t.id);
-  cells += `<span class="c-sel"><button class="sel-box" data-sel="${esc(t.id)}" role="checkbox" aria-checked="${picked}" aria-label="Select ${esc(t.title)}">${ic('check')}</button></span>`;
+  const picked = !opt.editing && opt.selKey != null && SEL.key === opt.selKey && SEL.ids.has(t.id);
+  if (opt.editing) cells += `<span class="c-sel"><span class="grip" title="Drag to Move" aria-hidden="true">${ic('grip')}</span></span>`;
+  else cells += `<span class="c-sel"><button class="sel-box" data-sel="${esc(t.id)}" role="checkbox" aria-checked="${picked}" aria-label="Select ${esc(t.title)}">${ic('check')}</button></span>`;
   return `<div class="tr${picked ? ' sel' : ''}" data-id="${esc(t.id)}" data-i="${i}" tabindex="0">${cells}</div>`;
 }
 /* Columns: each list remembers which ones you picked (saved online, so every device matches). */
@@ -2948,7 +2956,7 @@ function trackList(ids, ctx, opt = {}) {
     if (cols.has('cover') || cols.has('title') || cols.has('artist')) head += `<span aria-hidden="true">${cols.has('title') ? 'Title' : cols.has('artist') ? 'Artist' : ''}</span>`;
     if (cols.has('album')) head += `<span class="c-album" aria-hidden="true">Album</span>`;
     if (cols.has('date')) head += `<span class="c-added" aria-hidden="true">${opt.played ? 'Played' : 'Date Released'}</span>`;
-    head += `<span></span>${cols.has('duration') ? `<span class="c-dur" aria-hidden="true">${ic('clock')}</span>` : ''}<span></span><span class="c-sel"><button class="sel-box sel-all" data-sel-all="${lid}" role="checkbox" aria-checked="false" aria-label="Select all">${ic('check')}</button></span></div>`;
+    head += `<span></span>${cols.has('duration') ? `<span class="c-dur" aria-hidden="true">${ic('clock')}</span>` : ''}<span></span><span class="c-sel">${opt.editing ? '' : `<button class="sel-box sel-all" data-sel-all="${lid}" role="checkbox" aria-checked="false" aria-label="Select all">${ic('check')}</button>`}</span></div>`;
   }
   const style = `--cols:${colTemplate(cols, nW, false)};--cols-narrow:${colTemplate(cols, nW, true)}`;
   const pl = opt.playlist && S.playlists.find(x => x.id === opt.playlist);
@@ -2961,11 +2969,11 @@ function trackList(ids, ctx, opt = {}) {
     const o2 = { ...o, nums };
     ti = 0; body = '';
     for (const x of seq) {
-      if (isBrk(x)) { const bid = x.slice(4); body += `<div class="pl-break" data-break="${esc(bid)}"><h3>${esc(breakName(pl, bid))}</h3><button class="more" data-break-more="${esc(bid)}" aria-label="Page break options">${ic('more')}</button></div>`; continue; }
+      if (isBrk(x)) { const bid = x.slice(4); body += `<div class="pl-break" data-break="${esc(bid)}"><h3>${esc(breakName(pl, bid))}</h3><span class="pl-break-end"><button class="more" data-break-more="${esc(bid)}" aria-label="Page break options">${ic('more')}</button>${opt.editing ? `<span class="grip" title="Drag to Move" aria-hidden="true">${ic('grip')}</span>` : ''}</span></div>`; continue; }
       body += trackRow(tk(x), ti, o2); ti++;
     }
   } else body = ids.map((id, i) => trackRow(tk(id), i, o)).join('');
-  return `<div class="tl${cols.has('cover') ? '' : ' no-cover'}${opt.playlist ? ' reorder' : ''}${SEL.key === ctx.key && SEL.ids.size ? ' selecting' : ''}" data-list="${lid}" style="${style}">${head}${body}</div>`;
+  return `<div class="tl${cols.has('cover') ? '' : ' no-cover'}${opt.playlist && opt.editing ? ' reorder editing' : ''}${!opt.editing && SEL.key === ctx.key && SEL.ids.size ? ' selecting' : ''}" data-list="${lid}" style="${style}">${head}${body}</div>`;
 }
 // Redraws one list in place (after changing its columns) without rebuilding the page.
 function redrawList(el) {
@@ -3354,7 +3362,7 @@ const VIEWS = {
   playlist(v) {
     const p = S.playlists.find(x => x.id === v.key);
     if (!p) return notFound('That playlist was deleted.');
-    const key = 'playlist:' + p.id, ids = live(p.ids);
+    const key = 'playlist:' + p.id, ids = live(p.ids), editing = plEdit === p.id;
     const title = S.renaming === p.id ? `<input class="rename" id="rename-input" value="${esc(p.name)}" maxlength="80" aria-label="Playlist name">` : `<h1>${esc(p.name)}</h1>`;
     // Two columns: the playlist's cover, name and buttons on the left (they stay put as you scroll), songs on the right.
     const tint = p.cover ? plCoverUrl(p) : (plCovers(ids)[0] || genCover(p.id, 1, hash(p.id) % 360));
@@ -3362,13 +3370,13 @@ const VIEWS = {
       <div class="vhead-text" data-type="Playlist">${title}${p.desc ? `<p class="desc">${esc(p.desc)}</p>` : ''}<div class="meta"><span>${plural(ids.length, 'song')}${ids.length ? ', ' + fmtLong(totalDur(ids)) : ''}</span></div></div>
       <div class="pl-btns"><button class="pill-play" data-ctx-play="${esc(key)}" aria-label="Play">${ic('play')}<span>Play</span></button><button class="pill-shuffle" data-shuffle-play="${esc(key)}">${ic('shuffle')}<span>Shuffle</span></button></div>
       <div class="pl-icons actions">
-        <button class="pl-ic" data-pl-edit="${esc(p.id)}">${ic('edit')}<span>Edit</span></button>
+        <button class="pl-ic${editing ? ' on' : ''}" data-pl-edit="${esc(p.id)}" aria-pressed="${editing}">${ic(editing ? 'check' : 'edit')}<span>${editing ? 'Done' : 'Edit'}</span></button>
         <button class="pl-ic" data-pl-add="${esc(p.id)}" aria-label="Add a song or page break">${ic('plus')}<span>Add</span></button>
         <button class="pl-ic" data-pl-hist="${esc(p.id)}">${ic('clock')}<span>History</span></button>
         <button class="pl-ic" data-ctx-more="${esc(key)}" aria-label="Playlist options">${ic('more')}<span>More</span></button>
       </div></header>`;
     return `<div class="view-bg" data-tint-src="${esc(tint)}"></div><div class="pl-layout">${side}<section class="pl-main">`
-      + trackList(ids, { key, name: p.name }, { playlist: p.id, empty: `<div class="empty"><h3>This Playlist Is Empty</h3><button class="btn ghost" data-open="library:songs">${ic('music')}Browse Songs</button></div>` }) + `</section></div>`;
+      + trackList(ids, { key, name: p.name }, { playlist: p.id, editing, empty: `<div class="empty"><h3>This Playlist Is Empty</h3><button class="btn ghost" data-open="library:songs">${ic('music')}Browse Songs</button></div>` }) + `</section></div>`;
   },
   liked() {
     const ids = live(S.liked);
@@ -3389,6 +3397,7 @@ const notFound = msg => `<div class="empty" style="padding-top:80px"><h3>Not Fou
 function render(scrollTop) {
   LISTS = {};
   const v = S.view;
+  if (plEdit && !(v.name === 'playlist' && v.key === plEdit)) plEdit = null;
   $('#view').innerHTML = (VIEWS[v.name] || VIEWS.home)(v);
   syncSel(); placeHomeInk();
   const bg = $('#view .view-bg[data-tint-src]');
@@ -5721,8 +5730,17 @@ function sdEnd(commit) {
   if (switched) toast('Sorted by Custom Sort');
 }
 
-/* ================= drag songs to reorder a playlist ================= */
-let drag = null, suppressClick = false;
+/* ================= drag songs to reorder a playlist (only in the playlist's edit mode) ================= */
+let drag = null, suppressClick = false, plEdit = null;
+// Edit opens the playlist's edit mode: songs and page breaks can be dragged, and each row shows a handle. Done,
+// Escape, or leaving the playlist closes it.
+function setPlEdit(id) {
+  plEdit = id;
+  if (id) { closeMenu(); selClear(); }
+  const m = $('#main'), top = m.scrollTop;
+  render(); m.scrollTop = top;
+  const b = $('#view [data-pl-edit]'); if (b) b.focus({ preventScroll: true });
+}
 document.addEventListener('click', e => { if (suppressClick) { suppressClick = false; e.stopPropagation(); e.preventDefault(); } }, true);
 document.addEventListener('pointerdown', e => {
   if (e.button !== 0 || drag) return;
@@ -5731,6 +5749,8 @@ document.addEventListener('pointerdown', e => {
   const tl = row.closest('[data-list]'), L = LISTS[tl.dataset.list];
   if (!L || !L.playlist) return;
   drag = { row, tl, L, x: e.clientX, y: e.clientY, pid: e.pointerId, active: false, touch: e.pointerType !== 'mouse', timer: 0 };
+  // On touch the handle drags right away; elsewhere on the row a long press does, so the page still scrolls.
+  if (drag.touch && e.target.closest('.grip')) { e.preventDefault(); startDrag(); return; }
   if (drag.touch) drag.timer = setTimeout(() => { if (drag && !drag.active) startDrag(); }, 380);
 });
 document.addEventListener('pointermove', e => {
@@ -6526,7 +6546,7 @@ document.addEventListener('click', e => {
   const more = T.closest('[data-more]');
   if (more) { const tl = more.closest('[data-list]'); trackMenu(more, more.dataset.more, tl && LISTS[tl.dataset.list]); return; }
   const pa = T.closest('[data-pl-add]'); if (pa) { plAddMenu(pa, pa.dataset.plAdd); return; }
-  const pe2 = T.closest('[data-pl-edit]'); if (pe2) { editPlaylist(pe2.dataset.plEdit); return; }
+  const pe2 = T.closest('[data-pl-edit]'); if (pe2) { setPlEdit(plEdit === pe2.dataset.plEdit ? null : pe2.dataset.plEdit); return; }
   const ph = T.closest('[data-pl-hist]'); if (ph) { plHist = { id: null }; go({ name: 'plhistory', key: ph.dataset.plHist }); return; }
   const sh = T.closest('[data-shuffle-play]'); if (sh) { if (!S.shuffle) { S.shuffle = true; syncToggles(); save(); } playCtx(sh.dataset.shufflePlay); return; }
   const bm = T.closest('[data-break-more]'); if (bm && S.view.name === 'playlist') { breakMenu(bm, S.view.key, bm.dataset.breakMore); return; }
@@ -6591,7 +6611,7 @@ document.addEventListener('click', e => {
 });
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape' && SEL.ids.size && $('#menu').hidden && $('#sheet').hidden && !cfDone) { selClear(); return; }
-  if (e.key === 'Escape') { if (crop) { cropClose(null); return; } if (!$('#lightbox').hidden) { closeLightbox(); return; } if (fdlg) { closeFd(); return; } if (bk) { closeBk(); return; } if (fk) { closeFk(); return; } if (sp) { closeSp(); return; } if (se) { closeSe(); return; } if (pe) { closePe(); return; } if (!$('#menu').hidden) { closeMenu(); return; } if (!$('#sheet').hidden) { closeSheet(); return; } if (S.renaming) { S.renaming = null; render(); } return; }
+  if (e.key === 'Escape') { if (crop) { cropClose(null); return; } if (!$('#lightbox').hidden) { closeLightbox(); return; } if (fdlg) { closeFd(); return; } if (bk) { closeBk(); return; } if (fk) { closeFk(); return; } if (sp) { closeSp(); return; } if (se) { closeSe(); return; } if (pe) { closePe(); return; } if (!$('#menu').hidden) { closeMenu(); return; } if (!$('#sheet').hidden) { closeSheet(); return; } if (S.renaming) { S.renaming = null; render(); return; } if (plEdit) setPlEdit(null); return; }
   if (e.target.id === 'rename-input' && e.key === 'Enter') { e.preventDefault(); commitRename(); return; }
   const el = e.target;
   if ((e.key === 'Enter' || e.key === ' ') && el.matches && el.matches('.tr, .pick, .card, .qt, [data-open][tabindex], [data-qi], [data-qh]')) { e.preventDefault(); el.click(); return; }

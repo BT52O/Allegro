@@ -100,6 +100,8 @@ grep -n FAIL /tmp/e2e.log
     Chinese UI, and `node --check` does not catch it.
 - **Deleting:** `askDelete(title, body, yes)` shows the confirm. After a delete, show a toast with Undo for `UNDO_MS`
   (15s).
+- **Playlist edit mode:** songs and page breaks on a playlist page drag only in edit mode (the Edit button, `plEdit`,
+  `setPlEdit`). Edit Details opens from the cover or the ⋯ menu.
 - **Popups:** the player bar's right side uses `prPop(wrap, {hover})` with white `.pr-pop` cards.
 - **Order:** new items go at the front (`unshift`): folders, songs added to playlists.
 - **Saving:** `save()` writes localStorage (`STORE_KEY`) and syncs state to the server through `pushState`.
