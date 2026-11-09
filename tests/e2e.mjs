@@ -1214,8 +1214,10 @@ try {
       return [st.color, st.textShadow.includes('255, 255, 255'), getComputedStyle(small).color];
     } finally { b.style.transition = ''; document.documentElement.dataset.theme = theme; document.body.classList.toggle('sheet-open', open); }
   });
-  check(pillNp[0] === 'rgb(255, 94, 106)' && !pillNp[1] && pillNp[2] === 'rgb(229, 52, 63)',
-    'on Now Playing with the light theme the quality pill keeps its dark glass look (bright red, no white halo); the popup pills stay deep red', JSON.stringify(pillNp));
+  // by now the pill may already show the 96 kbps copy (bright amber) rather than Max (bright red), depending on how fast
+  // the copy was made; either way it must be the bright dark-glass color, not the deep light-theme one
+  check(['rgb(255, 94, 106)', 'rgb(245, 197, 72)'].includes(pillNp[0]) && !pillNp[1] && pillNp[2] === 'rgb(229, 52, 63)',
+    'on Now Playing with the light theme the quality pill keeps its dark glass look (bright red or amber, no white halo); the popup pills stay deep red', JSON.stringify(pillNp));
   await A.mouse.click(700, 300); await settle(A, 300);
   // clicking the song that is already playing only pauses it, so play another song first, then come back to the copied one
   await A.locator(`#view .tr:not([data-id="${copied}"]) .t-name`).first().click(); await settle(A, 800);
