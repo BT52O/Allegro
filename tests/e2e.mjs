@@ -1125,6 +1125,17 @@ try {
   const copyRes = copied && await A.evaluate(async id => { const r = await fetch('/api/audio/' + encodeURIComponent(id) + '?q=96'), b = new Uint8Array(await r.arrayBuffer()); return [r.status, r.headers.get('content-type'), b.length, b[0] === 0xFF || String.fromCharCode(b[0], b[1], b[2]) === 'ID3']; }, copied);
   check(pill[0] === 'q-badge' && pill[1] && parseFloat(pill[2]) > 100 && qOpts.map(o => o[0]).join() === 'max,96' && qOpts[0][1] === 'true' && qOpts[0][2] === 'q-badge' && /q96/.test(qOpts[1][2]) && pill[3] === 'rgb(229, 52, 63)' && pill[4] === 'center' && !qDl && copyRes && copyRes[0] === 200 && copyRes[1] === 'audio/mpeg' && copyRes[2] > 1000 && copyRes[3],
     'the quality pill is a clear liquid glass pill, deep red for Max on the light theme with its text centered; it offers Max and 96 kbps, no file details; choosing 96 kbps makes an MP3 copy and stores it', JSON.stringify({ pill, qOpts, qDl, copied, copyRes }));
+  // Now Playing puts the bar over the cover's dark color even on the light theme, so the pill keeps its dark look there:
+  // bright red text with no white halo (that halo made the text look fuzzy), and the popup's small pills stay light
+  const pillNp = await A.evaluate(() => {
+    const b = document.getElementById('q-badge'), small = document.querySelector('#qb-pop .qb-opt .q-badge'), theme = document.documentElement.dataset.theme, open = document.body.classList.contains('sheet-open');
+    // the pill fades its color over .2s; switch that off so the new color reads at once
+    try { document.documentElement.dataset.theme = 'light'; document.body.classList.add('sheet-open'); b.style.transition = 'none'; const st = getComputedStyle(b);
+      return [st.color, st.textShadow.includes('255, 255, 255'), getComputedStyle(small).color];
+    } finally { b.style.transition = ''; document.documentElement.dataset.theme = theme; document.body.classList.toggle('sheet-open', open); }
+  });
+  check(pillNp[0] === 'rgb(255, 94, 106)' && !pillNp[1] && pillNp[2] === 'rgb(229, 52, 63)',
+    'on Now Playing with the light theme the quality pill keeps its dark glass look (bright red, no white halo); the popup pills stay deep red', JSON.stringify(pillNp));
   await A.mouse.click(700, 300); await settle(A, 300);
   // clicking the song that is already playing only pauses it, so play another song first, then come back to the copied one
   await A.locator(`#view .tr:not([data-id="${copied}"]) .t-name`).first().click(); await settle(A, 800);

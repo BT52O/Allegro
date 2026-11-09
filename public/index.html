@@ -579,13 +579,15 @@ body.sheet-open #vol-wrap { --volume-panel: #242426; --volume-track: #3b3b3f; --
 .q-badge:active { transform: scale(1.04); }
 @media (prefers-reduced-motion: reduce) { .q-badge:active { transform: none; } }
 /* on a light page the glass stays clear; a soft dark halo would look dirty there, so the text gets a light one and a
-   faint outline keeps the edge visible against white */
-:root:not([data-theme="dark"]) .q-badge { --qbase: .2; text-shadow: 0 0 8px rgba(var(--qg), .25), 0 1px 0 rgba(255, 255, 255, .6);
+   faint outline keeps the edge visible against white. Now Playing puts the bar over the cover's dark color even on the
+   light theme, so there the pill keeps its dark look (the light halo made the text fuzzy and the glass milky). The
+   pills inside the white popup always sit on white, so they keep the light look. */
+:root:not([data-theme="dark"]) :is(body:not(.sheet-open) .q-badge, .qb-opt .q-badge) { --qbase: .2; text-shadow: 0 0 8px rgba(var(--qg), .25), 0 1px 0 rgba(255, 255, 255, .6);
   box-shadow: inset 0 0 0 .5px rgba(0, 0, 0, .1), inset 0 0 9px rgba(255, 255, 255, .5), inset 0 0 18px rgba(var(--qg), .08), 0 0 0 .5px rgba(0, 0, 0, .12), 0 6px 18px -6px rgba(0, 0, 0, .22); }
 .q-badge.q96 { --qg: 236, 186, 62; --qa: .22; --qt: #f5c548; }
 /* the bright red and gold are too pale on clear glass over a white bar, so they go deeper there */
-:root:not([data-theme="dark"]) .q-badge { --qt: #e5343f; }
-:root:not([data-theme="dark"]) .q-badge.q96 { --qt: #b07a00; }
+:root:not([data-theme="dark"]) :is(body:not(.sheet-open) .q-badge, .qb-opt .q-badge) { --qt: #e5343f; }
+:root:not([data-theme="dark"]) :is(body:not(.sheet-open) .q-badge.q96, .qb-opt .q-badge.q96) { --qt: #b07a00; }
 @media (prefers-reduced-transparency: reduce) { .q-badge { -webkit-backdrop-filter: none; backdrop-filter: none; background: radial-gradient(70% 90% at 50% 60%, rgba(var(--qg), var(--qa)), rgba(var(--qg), 0) 100%), linear-gradient(#26262b, #121215); } }
 .q-badge.making::after { content: ""; position: absolute; right: 7px; top: 50%; width: 4px; height: 4px; margin-top: -2px; border-radius: 50%; background: var(--qt); animation: qbPulse 1.2s ease-in-out infinite; }
 @keyframes qbPulse { 50% { opacity: .25; } }
