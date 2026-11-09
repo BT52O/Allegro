@@ -712,6 +712,11 @@ html.breathe .s-art img { animation: s-breathe 17s ease-in-out infinite; }
 .w-chip { display: inline-flex; align-items: center; gap: 8px; height: 42px; padding: 0 18px; border-radius: 999px; background: rgba(255, 255, 255, .12); font-weight: 600; }
 .w-chip .ic { width: 20px; height: 20px; }
 .w-about { margin-top: 22px; }
+/* The Wiki's four groups (title, people, facts, About) share out the panel's spare height, so a song with little
+   to say doesn't leave everything bunched at the top above an empty half. Long notes just scroll as before. */
+.w-wrap { display: flex; flex-direction: column; justify-content: space-between; gap: 18px; min-height: 100%; }
+.w-wrap .w-sub { margin-bottom: 0; }
+.w-wrap .w-chips, .w-wrap .w-about { margin: 0; }
 .w-about h3 { margin: 0 0 8px; font: 800 1.3rem var(--f-display); }
 .w-about p { margin: 0; color: rgba(255, 255, 255, .82); line-height: 1.75; white-space: pre-wrap; overflow-wrap: anywhere; }
 /* lyrics */
@@ -4265,13 +4270,13 @@ function wikiHTML(t) {
     isLiked(t.id) ? `<span class="w-chip">${ic('heartFill')}<span>In Liked Songs</span></span>` : ''
   ].join('');
   const canEdit = t.kind === 'cloud' && cloud.canWrite;
-  return `<h2 class="w-title" data-nt>${esc(t.title)}</h2>${released ? `<p class="w-sub">Released ${esc(released)}</p>` : '<div style="height:14px"></div>'}
-    ${artistsOf(t.artist).map(n => { const ar = IDX.artists.get(n); return `<div class="w-row"><span class="w-av">${ar && ar.cover ? `<img src="${esc(ar.cover)}" alt="">` : ic('user')}</span><span class="w-k">Artist</span><button class="link" data-go-artist="${esc(n)}">${esc(n)}</button></div>`; }).join('')}
+  return `<div class="w-wrap"><div class="w-head"><h2 class="w-title" data-nt>${esc(t.title)}</h2>${released ? `<p class="w-sub">Released ${esc(released)}</p>` : ''}</div>
+    <div class="w-people">${artistsOf(t.artist).map(n => { const ar = IDX.artists.get(n); return `<div class="w-row"><span class="w-av">${ar && ar.cover ? `<img src="${esc(ar.cover)}" alt="">` : ic('user')}</span><span class="w-k">Artist</span><button class="link" data-go-artist="${esc(n)}">${esc(n)}</button></div>`; }).join('')}
     <div class="w-row"><span class="w-av sq">${al ? `<img src="${esc(al.cover)}" alt="">` : ic('album')}</span><span class="w-k">Album</span><button class="link" data-go-album="${esc(t.albumKey)}">${esc(t.album)}</button></div>
-    ${credits ? `<div class="w-row"><span class="w-av">${ic('edit')}</span><span class="w-k">Credits</span><span class="w-credits">${credits}</span></div>` : ''}
+    ${credits ? `<div class="w-row"><span class="w-av">${ic('edit')}</span><span class="w-k">Credits</span><span class="w-credits">${credits}</span></div>` : ''}</div>
     ${chips ? `<div class="w-chips">${chips}</div>` : ''}
     <div class="w-about"><h3>About This Song</h3>${m.about ? `<p data-nt>${esc(m.about)}</p>` : `<p class="sp-msg">${canEdit ? 'Nothing here yet. Add your own notes, the story behind the song, or the credits.' : 'Upload this song to add notes and credits.'}</p>`}
-    ${canEdit ? `<div class="sp-actions"><button class="sp-btn" data-w-edit>${ic('edit')}<span>Edit Details</span></button></div>` : ''}</div>`;
+    ${canEdit ? `<div class="sp-actions"><button class="sp-btn" data-w-edit>${ic('edit')}<span>Edit Details</span></button></div>` : ''}</div></div>`;
 }
 
 /* --- Lyrics: timed lines that light up as they're sung; duets split left and right by singer --- */

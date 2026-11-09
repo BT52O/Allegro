@@ -1028,6 +1028,10 @@ try {
   await A.click(`#view .tr[data-id="${tagged.id}"] .t-name`); await settle(A, 800);
   await A.click('#p-cover'); await settle(A, 800);
   const np = await A.evaluate(() => [getComputedStyle(document.getElementById('s-panel')).display, [...document.querySelectorAll('[data-sp-tab]')].map(b => b.textContent).join('|'), (document.querySelector('.w-title') || {}).textContent, [...document.querySelectorAll('.w-row .w-k')].map(e => e.textContent).join('|')]);
+  // a short Wiki spreads down the whole panel: the title stays at the top, About This Song reaches the bottom
+  const spread = await A.evaluate(() => { const b = document.getElementById('sp-body'), r = b.getBoundingClientRect(), ab = document.querySelector('.w-about').getBoundingClientRect(), ti = document.querySelector('.w-title').getBoundingClientRect();
+    return [b.scrollHeight <= b.clientHeight, Math.round(r.bottom - ab.bottom), Math.round(ti.top - r.top)]; });
+  check(!spread[0] || (spread[1] >= 0 && spread[1] <= 40 && spread[2] <= 40), 'a short Wiki fills the panel from top to bottom', JSON.stringify(spread));
   const bar = await A.evaluate(() => { const pl = document.getElementById('player').getBoundingClientRect(), sh = document.getElementById('sheet'), art = document.getElementById('s-art').getBoundingClientRect(), tab = document.querySelector('.sp-tab').getBoundingClientRect();
     const top = document.elementFromPoint(pl.left + pl.width / 2, pl.top + pl.height / 2);
     return [!!top && !!top.closest('#player'), getComputedStyle(document.querySelector('.s-ctrls')).display, art.bottom <= pl.top, Math.round(tab.height), getComputedStyle(document.querySelector('#player .p-title')).color]; });
