@@ -1058,6 +1058,10 @@ try {
   await settle(A, 1500);
   const ly = await A.evaluate(() => [...document.querySelectorAll('#ly .ly-line')].map(e => [e.textContent, e.className]));
   await shot(A, 'now-playing-lyrics');
+  await A.evaluate(() => { const b = document.getElementById('sp-body'); b.scrollTop = 0; b.dispatchEvent(new Event('scroll')); });
+  await A.waitForFunction(() => getComputedStyle(document.querySelector('#ly .ly-line')).opacity === '1', null, { timeout: 3000 }).catch(() => {});   // the opacity eases in
+  const topLine = await A.evaluate(() => getComputedStyle(document.querySelector('#ly .ly-line')).opacity);
+  check(topLine === '1', 'the first lyric line is not faded while the lyrics sit at the top', topLine);
   await A.waitForFunction(() => document.querySelector('#ly .ly-line.on') && document.querySelector('#ly .ly-line.past'), null, { timeout: 8000 }).catch(() => {});   // timing varies on slower machines
   await A.click('#player [data-act="toggle"]'); await settle(A, 500);   // hold still so the color change has finished
   const onVis = await A.evaluate(() => { const w = document.querySelector('#ly .ly-line.on'); if (!w) return null; const st = getComputedStyle(w); const past = document.querySelector('#ly .ly-line.past'); return [st.color, st.textShadow, past ? getComputedStyle(past).filter : '']; });

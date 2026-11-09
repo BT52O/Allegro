@@ -4714,11 +4714,14 @@ document.addEventListener('submit', async e => {
 });
 ['wheel', 'touchmove'].forEach(ev => $('#sp-body').addEventListener(ev, () => { SP.userScroll = Date.now(); }, { passive: true }));
 // Lyric lines fade out as they reach the top or bottom of the panel, instead of being cut off at the edge.
+// The top fade only grows in once the lyrics have scrolled: at the very top nothing is cut off, so the first lines
+// (the ones sung as the song begins) stay fully visible instead of starting out faded.
 function lyFade() {
   const body = $('#sp-body'); if (!body.classList.contains('lyr')) return;
-  const B = body.getBoundingClientRect();
+  const B = body.getBoundingClientRect(), topZone = Math.min(70, body.scrollTop);
   $$('#ly .ly-line').forEach(el => {
-    const r = el.getBoundingClientRect(), o = Math.max(0, Math.min(1, (r.top - B.top) / 70, (B.bottom - r.bottom + r.height * .6) / 90));
+    const r = el.getBoundingClientRect(), top = topZone > 0 ? (r.top - B.top) / topZone : 1;
+    const o = Math.max(0, Math.min(1, top, (B.bottom - r.bottom + r.height * .6) / 90));
     el.style.opacity = o < 1 ? o.toFixed(2) : '';
   });
 }
