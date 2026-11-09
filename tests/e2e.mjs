@@ -1095,12 +1095,17 @@ try {
   const gLook = await A.evaluate(() => { const bg = document.getElementById('s-bg-img'), r = bg.getBoundingClientRect();
     return [getComputedStyle(document.querySelector('.s-bg')).display, /blur/.test(getComputedStyle(bg).filter), !!bg.getAttribute('src'), r.left <= 0 && r.right >= innerWidth && r.top <= 0 && r.bottom >= innerHeight,
       getComputedStyle(document.getElementById('s-panel')).display, getComputedStyle(document.querySelector('.s-ctrls')).display]; });
+  // on a computer the cover fills the left half and melts into the blur; the panel keeps the right half, the bar stays on top
+  const gHalf = await A.evaluate(() => { const a = document.getElementById('s-art').getBoundingClientRect(), p = document.getElementById('s-panel').getBoundingClientRect(), pl = document.getElementById('player').getBoundingClientRect(), W = innerWidth;
+    const top = document.elementFromPoint(pl.left + pl.width / 2, pl.top + pl.height / 2), x = document.elementFromPoint(42, 32);
+    return [Math.round(a.left) === 0 && Math.round(a.top) === 0 && Math.abs(a.right - W / 2) <= 2 && Math.abs(a.bottom - innerHeight) <= 2, p.left >= W / 2 - 40 && p.height > 300 && p.bottom <= pl.top, /gradient/.test(getComputedStyle(document.getElementById('s-art')).maskImage || getComputedStyle(document.getElementById('s-art')).webkitMaskImage),
+      !!top && !!top.closest('#player'), !!x && !!x.closest('.sheet-top .circ'), [...document.querySelectorAll('[data-sp-tab]')].map(b => b.textContent).join('|')]; });
   await shot(A, 'now-playing-gradient');
   await A.keyboard.press('Escape'); await settle(A, 450);
   await A.click('[data-np-opt="classic"]'); await settle(A, 200);
   const gOff = await A.evaluate(() => [document.documentElement.classList.contains('np-grad'), localStorage.getItem('allegro.npstyle'), getComputedStyle(document.querySelector('.s-bg')).display]);
-  check(gSet.join('|') === 'true|gradient|true' && gLook.join('|') === 'block|true|true|true|flex|none' && gOff.join('|') === 'false|classic|none',
-    'Now Playing Style: Gradient fills the background with a blur of the cover and keeps the usual layout; Classic turns it off', JSON.stringify({ gSet, gLook, gOff }));
+  check(gSet.join('|') === 'true|gradient|true' && gLook.join('|') === 'block|true|true|true|flex|none' && gHalf.join('|') === 'true|true|true|true|true|Wiki|Queue|Lyrics|Comments' && gOff.join('|') === 'false|classic|none',
+    'Now Playing Style: Gradient fills the background with a blur of the cover; on a computer the cover fills the left half beside the usual panel; Classic turns it off', JSON.stringify({ gSet, gLook, gHalf, gOff }));
 
   // --- lyrics with no times get timed to the song by AI
   await A.click('.nav-btn[data-nav="uploads"]'); await settle(A, 500);

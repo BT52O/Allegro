@@ -1446,6 +1446,17 @@ html.np-grad .sheet > .s-bg { display: block; position: absolute; inset: 0; over
 html.np-grad .s-bg img { position: absolute; left: -25%; top: -25%; width: 150%; height: 150%; max-width: none; object-fit: cover; filter: blur(80px) saturate(1.35); transform: translateZ(0); }
 html.np-grad .s-bg img:not([src]) { display: none; }
 html.np-grad .s-bg::after { content: ""; position: absolute; inset: 0; background: rgba(0, 0, 0, .2); }
+/* On computers the cover also fills the left half, edge to edge, and melts into the blur around it (as Apple Music
+   does); the Wiki / Queue / Lyrics / Comments panel keeps the right half and the player bar stays along the bottom. */
+@media (min-width: 760px) {
+  html.np-grad .sheet-body { position: static; }   /* so the cover places itself against the whole sheet */
+  html.np-grad .sheet-top { z-index: 2; }
+  html.np-grad .s-art { position: absolute; left: 0; top: 0; bottom: 0; width: 50%; height: auto; align-self: stretch; max-width: none; aspect-ratio: auto; border-radius: 0; box-shadow: none; transform: none;
+    -webkit-mask-image: linear-gradient(to right, rgb(0 0 0 / .5), #000 9%, #000 62%, transparent 99%), linear-gradient(to bottom, transparent, #000 13%, #000 87%, transparent);
+    -webkit-mask-composite: source-in; mask-image: linear-gradient(to right, rgb(0 0 0 / .5), #000 9%, #000 62%, transparent 99%), linear-gradient(to bottom, transparent, #000 13%, #000 87%, transparent); mask-composite: intersect; }
+  html.np-grad .s-art::after, html.np-grad .s-shine { display: none; }
+  html.np-grad .s-panel { align-self: stretch; height: auto; }
+}
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition: none !important; }
@@ -1769,7 +1780,7 @@ const I18N = [
   ['Sign out of Allegro on this device.', '在这台设备上退出 Allegro。', '在這台裝置上登出 Allegro。'], ['Library', '音乐库', '音樂庫'], ['Show Demo Songs', '显示示例歌曲', '顯示範例歌曲'],
   ['Breathing Album Cover', '呼吸专辑封面', '呼吸專輯封面'], ['Breathing album cover', '呼吸专辑封面', '呼吸專輯封面'],
   ['Now Playing Style', '正在播放样式', '正在播放樣式'], ['Now Playing style', '正在播放样式', '正在播放樣式'], ['Classic', '经典', '經典'], ['Gradient', '渐变', '漸層'],
-  ['Gradient fills the Now Playing background with a soft blur of the album cover. This setting is for this device only.', '“渐变”会用专辑封面的柔和模糊填满“正在播放”的背景。此设置仅适用于这台设备。', '「漸層」會用專輯封面的柔和模糊填滿「正在播放」的背景。此設定僅適用於這台裝置。'],
+  ['Gradient fills the Now Playing background with a soft blur of the album cover. On computers, the cover fills the left side and melts into it. This setting is for this device only.', '“渐变”会用专辑封面的柔和模糊填满“正在播放”的背景。在电脑上，封面会铺满左侧并融入背景。此设置仅适用于这台设备。', '「漸層」會用專輯封面的柔和模糊填滿「正在播放」的背景。在電腦上，封面會鋪滿左側並融入背景。此設定僅適用於這台裝置。'],
   ['In Now Playing, the album cover slowly zooms in and back out. This setting is for this device only.', '在“正在播放”中，专辑封面会缓缓放大再缩小。此设置仅适用于这台设备。', '在「正在播放」中，專輯封面會緩緩放大再縮小。此設定僅適用於這台裝置。'],
   ['The generated sample songs that came with Allegro. Turning this off hides them everywhere, on all your devices.', 'Allegro 自带的示例歌曲。关闭后会在你所有的设备上隐藏。', 'Allegro 內建的範例歌曲。關閉後會在你所有的裝置上隱藏。'],
   ['Column Choices', '列设置', '欄位設定'], ['Every list shows the usual columns.', '所有列表都显示默认的列。', '所有清單都顯示預設的欄位。'], ['Storage', '存储空间', '儲存空間'], ['Your Uploads', '你的上传', '你的上傳'],
@@ -3273,7 +3284,7 @@ const VIEWS = {
       </section>
       <section class="set-sec"><h2>Appearance</h2>
         <div class="set-row"><div><h3>Theme</h3><p>Match your device, or always use light or dark.</p></div><div class="seg" role="radiogroup" aria-label="Theme">${[['system', 'System'], ['light', 'Light'], ['dark', 'Dark']].map(([k, l]) => `<button class="seg-btn${themePref() === k ? ' on' : ''}" data-theme-opt="${k}" role="radio" aria-checked="${themePref() === k}">${l}</button>`).join('')}</div></div>
-        <div class="set-row"><div><h3>Now Playing Style</h3><p>Gradient fills the Now Playing background with a soft blur of the album cover. This setting is for this device only.</p></div><div class="seg" role="radiogroup" aria-label="Now Playing style">${[['classic', 'Classic'], ['gradient', 'Gradient']].map(([k, l]) => `<button class="seg-btn${npPref() === k ? ' on' : ''}" data-np-opt="${k}" role="radio" aria-checked="${npPref() === k}">${l}</button>`).join('')}</div></div>
+        <div class="set-row"><div><h3>Now Playing Style</h3><p>Gradient fills the Now Playing background with a soft blur of the album cover. On computers, the cover fills the left side and melts into it. This setting is for this device only.</p></div><div class="seg" role="radiogroup" aria-label="Now Playing style">${[['classic', 'Classic'], ['gradient', 'Gradient']].map(([k, l]) => `<button class="seg-btn${npPref() === k ? ' on' : ''}" data-np-opt="${k}" role="radio" aria-checked="${npPref() === k}">${l}</button>`).join('')}</div></div>
         <div class="set-row"><div><h3>Breathing Album Cover</h3><p>In Now Playing, the album cover slowly zooms in and back out. This setting is for this device only.</p></div>${toggle('set-breathe', breathePref(), 'Breathing album cover')}</div>
         <div class="set-row"><div><h3>Language</h3><p>The language for Allegro on this device. Your song and playlist names stay as they are.</p></div><div class="seg" role="radiogroup" aria-label="Language" data-nt>${LANGS.map(([k, l]) => `<button class="seg-btn${LANG === k ? ' on' : ''}" data-lang-opt="${k}" role="radio" aria-checked="${LANG === k}">${l}</button>`).join('')}</div></div>
       </section>
@@ -4769,7 +4780,8 @@ $('#s-ptoggle').addEventListener('click', e => {
     raf = requestAnimationFrame(draw);
   };
   art.addEventListener('pointermove', e => {
-    if (e.pointerType !== 'mouse' || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    // no lean in the Gradient style on computers: there the cover is a soft-edged backdrop, not a card
+    if (e.pointerType !== 'mouse' || matchMedia('(prefers-reduced-motion: reduce)').matches || (npPref() === 'gradient' && innerWidth >= 760)) return;
     const r = art.getBoundingClientRect();
     goal.x = Math.min(1, Math.max(0, (e.clientX - r.left) / r.width)); goal.y = Math.min(1, Math.max(0, (e.clientY - r.top) / r.height)); goal.k = 1;
     art.classList.add('tilting');
