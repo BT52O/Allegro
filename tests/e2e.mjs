@@ -1087,39 +1087,20 @@ try {
   const reopened = await A.evaluate(() => !document.getElementById('sheet').hidden);
   check(closingNp.join() === 'false,true' && closedNp && reopened, 'clicking the bar cover closes Now Playing smoothly and opens it again', JSON.stringify([closingNp, closedNp, reopened]));
   await A.keyboard.press('Escape'); await settle(A, 450);
-  // Now Playing Style (Settings > Appearance): Apple Music puts the cover on the left half over a blur of itself, with the
-  // song, the controls, volume and Lyrics / Like / Queue on the right, covering the player bar. Saved on this device only.
+  // Now Playing Style (Settings > Appearance): Gradient puts a blur of the cover behind Now Playing and changes nothing else
   await A.click('#acct-btn'); await settle(A, 250); await A.click('#menu .mi:has-text("Settings")'); await settle(A, 400);
-  await A.click('[data-np-opt="am"]'); await settle(A, 200);
-  const amSet = await A.evaluate(() => [document.documentElement.classList.contains('np-am'), localStorage.getItem('allegro.npstyle'), document.querySelector('[data-np-opt="am"]').getAttribute('aria-checked')]);
+  await A.click('[data-np-opt="gradient"]'); await settle(A, 200);
+  const gSet = await A.evaluate(() => [document.documentElement.classList.contains('np-grad'), localStorage.getItem('allegro.npstyle'), document.querySelector('[data-np-opt="gradient"]').getAttribute('aria-checked')]);
   await A.click('#p-cover'); await settle(A, 900);
-  const amLook = await A.evaluate(() => {
-    const r = id => document.getElementById(id).getBoundingClientRect(), cs = el => getComputedStyle(typeof el === 'string' ? document.querySelector(el) : el), W = innerWidth;
-    const art = r('s-art'), title = r('s-title'), play = document.querySelector('.s-ctrls [data-act="toggle"]').getBoundingClientRect(), pl = r('player');
-    const top = document.elementFromPoint(pl.left + pl.width / 2, pl.top + pl.height / 2);
-    return [Math.round(art.left) === 0 && Math.abs(art.right - W / 2) <= 2, title.left >= W / 2 && play.left >= W / 2, !!top && !top.closest('#player'),
-      /blur/.test(cs('#s-bg-img').filter) && !!document.getElementById('s-bg-img').getAttribute('src'), cs('#s-panel').display, cs('.s-ctrls [data-act="restart"]').display,
-      cs('.s-vol').display, cs('.s-bot').display, cs('.sheet-top').display, cs('.s-grab').display, document.getElementById('s-left').textContent.startsWith('-')];
-  });
-  await shot(A, 'now-playing-apple-music');
-  check(amSet.join('|') === 'true|am|true' && amLook.join('|') === 'true|true|true|true|none|none|flex|flex|none|block|true', 'Apple Music style: the cover fills the left half over a blur of it, the song and its controls on the right, over the player bar', JSON.stringify({ amSet, amLook }));
-  await A.click('[data-am-tab="lyrics"]'); await settle(A, 500);
-  const amLyr = await A.evaluate(() => [getComputedStyle(document.getElementById('s-panel')).display, document.querySelector('.sp-tab.on')?.dataset.spTab, getComputedStyle(document.getElementById('s-art')).visibility, document.querySelector('[data-am-tab="lyrics"]').getAttribute('aria-pressed')]);
-  await A.click('[data-am-tab="queue"]'); await settle(A, 400);
-  const amQ = await A.evaluate(() => [document.querySelectorAll('#sp-body .sp-queue .qrow.now').length, document.querySelector('[data-am-tab="queue"]').getAttribute('aria-pressed'), document.querySelector('[data-am-tab="lyrics"]').getAttribute('aria-pressed')]);
-  await A.click('[data-am-tab="queue"]'); await settle(A, 300);
-  const amBack = await A.evaluate(() => [getComputedStyle(document.getElementById('s-panel')).display, getComputedStyle(document.getElementById('s-art')).visibility]);
-  check(amLyr.join('|') === 'flex|lyrics|hidden|true' && amQ.join('|') === '1|true|false' && amBack.join('|') === 'none|visible', 'Apple Music style: Lyrics and Queue open in place of the cover, and pressed again bring the cover back', JSON.stringify({ amLyr, amQ, amBack }));
-  { const vp = A.viewportSize(); await A.setViewportSize({ width: 852, height: 393 }); await settle(A, 400);
-    const amPhone = await A.evaluate(() => { const b = document.querySelector('.s-bot').getBoundingClientRect(), v = document.querySelector('.s-ctrls').getBoundingClientRect(); return [b.bottom <= innerHeight, v.top >= document.getElementById('s-title').getBoundingClientRect().bottom, getComputedStyle(document.getElementById('s-art')).position]; });
-    await shot(A, 'now-playing-apple-music-phone');
-    await A.setViewportSize(vp); await settle(A, 300);
-    check(amPhone.join('|') === 'true|true|absolute', 'Apple Music style fits a phone held sideways', JSON.stringify(amPhone)); }
-  await A.click('.s-grab'); await settle(A, 450);
-  const amClosed = await A.evaluate(() => document.getElementById('sheet').hidden);
+  const gLook = await A.evaluate(() => { const bg = document.getElementById('s-bg-img'), r = bg.getBoundingClientRect();
+    return [getComputedStyle(document.querySelector('.s-bg')).display, /blur/.test(getComputedStyle(bg).filter), !!bg.getAttribute('src'), r.left <= 0 && r.right >= innerWidth && r.top <= 0 && r.bottom >= innerHeight,
+      getComputedStyle(document.getElementById('s-panel')).display, getComputedStyle(document.querySelector('.s-ctrls')).display]; });
+  await shot(A, 'now-playing-gradient');
+  await A.keyboard.press('Escape'); await settle(A, 450);
   await A.click('[data-np-opt="classic"]'); await settle(A, 200);
-  const amOff = await A.evaluate(() => [document.documentElement.classList.contains('np-am'), localStorage.getItem('allegro.npstyle')]);
-  check(amClosed && amOff.join('|') === 'false|classic', 'the bar at the top closes Now Playing, and Classic brings back the usual style', JSON.stringify({ amClosed, amOff }));
+  const gOff = await A.evaluate(() => [document.documentElement.classList.contains('np-grad'), localStorage.getItem('allegro.npstyle'), getComputedStyle(document.querySelector('.s-bg')).display]);
+  check(gSet.join('|') === 'true|gradient|true' && gLook.join('|') === 'block|true|true|true|flex|none' && gOff.join('|') === 'false|classic|none',
+    'Now Playing Style: Gradient fills the background with a blur of the cover and keeps the usual layout; Classic turns it off', JSON.stringify({ gSet, gLook, gOff }));
 
   // --- lyrics with no times get timed to the song by AI
   await A.click('.nav-btn[data-nav="uploads"]'); await settle(A, 500);
