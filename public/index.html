@@ -1374,23 +1374,23 @@ body.touch-input .has-pen::after { display: none; }
 .picks { position: relative; container-type: inline-size; margin: 4px 0 18px; }
 /* Whole columns only, nothing of the next one shows. With a mouse, the right arrow sits in its own strip (--gutter)
    so it never covers a song; on touch screens you swipe, so there's no strip. */
-.pick-row { --n: 1; --gap: 16px; --gutter: 0px; display: grid; grid-template-rows: repeat(3, auto); grid-auto-flow: column; gap: 4px var(--gap);
+.pick-row { --n: 1; --gap: 16px; --gutter: 0px; display: grid; grid-template-rows: repeat(3, auto); grid-auto-flow: column; gap: 2px var(--gap);
   grid-auto-columns: calc((100% - (var(--n) - 1) * var(--gap)) / var(--n)); margin-right: var(--gutter);
   overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; overscroll-behavior-x: contain; }
 .pick-row::-webkit-scrollbar { display: none; }
 @container (min-width: 640px) { .pick-row { --n: 2; --gap: 24px; } }
 @container (min-width: 1040px) { .pick-row { --n: 3; } }
 @media (hover: hover) and (min-width: 760px) { .pick-row { --gutter: 44px; } }
-.pick { display: flex; align-items: center; gap: 14px; min-width: 0; padding: 6px; border-radius: 8px; cursor: pointer; scroll-snap-align: start; }
+.pick { display: flex; align-items: center; gap: 12px; min-width: 0; padding: 5px; border-radius: 8px; cursor: pointer; scroll-snap-align: start; }
 .pick:hover { background: var(--hover); }
-.pick-art { flex: none; width: 60px; height: 60px; border-radius: 6px; object-fit: cover; outline: 1px solid color-mix(in srgb, var(--ink) 7%, transparent); outline-offset: -1px; }
+.pick-art { flex: none; width: 48px; height: 48px; border-radius: 5px; object-fit: cover; outline: 1px solid color-mix(in srgb, var(--ink) 7%, transparent); outline-offset: -1px; }
 .pick-tx { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
-.pick-lb, .pick-a { font-size: .85rem; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.pick-t { font-size: 1.05rem; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pick-lb, .pick-a { font-size: .78rem; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pick-t { font-size: .95rem; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .pick.playing .pick-t { font-weight: 700; }
 .pick-a .link { color: inherit; }
-.pick-play { flex: none; width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; color: #fff; background: var(--brand-gradient); }
-.pick-play .ic { width: 12px; height: 12px; }
+.pick-play { flex: none; width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; color: #fff; background: var(--brand-gradient); }
+.pick-play .ic { width: 11px; height: 11px; }
 .pick-play:hover { transform: scale(1.08); }
 /* the right arrow stays in its strip while there's more to see; the left one fades in while you point at the picks */
 .pick-nav { display: none; position: absolute; top: calc(50% - 16px); width: 32px; height: 32px; background: var(--raise); color: var(--ink); box-shadow: 0 2px 10px rgba(0, 0, 0, .18); transition: opacity .2s ease-out; }
@@ -1401,7 +1401,7 @@ body.touch-input .has-pen::after { display: none; }
 .pick-nav[data-dir="-1"] { left: 4px; opacity: 0; pointer-events: none; }
 .picks:hover .pick-nav[data-dir="-1"]:not(:disabled) { opacity: 1; pointer-events: auto; }
 .pick-nav:disabled { opacity: 0 !important; pointer-events: none; }
-@media (max-width: 759px) { .pick-art { width: 54px; height: 54px; } }
+@media (max-width: 759px) { .pick-art { width: 46px; height: 46px; } }
 
 /* ---------- page transitions ---------- */
 #view.enter-fwd > :not(.view-bg) { animation: page-in-fwd .38s cubic-bezier(.2, .8, .2, 1) both; }
