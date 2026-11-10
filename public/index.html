@@ -492,9 +492,8 @@ body.is-playing .qrow.now .q-art .spk { display: grid; }
 .p-exp .ic:last-child, body.sheet-open .p-exp .ic:first-child { opacity: 0; transform: scale(.7); }
 body.sheet-open .p-exp .ic:last-child { opacity: 1; transform: none; }
 .p-cover:hover .p-exp, .p-cover:focus-visible .p-exp { opacity: 1; }
-/* the empty parts of the bar open Now Playing too, so they show the same arrows on the cover and a hand */
+/* the empty parts of the bar open Now Playing too, so they show a hand; the arrows only show over the cover itself */
 .player:hover:not(:has(:is(button, input, label, .pr-pop, .prog):hover)) { cursor: pointer; }
-.player:hover:not(:has(:is(button, input, label, .pr-pop, .prog):hover)) .p-exp { opacity: 1; }
 body.touch-input .p-exp { display: none; }
 .p-meta { min-width: 0; display: flex; flex-direction: column; }
 .p-title { font-weight: 600; font-size: .92rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: left; }
