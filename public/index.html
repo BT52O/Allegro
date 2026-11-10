@@ -520,12 +520,12 @@ body.touch-input .p-exp { display: none; }
 .prog { display: flex; align-items: center; gap: 10px; width: 100%; }
 .prog span { font: 400 .74rem var(--f-mono); color: var(--muted); font-variant-numeric: tabular-nums; min-width: 2.8em; }
 .prog span:first-child { text-align: right; }
-/* pointing at a song position bar (or dragging it) makes its two times glow: red on the plain player, white over the Now Playing colors */
+/* pointing at a song position bar (or dragging it) makes its two times glow in the text color: black in the light theme, white in the dark theme and over Now Playing */
 .prog span, .s-times span { transition: color .18s ease, text-shadow .18s ease; }
 /* .hot is set from pointer events (see "seek + volume"), not from :hover inside a hover media query: touch-first computers such as a Surface can report "no hover" even with a mouse or trackpad attached */
-.prog.hot span, .s-prog.hot .s-times span { color: var(--brand-red); text-shadow: 0 0 6px rgba(227, 38, 54, .75), 0 0 14px rgba(227, 38, 54, .55); }
+.prog.hot span, .s-prog.hot .s-times span { color: var(--ink); text-shadow: 0 0 4px color-mix(in srgb, var(--ink) 70%, transparent), 0 0 10px color-mix(in srgb, var(--ink) 60%, transparent), 0 0 18px color-mix(in srgb, var(--ink) 45%, transparent); }
 body.sheet-open .prog.hot span, .sheet .s-prog.hot .s-times span { color: #fff; text-shadow: 0 0 4px rgba(255, 255, 255, .9), 0 0 10px rgba(255, 255, 255, .8), 0 0 18px rgba(255, 255, 255, .6); }
-.prog:has(.seek:active) span, .s-prog:has(.seek:active) .s-times span { color: var(--brand-red); text-shadow: 0 0 6px rgba(227, 38, 54, .75), 0 0 14px rgba(227, 38, 54, .55); }
+.prog:has(.seek:active) span, .s-prog:has(.seek:active) .s-times span { color: var(--ink); text-shadow: 0 0 4px color-mix(in srgb, var(--ink) 70%, transparent), 0 0 10px color-mix(in srgb, var(--ink) 60%, transparent), 0 0 18px color-mix(in srgb, var(--ink) 45%, transparent); }
 body.sheet-open .prog:has(.seek:active) span, .sheet .s-prog:has(.seek:active) .s-times span { color: #fff; text-shadow: 0 0 4px rgba(255, 255, 255, .9), 0 0 10px rgba(255, 255, 255, .8), 0 0 18px rgba(255, 255, 255, .6); }
 .p-right { display: flex; align-items: center; justify-content: flex-end; gap: 12px; min-width: 0; }
 .p-right .cbtn.on::after { display: none; }
