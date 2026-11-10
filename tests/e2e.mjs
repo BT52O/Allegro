@@ -1091,6 +1091,16 @@ try {
   const reopened = await A.evaluate(() => !document.getElementById('sheet').hidden);
   check(closingNp.join() === 'false,true' && closedNp && reopened, 'clicking the bar cover closes Now Playing smoothly and opens it again', JSON.stringify([closingNp, closedNp, reopened]));
   await A.keyboard.press('Escape'); await settle(A, 450);
+  // an empty part of the bar does what the cover does; a control on the bar does not
+  const blank = await A.evaluate(() => { const a = document.querySelector('.p-now').getBoundingClientRect(), c = document.querySelector('.p-center').getBoundingClientRect(), p = document.getElementById('player').getBoundingClientRect();
+    const x = Math.round((a.right + c.left) / 2), y = Math.round(p.top + p.height / 2); return [x, y, document.elementFromPoint(x, y).id]; });
+  await A.mouse.click(blank[0], blank[1]); await settle(A, 700);
+  const barOpened = await A.evaluate(() => !document.getElementById('sheet').hidden);
+  await A.click('#p-like'); await settle(A, 300); await A.click('#p-like'); await settle(A, 300);
+  const barStays = await A.evaluate(() => !document.getElementById('sheet').hidden && !document.getElementById('sheet').classList.contains('closing'));
+  await A.mouse.click(blank[0], blank[1]); await settle(A, 600);
+  const barClosed = await A.evaluate(() => document.getElementById('sheet').hidden);
+  check(blank[2] === 'player' && barOpened && barStays && barClosed, 'an empty part of the player bar opens and closes Now Playing like the cover', JSON.stringify([blank, barOpened, barStays, barClosed]));
   // Now Playing Style (Settings > Appearance): Gradient puts a blur of the cover behind Now Playing and changes nothing else
   await A.click('#acct-btn'); await settle(A, 250); await A.click('#menu .mi:has-text("Settings")'); await settle(A, 400);
   await A.click('[data-np-opt="gradient"]'); await settle(A, 200);

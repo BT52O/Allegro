@@ -492,6 +492,9 @@ body.is-playing .qrow.now .q-art .spk { display: grid; }
 .p-exp .ic:last-child, body.sheet-open .p-exp .ic:first-child { opacity: 0; transform: scale(.7); }
 body.sheet-open .p-exp .ic:last-child { opacity: 1; transform: none; }
 .p-cover:hover .p-exp, .p-cover:focus-visible .p-exp { opacity: 1; }
+/* the empty parts of the bar open Now Playing too, so they show the same arrows on the cover and a hand */
+.player:hover:not(:has(:is(button, input, label, .pr-pop, .prog):hover)) { cursor: pointer; }
+.player:hover:not(:has(:is(button, input, label, .pr-pop, .prog):hover)) .p-exp { opacity: 1; }
 body.touch-input .p-exp { display: none; }
 .p-meta { min-width: 0; display: flex; flex-direction: column; }
 .p-title { font-weight: 600; font-size: .92rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: left; }
@@ -6724,7 +6727,14 @@ $('#search-input').addEventListener('input', e => {
   render();
 });
 $('#search-input').addEventListener('keydown', e => { if (e.key === 'Enter' && S.view.name !== 'search') go({ name: 'search' }); if (e.key === 'Escape') { e.target.value = ''; S.q = ''; if (S.view.name === 'search') render(); e.target.blur(); } });
-$('#p-cover').addEventListener('click', () => { if (sheetOpen()) closeSheet(); else if (innerWidth < 760 || S.current) openSheet(); });
+const toggleSheet = () => { if (sheetOpen()) closeSheet(); else if (innerWidth < 760 || S.current) openSheet(); };
+$('#p-cover').addEventListener('click', toggleSheet);
+// The empty parts of the bar do what the cover does. Buttons, sliders, popups and the position bar keep their own jobs.
+// The press has to start on an empty part too: letting go of a slider drag over the bar also counts as a click on the bar.
+const barBlank = el => !el.closest('button, input, a, label, .link, .pr-pop, .prog, [role="slider"]');
+let barDown = false;
+$('#player').addEventListener('pointerdown', e => { barDown = barBlank(e.target); });
+$('#player').addEventListener('click', e => { const ok = barDown && barBlank(e.target); barDown = false; if (ok) toggleSheet(); });
 $('#p-title').addEventListener('click', () => { if (innerWidth < 760) { openSheet(); return; } const t = tk(S.current); if (t) go({ name: 'album', key: t.albumKey }); });
 // On phones the whole line opens Now Playing; elsewhere each name is its own link (handled with the other artist links).
 $('#p-artist').addEventListener('click', e => { if (innerWidth < 760) { e.stopPropagation(); openSheet(); } });
