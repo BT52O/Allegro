@@ -522,10 +522,9 @@ body.touch-input .p-exp { display: none; }
 .prog span:first-child { text-align: right; }
 /* pointing at a song position bar (or dragging it) makes its two times glow: red on the plain player, white over the Now Playing colors */
 .prog span, .s-times span { transition: color .18s ease, text-shadow .18s ease; }
-@media (any-hover: hover) {   /* any mouse counts, also on a touch-screen laptop whose main input is the screen */
-  .prog:hover span, .s-prog:hover .s-times span { color: var(--brand-red); text-shadow: 0 0 6px rgba(227, 38, 54, .75), 0 0 14px rgba(227, 38, 54, .55); }
-  body.sheet-open .prog:hover span, .sheet .s-prog:hover .s-times span { color: #fff; text-shadow: 0 0 4px rgba(255, 255, 255, .9), 0 0 10px rgba(255, 255, 255, .8), 0 0 18px rgba(255, 255, 255, .6); }
-}
+/* .hot is set from pointer events (see "seek + volume"), not from :hover inside a hover media query: touch-first computers such as a Surface can report "no hover" even with a mouse or trackpad attached */
+.prog.hot span, .s-prog.hot .s-times span { color: var(--brand-red); text-shadow: 0 0 6px rgba(227, 38, 54, .75), 0 0 14px rgba(227, 38, 54, .55); }
+body.sheet-open .prog.hot span, .sheet .s-prog.hot .s-times span { color: #fff; text-shadow: 0 0 4px rgba(255, 255, 255, .9), 0 0 10px rgba(255, 255, 255, .8), 0 0 18px rgba(255, 255, 255, .6); }
 .prog:has(.seek:active) span, .s-prog:has(.seek:active) .s-times span { color: var(--brand-red); text-shadow: 0 0 6px rgba(227, 38, 54, .75), 0 0 14px rgba(227, 38, 54, .55); }
 body.sheet-open .prog:has(.seek:active) span, .sheet .s-prog:has(.seek:active) .s-times span { color: #fff; text-shadow: 0 0 4px rgba(255, 255, 255, .9), 0 0 10px rgba(255, 255, 255, .8), 0 0 18px rgba(255, 255, 255, .6); }
 .p-right { display: flex; align-items: center; justify-content: flex-end; gap: 12px; min-width: 0; }
@@ -6759,6 +6758,12 @@ window.addEventListener('drop', e => e.preventDefault());
 
 /* seek + volume */
 let seeking = false;
+/* a mouse, trackpad or pen over a song position bar makes its times glow; a finger does not, so the glow never sticks after a tap */
+$$('.prog, .s-prog').forEach(p => {
+  const on = e => { if (e.pointerType !== 'touch') p.classList.add('hot'); };
+  p.addEventListener('pointerenter', on); p.addEventListener('pointermove', on);
+  p.addEventListener('pointerleave', () => p.classList.remove('hot'));
+});
 $$('.seek').forEach(s => {
   s.addEventListener('input', () => { seeking = true; setPct(s); const d = audio.duration || tk(S.current)?.duration; if (d) $$('.t-cur').forEach(c => { c.textContent = fmt(s.value / 1000 * d); }); });
   s.addEventListener('change', () => {
