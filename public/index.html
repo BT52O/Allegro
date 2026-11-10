@@ -793,11 +793,11 @@ html.breathe .s-art img { animation: s-breathe 17s ease-in-out infinite; }
   .sheet-top .circ.on { color: #fff; background: rgba(255, 255, 255, .28); }
   .s-from .eyebrow { color: rgba(255, 255, 255, .7); } .s-from .link { color: #fff; }
   .sheet { padding-bottom: calc(var(--pbar, 96px) + 44px); }
-  /* The cover is as big as the height allows and the panel is a touch wider. Whatever width is left over is shared
+  /* The cover is as big as the height allows and the panel is up to a quarter wider. Whatever width is left over is shared
      out in three equal parts: left of the cover, between the two, and right of the panel. So the three gaps always
      match, on any screen. The body reaches the screen's edges (past the sheet's own 20px) to measure them from there,
      and --g is the smallest the gaps ever get. */
-  .sheet-body { --g: clamp(24px, 3vw, 48px); grid-template-columns: var(--np, minmax(0, 1fr)) minmax(0, calc(var(--np, 70vh) * 1.05)); justify-content: space-evenly;
+  .sheet-body { --g: clamp(24px, 3vw, 48px); grid-template-columns: var(--np, minmax(0, 1fr)) minmax(0, calc(var(--np, 70vh) * 1.25)); justify-content: space-evenly;
     gap: var(--g); max-width: none; width: auto; align-self: stretch; margin: 0 -20px; padding: 12px var(--g) 0; }
   .s-main { max-width: none; justify-content: center; align-items: center; }
   .sheet-body { align-items: center; }
