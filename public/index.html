@@ -519,7 +519,7 @@ body.touch-input .p-exp { display: none; }
 .prog span:first-child { text-align: right; }
 /* pointing at a song position bar (or dragging it) lights up its two times */
 .prog span, .s-times span { transition: color .18s ease, text-shadow .18s ease; }
-@media (hover: hover) {
+@media (any-hover: hover) {   /* any mouse counts, also on a touch-screen laptop whose main input is the screen */
   .prog:hover span, .s-prog:hover .s-times span { color: var(--ink); text-shadow: 0 0 9px color-mix(in srgb, var(--ink) 50%, transparent), 0 0 2px color-mix(in srgb, var(--ink) 30%, transparent); }
   .sheet .s-prog:hover .s-times span { color: #fff; text-shadow: 0 0 9px rgba(255, 255, 255, .7), 0 0 2px rgba(255, 255, 255, .45); }
 }
