@@ -1717,6 +1717,7 @@ html.np-grad .s-bg::after { content: ""; position: absolute; inset: 0; backgroun
       </div>
       <div class="pe-fields">
         <label class="field">Song Name<input id="se-name" maxlength="200" autocomplete="off"></label>
+        <label class="field">Original Name<input id="se-oname" maxlength="200" autocomplete="off" placeholder="In the song's own language (optional)"></label>
         <label class="field">Artist<input id="se-artist" maxlength="200" autocomplete="off"></label>
         <label class="field">Album<input id="se-album" maxlength="200" autocomplete="off"></label>
         <label class="field">Release Date<input id="se-date" maxlength="20" autocomplete="off" placeholder="e.g. Oct 24, 2024"></label>
@@ -1813,6 +1814,10 @@ const I18N = [
   ['Change the password you use to sign in. Your other devices will need to sign in again.', '更改你的登录密码。其他设备需要重新登录。', '變更你的登入密碼。其他裝置需要重新登入。'],
   ['Current password', '当前密码', '目前密碼'], ['New password (8+ characters)', '新密码（至少 8 个字符）', '新密碼（至少 8 個字元）'], ['New password again', '再次输入新密码', '再次輸入新密碼'], ['Change Password', '更改密码', '變更密碼'],
   ['Sign out of Allegro on this device.', '在这台设备上退出 Allegro。', '在這台裝置上登出 Allegro。'], ['Library', '音乐库', '音樂庫'], ['Show Demo Songs', '显示示例歌曲', '顯示範例歌曲'],
+  ['Original Song Names', '原文歌名', '原文歌名'], ['Original song names', '原文歌名', '原文歌名'], ['Original Name', '原文歌名', '原文歌名'],
+  ["Show each song's name in the language it was released in, when Allegro knows it. Allegro looks the names up in the background, and you can type one yourself in Edit Song. Artist and album names stay as they are.", '在 Allegro 知道的情况下，以歌曲发行时的语言显示歌名。Allegro 会在后台查找这些歌名，你也可以在“编辑歌曲”中自行输入。歌手和专辑名称保持不变。', '在 Allegro 知道的情況下，以歌曲發行時的語言顯示歌名。Allegro 會在背景尋找這些歌名，你也可以在「編輯歌曲」中自行輸入。歌手和專輯名稱保持不變。'],
+  ["In the song's own language (optional)", '歌曲原本语言的歌名（可选）', '歌曲原本語言的歌名（選填）'],
+  ['Showing original song names', '正在显示原文歌名', '正在顯示原文歌名'], ['Showing song names as saved', '正在显示已保存的歌名', '正在顯示已儲存的歌名'],
   ['Breathing Album Cover', '呼吸专辑封面', '呼吸專輯封面'], ['Breathing album cover', '呼吸专辑封面', '呼吸專輯封面'],
   ['Now Playing Style', '正在播放样式', '正在播放樣式'], ['Now Playing style', '正在播放样式', '正在播放樣式'], ['Classic', '经典', '經典'], ['Gradient', '渐变', '漸層'],
   ['Gradient fills the Now Playing background with a soft blur of the album cover. On computers, the cover fills the left side and melts into it. This setting is for this device only.', '“渐变”会用专辑封面的柔和模糊填满“正在播放”的背景。在电脑上，封面会铺满左侧并融入背景。此设置仅适用于这台设备。', '「漸層」會用專輯封面的柔和模糊填滿「正在播放」的背景。在電腦上，封面會鋪滿左側並融入背景。此設定僅適用於這台裝置。'],
@@ -2192,7 +2197,7 @@ function lastSnap() {
   if (!t) return S.last;
   const q = S.queue.length > 3000 ? S.queue.slice(Math.max(0, S.qi - 1000), S.qi + 2000) : S.queue.slice(), qi = q.indexOf(S.current);
   return { ctx: S.context && S.context.key, ctxName: S.context && S.context.name, id: S.current, queue: qi < 0 ? [S.current] : q, qi: Math.max(0, qi),
-    title: t.title, artist: t.artist, cover: t.cover && !t.cover.startsWith('data:') && !t.cover.startsWith('blob:') ? t.cover : '', dur: t.duration || 0 };
+    title: nm(t), artist: t.artist, cover: t.cover && !t.cover.startsWith('data:') && !t.cover.startsWith('blob:') ? t.cover : '', dur: t.duration || 0 };
 }
 const POS_KEY = pk('allegro.pos');
 let resumeAt = null;   // { id, t }: where to start the restored song when play is pressed
@@ -2653,7 +2658,7 @@ function rebuild() {
     if (t.genre) { if (!genres.has(t.genre)) genres.set(t.genre, []); genres.get(t.genre).push(t.id); }
   }
   for (const al of albums.values()) {
-    al.ids.sort((a, b) => { const x = S.tracks.get(a), y = S.tracks.get(b); return (x.trackNo || 999) - (y.trackNo || 999) || x.title.localeCompare(y.title); });
+    al.ids.sort((a, b) => { const x = S.tracks.get(a), y = S.tracks.get(b); return (x.trackNo || 999) - (y.trackNo || 999) || nm(x).localeCompare(nm(y)); });
     if (!al.cover) al.cover = genCover(al.key, al.style ?? hash(al.key) % 5, al.hue ?? hash(al.key) % 360);
     al.type = releaseTypeOf(al.ids);
   }
@@ -2692,7 +2697,7 @@ function librarySorted() {
   const by = S.sort, T = tk;
   const cmp = {
     added: (a, b) => T(b).added - T(a).added,
-    title: (a, b) => T(a).title.localeCompare(T(b).title),
+    title: (a, b) => nm(T(a)).localeCompare(nm(T(b))),
     artist: (a, b) => T(a).artist.localeCompare(T(b).artist) || T(a).album.localeCompare(T(b).album) || (T(a).trackNo || 0) - (T(b).trackNo || 0),
     album: (a, b) => T(a).album.localeCompare(T(b).album) || (T(a).trackNo || 0) - (T(b).trackNo || 0),
     duration: (a, b) => (T(b).duration || 0) - (T(a).duration || 0)
@@ -2965,7 +2970,7 @@ function trackRow(t, i, opt) {
   const artistLink = `<span class="t-artist">${t.kind === 'demo' ? '<b class="demo-tag">Demo</b>' : ''}${artistLinks(t.artist)}</span>`;
   const cover = !c.has('cover') ? '' : opt.edit && t.kind === 'cloud' ? `<button class="tr-art-edit" data-edit-song="${esc(t.id)}" aria-label="Edit ${esc(t.title)}" title="Edit Song"><img src="${esc(t.cover)}" alt="" loading="lazy"><span class="pen">${ic('edit')}</span></button>` : `<img src="${esc(t.cover)}" alt="" loading="lazy">`;
   let cells = `<span class="c-n"><span class="num">${n}</span><span class="eq" aria-hidden="true"><i></i><i></i><i></i></span><span class="hov">${ic('play')}</span></span>`;
-  if (c.has('cover') || c.has('title') || c.has('artist')) cells += `<span class="c-title">${cover}<span class="tt${c.has('title') ? '' : ' tt-artist-only'}">${c.has('title') ? `<span class="t-name">${esc(t.title)}</span>` : ''}${c.has('artist') ? artistLink : ''}</span></span>`;
+  if (c.has('cover') || c.has('title') || c.has('artist')) cells += `<span class="c-title">${cover}<span class="tt${c.has('title') ? '' : ' tt-artist-only'}">${c.has('title') ? `<span class="t-name">${esc(nm(t))}</span>` : ''}${c.has('artist') ? artistLink : ''}</span></span>`;
   if (c.has('album')) cells += `<span class="c-album"><button class="link" data-go-album="${esc(t.albumKey)}">${esc(t.album)}</button></span>`;
   if (c.has('date')) cells += `<span class="c-added">${opt.played ? playedWhen(opt.played[i]) : t.released ? longDate(t.released) : (t.year || '–')}</span>`;
   cells += `<span class="c-like"><button class="like${liked ? ' on' : ''}" data-like="${esc(t.id)}" aria-pressed="${liked}" aria-label="${liked ? 'Remove from' : 'Save to'} Liked Songs">${ic(liked ? 'heartFill' : 'heart')}</button></span>`;
@@ -3124,7 +3129,7 @@ function songPicks(max = 15) {
 function homePicks() {
   const picks = songPicks(); PICKS = picks.map(x => x[0]);
   if (!picks.length) return '';
-  const rows = picks.map(([id, label], i) => { const t = tk(id); return `<div class="pick" data-pick="${i}" data-id="${esc(id)}" tabindex="0" role="button" aria-label="${esc(t.title)}"><img class="pick-art" src="${esc(t.cover)}" alt="" loading="lazy"><span class="pick-tx"><span class="pick-lb">${esc(label)}</span><span class="pick-t">${esc(t.title)}</span><span class="pick-a">${artistLinks(t.artist)}</span></span><button class="pick-play" data-pick-play="${esc(id)}" aria-label="Play ${esc(t.title)}">${ic('play')}</button></div>`; }).join('');
+  const rows = picks.map(([id, label], i) => { const t = tk(id); return `<div class="pick" data-pick="${i}" data-id="${esc(id)}" tabindex="0" role="button" aria-label="${esc(nm(t))}"><img class="pick-art" src="${esc(t.cover)}" alt="" loading="lazy"><span class="pick-tx"><span class="pick-lb">${esc(label)}</span><span class="pick-t">${esc(t.title)}</span><span class="pick-a">${artistLinks(t.artist)}</span></span><button class="pick-play" data-pick-play="${esc(id)}" aria-label="Play ${esc(t.title)}">${ic('play')}</button></div>`; }).join('');
   return `<section class="picks" aria-label="Picks for You"><div class="pick-row" data-shelf-row="picks">${rows}</div>`
     + `<button class="circ pick-nav" data-shelf="picks" data-dir="-1" aria-label="Scroll left">${ic('back')}</button><button class="circ pick-nav" data-shelf="picks" data-dir="1" aria-label="Scroll right">${ic('fwd')}</button></section>`;
 }
@@ -3290,10 +3295,10 @@ const VIEWS = {
     const rows = snap ? snap.ids.map(id => {
       if (id.startsWith('brk:')) { n = 0; return `<div class="vh-break">${esc((snap.breaks || {})[id.slice(4)] || 'Untitled Section')}${prev && !prevSet.has(id) ? '<span class="vh-tag add">Added</span>' : ''}</div>`; }
       const t = tk(id), isNew = prev && !prevSet.has(id) && !sel.original;
-      return `<div class="vh-row${isNew ? ' added' : ''}"><span class="vh-n">${++n}</span>${t ? `<img src="${esc(t.cover)}" alt="" loading="lazy">` : '<span class="vh-gone-art"></span>'}<span class="vh-t"><b>${esc(t ? t.title : 'A song no longer in your library')}</b><span>${esc(t ? t.artist : '')}</span></span>${isNew ? '<span class="vh-tag add">Added</span>' : ''}</div>`;
+      return `<div class="vh-row${isNew ? ' added' : ''}"><span class="vh-n">${++n}</span>${t ? `<img src="${esc(t.cover)}" alt="" loading="lazy">` : '<span class="vh-gone-art"></span>'}<span class="vh-t"><b>${esc(t ? nm(t) : 'A song no longer in your library')}</b><span>${esc(t ? t.artist : '')}</span></span>${isNew ? '<span class="vh-tag add">Added</span>' : ''}</div>`;
     }).join('') : '';
     const gone = prev && snap && !sel.original ? prev.ids.filter(id => !id.startsWith('brk:') && !nowSet.has(id)) : [];
-    const goneHtml = gone.length ? `<h3 class="vh-sub">Removed in This Version</h3>` + gone.map(id => { const t = tk(id); return `<div class="vh-row removed"><span class="vh-n">–</span>${t ? `<img src="${esc(t.cover)}" alt="" loading="lazy">` : '<span class="vh-gone-art"></span>'}<span class="vh-t"><b>${esc(t ? t.title : 'A song no longer in your library')}</b><span>${esc(t ? t.artist : '')}</span></span><span class="vh-tag del">Removed</span></div>`; }).join('') : '';
+    const goneHtml = gone.length ? `<h3 class="vh-sub">Removed in This Version</h3>` + gone.map(id => { const t = tk(id); return `<div class="vh-row removed"><span class="vh-n">–</span>${t ? `<img src="${esc(t.cover)}" alt="" loading="lazy">` : '<span class="vh-gone-art"></span>'}<span class="vh-t"><b>${esc(t ? nm(t) : 'A song no longer in your library')}</b><span>${esc(t ? t.artist : '')}</span></span><span class="vh-tag del">Removed</span></div>`; }).join('') : '';
     const restore = !sel.current && snap ? `<button class="btn" data-vh-restore="${esc(sel.key)}">Restore This Version</button>` : '';
     return `<div class="vh-top"><h1 class="page-title">Version History</h1><button class="btn ghost-sm" data-open="playlist:${esc(p.id)}">Back to Playlist</button></div>
       <div class="vh-wrap">
@@ -3327,6 +3332,7 @@ const VIEWS = {
       </section>
       <section class="set-sec"><h2>Library</h2>
         <div class="set-row"><div><h3>Show Demo Songs</h3><p>The generated sample songs that came with Allegro. Turning this off hides them everywhere, on all your devices.</p></div>${toggle('set-demos', demos, 'Show demo songs')}</div>
+        <div class="set-row"><div><h3>Original Song Names</h3><p>Show each song's name in the language it was released in, when Allegro knows it. Allegro looks the names up in the background, and you can type one yourself in Edit Song. Artist and album names stay as they are.</p></div>${toggle('set-orig', pref('origNames'), 'Original song names')}</div>
         <div class="set-row"><div><h3>Column Choices</h3><p>${nCols ? `You've picked columns for ${plural(nCols, 'list')}. Reset them all to the usual Song Cover, Title, Artist, Album, Date Released and Duration.` : 'Every list shows the usual columns.'}</p></div><button class="btn ghost-sm" data-action="reset-cols"${nCols ? '' : ' disabled'}>Reset</button></div>
       </section>
       <section class="set-sec"><h2>Storage</h2>${storageNote()}
@@ -3367,7 +3373,7 @@ const VIEWS = {
       return `<h1 class="page-title">Explore</h1><div class="genre-grid">${tiles.map(t => `<button class="genre" data-open="${esc(t.key)}" style="background:hsl(${t.hue} 52% 40%)"><span>${esc(t.label)}</span>${t.cover ? `<img src="${esc(t.cover)}" alt="">` : ''}</button>`).join('')}</div>`;
     }
     const m = s => s && s.toLowerCase().includes(q);
-    const songs = [...S.tracks.values()].filter(t => m(t.title) || m(t.artist) || m(t.album)).sort((a, b) => (m(b.title) - m(a.title)) || a.title.localeCompare(b.title)).map(t => t.id);
+    const songs = [...S.tracks.values()].filter(t => m(t.title) || m(t.oTitle) || m(t.artist) || m(t.album)).sort((a, b) => ((m(b.title) || m(b.oTitle)) - (m(a.title) || m(a.oTitle))) || nm(a).localeCompare(nm(b))).map(t => t.id);
     const albums = albumsSorted().filter(a => m(a.name) || m(a.artist));
     const artists = artistsSorted().filter(a => m(a.name));
     const pls = S.playlists.filter(p => m(p.name));
@@ -3376,7 +3382,7 @@ const VIEWS = {
     const topA = artists.find(a => a.name.toLowerCase().startsWith(q));
     if (topA) top = `<div class="tr-card" data-open="artist:${esc(topA.name)}"><div class="art" style="border-radius:50%;overflow:hidden">${artistArt(topA)}</div><h3>${esc(topA.name)}</h3><span class="sm">Artist</span><button class="card-play on" data-card-play="artist:${esc(topA.name)}" aria-label="Play ${esc(topA.name)}">${ic('play')}</button></div>`;
     else if (albums[0] && (m(albums[0].name) && !songs.slice(0, 1).some(id => tk(id).title.toLowerCase().startsWith(q)))) { const a = albums[0]; top = `<div class="tr-card" data-open="album:${esc(a.key)}"><div class="art"><img src="${esc(a.cover)}" alt=""></div><h3>${esc(a.name)}</h3><span class="sm">Album · ${esc(a.artist)}</span><button class="card-play on" data-card-play="album:${esc(a.key)}" aria-label="Play ${esc(a.name)}">${ic('play')}</button></div>`; }
-    else if (songs[0]) { const t = tk(songs[0]); top = `<div class="tr-card" data-play-one="${esc(t.id)}"><div class="art"><img src="${esc(t.cover)}" alt=""></div><h3>${esc(t.title)}</h3><span class="sm">Song · ${esc(t.artist)}</span><button class="card-play on" data-play-one="${esc(t.id)}" aria-label="Play ${esc(t.title)}">${ic('play')}</button></div>`; }
+    else if (songs[0]) { const t = tk(songs[0]); top = `<div class="tr-card" data-play-one="${esc(t.id)}"><div class="art"><img src="${esc(t.cover)}" alt=""></div><h3>${esc(nm(t))}</h3><span class="sm">Song · ${esc(t.artist)}</span><button class="card-play on" data-play-one="${esc(t.id)}" aria-label="Play ${esc(t.title)}">${ic('play')}</button></div>`; }
     const sctx = { key: 'search', name: `Search: ${S.q.trim()}` };
     return `<div class="top-result"><section class="sec"><div class="sec-head"><h2>Top Result</h2></div>${top}</section>
         <section class="sec"><div class="sec-head"><h2>Songs</h2></div>${trackList(songs.slice(0, 4), sctx, { noHead: true }) || '<p class="sm">No songs match.</p>'}</section></div>
@@ -3596,7 +3602,7 @@ function syncToggles() {
 function updateMeta() {
   const t = tk(S.current), L = !t && !restoredLast && S.last && S.last.title ? S.last : null;   // L: the saved song, drawn before the library arrives
   // #p-title and #p-artist are in NO_TR so song names stay as they are, which means the empty-state text has to be translated here.
-  $('#p-title').textContent = t ? t.title : L ? L.title : tr('Nothing Playing');
+  $('#p-title').textContent = t ? nm(t) : L ? L.title : tr('Nothing Playing');
   if (t) $('#p-artist').innerHTML = artistLinks(t.artist); else $('#p-artist').textContent = L ? L.artist : tr('Pick a song to start');
   const img = $('#p-cover-img');
   if (t) { img.src = t.cover; img.hidden = false; } else if (L && L.cover) { img.src = L.cover; img.hidden = false; } else img.hidden = true;
@@ -3606,7 +3612,7 @@ function updateMeta() {
   if (t) {
     $('#s-cover').src = bigCover(t);   // the full-size file, not the small copy lists use
     if ($('#s-bg-img').getAttribute('src') !== t.cover) $('#s-bg-img').src = t.cover;   // the small copy is plenty under a heavy blur
-    $('#s-title').textContent = t.title; $('#s-artist').innerHTML = artistLinks(t.artist);
+    $('#s-title').textContent = nm(t); $('#s-artist').innerHTML = artistLinks(t.artist);
     $('#s-ctx').textContent = S.context ? S.context.name : t.album;
     Promise.resolve().then(drawQuality);
     if (!$('#sheet').hidden && SP.shownId !== t.id) { SP.shownId = t.id; SP.editWiki = SP.editLyr = false; SP.userScroll = 0; renderPanel(); }
@@ -3619,7 +3625,7 @@ function queueRow(id, i, kind) {
   const t = tk(id); if (!t) return '';
   const at = kind === 'past' ? `data-qh="${esc(id)}"` : `data-qi="${i}"`;
   return `<div class="qrow ${kind}" ${at} tabindex="0"><span class="q-art"><img src="${esc(t.cover)}" alt="" loading="lazy"><span class="spk" aria-label="Playing">${ic('speaker')}</span></span>`
-    + `<div class="tt"><span class="t-name">${esc(t.title)}</span><span class="t-artist">${esc(t.artist)}</span></div>`
+    + `<div class="tt"><span class="t-name">${esc(nm(t))}</span><span class="t-artist">${esc(t.artist)}</span></div>`
     + `<div class="q-acts"><button class="qmore" data-qmore="${esc(id)}" aria-label="More options for ${esc(t.title)}">${ic('more')}</button>`
     + (kind === 'next' ? `<button class="qrm" data-qrm="${i}" aria-label="Remove ${esc(t.title)} from queue">${ic('close')}</button>` : '') + '</div></div>';
 }
@@ -3783,7 +3789,7 @@ function trackMenu(anchor, id, listInfo) {
     toast(`Removed from ${p.name}`, { label: 'Undo', fn: () => { p.ids.splice(idx, 0, id); save(); render(); } });
   } });
   if (canDelete(t)) items.push({ sep: true }, { label: 'Remove from Library', icon: 'trash', danger: true, fn: () => removeTrack(id) });
-  openMenu(anchor, items, `${t.title} · ${t.artist}`);
+  openMenu(anchor, items, `${nm(t)} · ${t.artist}`);
 }
 function ctxMenu(anchor, key) {
   const c = ctxInfo(key); if (!c) return;
@@ -4042,7 +4048,7 @@ function openBreakDialog(plId, bid = null) {
   $('#bk-title').textContent = bid ? 'Edit Page Break' : 'Add a Page Break';
   $('#bk-save').textContent = bid ? 'Save' : 'Add';
   $('#bk-name').value = bid ? breakName(p, bid) : `Volume ${count + 2}`;
-  $('#bk-after').innerHTML = `<option value="">The very top</option>` + songs.map((id, i) => { const t = tk(id); return `<option value="${esc(id)}"${id === after ? ' selected' : ''}>${i + 1}. ${esc(t.title)} · ${esc(t.artist)}</option>`; }).join('');
+  $('#bk-after').innerHTML = `<option value="">The very top</option>` + songs.map((id, i) => { const t = tk(id); return `<option value="${esc(id)}"${id === after ? ' selected' : ''}>${i + 1}. ${esc(nm(t))} · ${esc(t.artist)}</option>`; }).join('');
   $('#bk-err').textContent = '';
   $('#bk-edit').hidden = false;
   setTimeout(() => { $('#bk-name').focus(); $('#bk-name').select(); }, 30);
@@ -4079,9 +4085,9 @@ function openSongPicker(plId) {
 function drawSongPicker() {
   const p = S.playlists.find(x => x.id === sp.plId); if (!p) return;
   const q = $('#sp-q').value.trim().toLowerCase();
-  const list = [...S.tracks.values()].filter(t => !q || t.title.toLowerCase().includes(q) || t.artist.toLowerCase().includes(q) || t.album.toLowerCase().includes(q))
-    .sort((a, b) => a.title.localeCompare(b.title)).slice(0, 200);
-  $('#sp-list').innerHTML = list.length ? list.map(t => { const inIt = p.ids.includes(t.id); return `<div class="sp-row"><img src="${esc(t.cover)}" alt="" loading="lazy"><span class="sp-t"><b>${esc(t.title)}</b><span>${esc(t.artist)}</span></span><button type="button" class="pill-btn sp-add" data-sp-add="${esc(t.id)}"${inIt ? ' disabled' : ''}>${inIt ? 'Added' : 'Add'}</button></div>`; }).join('')
+  const list = [...S.tracks.values()].filter(t => !q || t.title.toLowerCase().includes(q) || (t.oTitle || '').toLowerCase().includes(q) || t.artist.toLowerCase().includes(q) || t.album.toLowerCase().includes(q))
+    .sort((a, b) => nm(a).localeCompare(nm(b))).slice(0, 200);
+  $('#sp-list').innerHTML = list.length ? list.map(t => { const inIt = p.ids.includes(t.id); return `<div class="sp-row"><img src="${esc(t.cover)}" alt="" loading="lazy"><span class="sp-t"><b>${esc(nm(t))}</b><span>${esc(t.artist)}</span></span><button type="button" class="pill-btn sp-add" data-sp-add="${esc(t.id)}"${inIt ? ' disabled' : ''}>${inIt ? 'Added' : 'Add'}</button></div>`; }).join('')
     : `<p class="sp-none">No songs match “${esc($('#sp-q').value.trim())}”.</p>`;
 }
 function closeSp() { if (!sp) return; $('#sp-edit').hidden = true; const n = sp.added; try { sp.back && sp.back.focus && sp.back.focus(); } catch (e) {} sp = null; if (n) { render(); renderSide(); } }
@@ -4284,7 +4290,7 @@ function renderPanel() {
 /* --- Wiki: the song's details, like a little encyclopedia entry --- */
 function wikiHTML(t) {
   const m = songMeta(t), al = IDX.albums.get(t.albumKey);
-  if (SP.editWiki) return `<h2 class="w-title" data-nt>${esc(t.title)}</h2>
+  if (SP.editWiki) return `<h2 class="w-title" data-nt>${esc(nm(t))}</h2>
     <label class="sp-field">Lyricist<input id="w-lyricist" maxlength="200" value="${esc(m.lyricist || '')}"></label>
     <label class="sp-field">Composer<input id="w-composer" maxlength="200" value="${esc(m.composer || '')}"></label>
     <label class="sp-field">About This Song<textarea id="w-about" maxlength="4000" placeholder="The story behind the song, what it means to you, anything you like.">${esc(m.about || '')}</textarea></label>
@@ -4299,7 +4305,7 @@ function wikiHTML(t) {
     isLiked(t.id) ? `<span class="w-chip">${ic('heartFill')}<span>In Liked Songs</span></span>` : ''
   ].join('');
   const canEdit = t.kind === 'cloud' && cloud.canWrite;
-  return `<h2 class="w-title" data-nt>${esc(t.title)}</h2>${released ? `<p class="w-sub">Released ${esc(released)}</p>` : '<div style="height:14px"></div>'}
+  return `<h2 class="w-title" data-nt>${esc(nm(t))}</h2>${released ? `<p class="w-sub">Released ${esc(released)}</p>` : '<div style="height:14px"></div>'}
     ${artistsOf(t.artist).map(n => { const ar = IDX.artists.get(n); return `<div class="w-row"><span class="w-av">${ar && ar.cover ? `<img src="${esc(ar.cover)}" alt="">` : ic('user')}</span><span class="w-k">Artist</span><button class="link" data-go-artist="${esc(n)}">${esc(n)}</button></div>`; }).join('')}
     <div class="w-row"><span class="w-av sq">${al ? `<img src="${esc(al.cover)}" alt="">` : ic('album')}</span><span class="w-k">Album</span><button class="link" data-go-album="${esc(t.albumKey)}">${esc(t.album)}</button></div>
     ${credits ? `<div class="w-row"><span class="w-av">${ic('edit')}</span><span class="w-k">Credits</span><span class="w-credits">${credits}</span></div>` : ''}
@@ -4835,7 +4841,7 @@ function vhDay(at) {
   const diff = Math.round((t - new Date(d.getFullYear(), d.getMonth(), d.getDate())) / 864e5);
   return diff === 0 ? 'Today' : diff === 1 ? 'Yesterday' : d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: d.getFullYear() === t.getFullYear() ? undefined : 'numeric' });
 }
-const songName = id => { const t = tk(id); return t ? `“${t.title}”` : 'a song no longer in your library'; };
+const songName = id => { const t = tk(id); return t ? `“${nm(t)}”` : 'a song no longer in your library'; };
 function vhLines(v) {
   const out = [];
   if (v.note) out.push(v.note);
@@ -4938,6 +4944,8 @@ document.addEventListener('click', e => {
   if (lg && lg.dataset.langOpt !== LANG) { try { localStorage.setItem('allegro.lang', lg.dataset.langOpt); } catch (ex) {} setLanguage(lg.dataset.langOpt); }
 });
 const pref = k => S.prefs.includes(k);
+// The name to show for a song: its name in the language it was released in, when that's switched on and known.
+const nm = t => (S.prefs.includes('origNames') && t.oTitle) || t.title;
 function setPref(k, on) { S.prefs = on ? [...new Set([...S.prefs, k])] : S.prefs.filter(x => x !== k); userActed = true; save(); }
 // Demo songs come and go with the "Show Demo Songs" setting.
 function syncDemoTracks() {
@@ -4946,6 +4954,14 @@ function syncDemoTracks() {
   else if (!pref('hideDemos') && !has) addDemoTracks();
 }
 document.addEventListener('click', e => {
+  const og = e.target.closest('#set-orig');
+  if (og) {
+    setPref('origNames', og.getAttribute('aria-checked') !== 'true');
+    rebuild(); render(); renderSide(); renderQueue(); updateMeta(); if (tk(S.current)) setMediaMeta(tk(S.current));
+    toast(pref('origNames') ? 'Showing original song names' : 'Showing song names as saved');
+    findOriginals();
+    return;
+  }
   const sw = e.target.closest('#set-demos');
   if (sw) {
     setPref('hideDemos', sw.getAttribute('aria-checked') === 'true');
@@ -5373,23 +5389,84 @@ function guessFromFileName(name) {
 const VERSION_WORDS = /\b(nightcore|sped[\s-]*up|speed[\s-]*up|slowed(\s*(\+|and|&)\s*reverb)?|reverb|8d(\s*audio)?|bass\s*boosted)\b/gi;
 const searchName = s => cleanTitle(s).replace(VERSION_WORDS, ' ').replace(/[\(\[]\s*[\)\]]/g, ' ').replace(/\s+/g, ' ').replace(/^[\s\-–—|:]+|[\s\-–—|:]+$/g, '').replace(/(\s[-–—]\s*){2,}/g, ' - ').trim();
 const lookupCache = new Map();
-// Backup when the server can't search: asks Apple straight from this browser (JSONP, since Apple's search has no CORS).
-function appleFromBrowser(term) {
+// Backup when the server can't reach Apple: asks straight from this browser (JSONP, since Apple's search has no CORS).
+function appleJsonp(path, params) {
   return new Promise((resolve, reject) => {
     const cb = '__allegroApple' + Date.now() + Math.floor(Math.random() * 1e6), sc = document.createElement('script');
     const done = (err, d) => { clearTimeout(timer); delete window[cb]; sc.remove(); err ? reject(err) : resolve(d); };
     const timer = setTimeout(() => done(new Error('Apple took too long')), 7000);
     window[cb] = d => done(null, d);
     sc.onerror = () => done(new Error("Apple didn't answer"));
-    sc.src = 'https://itunes.apple.com/search?' + new URLSearchParams({ term, media: 'music', entity: 'song', limit: '15', country: 'US', callback: cb });
+    sc.src = 'https://itunes.apple.com/' + path + '?' + new URLSearchParams({ ...params, callback: cb });
     document.head.appendChild(sc);
-  }).then(d => (d.results || []).filter(x => x && x.trackName && x.artistName).map(x => ({
-    title: x.trackName, artist: x.artistName, album: x.collectionName || '',
+  });
+}
+function appleFromBrowser(term) {
+  return appleJsonp('search', { term, media: 'music', entity: 'song', limit: '15', country: 'US' }).then(d => (d.results || []).filter(x => x && x.trackName && x.artistName).map(x => ({
+    id: x.trackId || 0, title: x.trackName, artist: x.artistName, album: x.collectionName || '',
     albumArtist: x.collectionArtistName && x.collectionArtistName !== x.artistName ? x.collectionArtistName : '',
     year: (x.releaseDate || '').slice(0, 4), released: (x.releaseDate || '').slice(0, 10), genre: x.primaryGenreName || '', trackNo: x.trackNumber || 0,
     art: (x.artworkUrl100 || '').replace(/\/\d+x\d+(bb)?\.(jpg|png|webp)$/i, '/3000x3000bb.jpg')   // Apple's largest artwork
   })));
 }
+/* ---- Original song names ----
+   The song search asks Apple's US store, which often gives a Korean, Japanese or Chinese song an English or romanized
+   name. The same song in Apple's Korean, Japanese and Taiwanese stores usually carries the name it was released under,
+   so that is where the original comes from. It is saved on the song (oTitle) for everyone; oSeen marks a song that
+   has been looked up (or set by hand), so it isn't asked about again. */
+const NON_LATIN = /[^\p{Script=Latin}\p{Script=Common}\p{Script=Inherited}]/u;
+const SCR = { ko: /\p{Script=Hangul}/u, kana: /[\p{Script=Hiragana}\p{Script=Katakana}]/u, han: /\p{Script=Han}/u };
+const ORIG_STORES = { kr: {}, jp: { lang: 'ja_jp' }, tw: {} };
+function pickOriginal(names, genre) {
+  const kr = names.kr || '', jp = names.jp || '', tw = names.tw || '', g = (genre || '').toLowerCase();
+  if (/k-pop|korea/.test(g) && SCR.ko.test(kr)) return kr;
+  if (/j-pop|japan|anime|enka|kayokyoku/.test(g) && NON_LATIN.test(jp)) return jp;
+  if (/mandopop|cantopop|c-pop|chinese|taiwan/.test(g) && SCR.han.test(tw)) return tw;
+  if (SCR.ko.test(kr)) return kr;
+  // The Japanese store writes some English songs in katakana, so without a hint from the genre it only counts
+  // when the Taiwanese store doesn't show a plain Latin name for the same song.
+  if (SCR.kana.test(jp) && !(tw && !NON_LATIN.test(tw))) return jp;
+  if (SCR.han.test(tw)) return tw;
+  return '';
+}
+async function storeNames(id) {
+  try { return (await api('store-names?id=' + encodeURIComponent(id))).names || {}; } catch (e) {}
+  const got = await Promise.allSettled(Object.entries(ORIG_STORES).map(([c, extra]) => appleJsonp('lookup', { id: String(id), country: c, ...extra })));
+  if (got.every(g => g.status === 'rejected')) throw got[0].reason;
+  const names = {};
+  Object.keys(ORIG_STORES).forEach((c, i) => { const x = got[i].value && (got[i].value.results || [])[0]; names[c] = (x && x.trackName) || ''; });
+  return names;
+}
+// '' when the song isn't found or has no other name; throws when the search itself isn't answering
+async function originalName(t) {
+  const artist = t.artist === 'Unknown artist' ? '' : t.artist, name = searchName(t.title) || cleanTitle(t.title);
+  const list = await lookupSongs((artist + ' ' + name).trim());
+  const r = list.find(r => r.id && sameName(r.title, name) && (!artist || nameHas(r.artist, artist)));
+  if (!r) return '';
+  if (NON_LATIN.test(r.title)) return r.title;
+  const got = pickOriginal(await storeNames(r.id), r.genre);
+  return got && !sameName(got, t.title) ? got : '';
+}
+let findingOrig = false;
+async function findOriginals() {
+  if (findingOrig || !pref('origNames') || !cloud.canWrite) return;
+  findingOrig = true;
+  try {
+    for (const id of [...S.tracks.keys()]) {
+      if (!pref('origNames')) break;
+      const t = tk(id);
+      // a name already in its own script has nothing to look up
+      if (!t || t.kind !== 'cloud' || t.oTitle || (t.meta && t.meta.oSeen) || NON_LATIN.test(t.title)) continue;
+      let name;
+      try { name = await originalName(t); } catch (e) { break; }   // the search isn't answering: try again next visit
+      try { await saveSongMeta(id, name ? { oTitle: name, oSeen: true } : { oSeen: true }); } catch (e) { name = ''; }   // say, a song another device just deleted
+      // don't redraw under someone who is typing or has a dialog open; the name shows at the next redraw anyway
+      if (name && !$('.modal-scrim:not([hidden])') && !/^(INPUT|TEXTAREA)$/.test((document.activeElement || {}).tagName || '')) { render(); renderQueue(); updateMeta(); }
+      await new Promise(r => setTimeout(r, ORIG_GAP));
+    }
+  } finally { findingOrig = false; }
+}
+const ORIG_GAP = 4000;   // Apple allows only a few searches a minute
 async function lookupSongs(term) {
   term = term.trim().slice(0, 200); if (!term) return [];
   if (lookupCache.has(term)) return lookupCache.get(term);
@@ -5552,7 +5629,7 @@ function editSong(id) {
   if (!cloud.canWrite) { toast('Sign in to edit songs.'); return; }
   closeMenu();
   se = { id, file: null, artUrl: null, remove: false, preview: null, extra: {}, back: document.activeElement, seq: 0 };
-  $('#se-name').value = t.title; $('#se-artist').value = t.artist === 'Unknown artist' ? '' : t.artist; $('#se-album').value = t.album === 'Unknown album' ? '' : t.album; $('#se-date').value = showDate((t.meta && t.meta.released) || t.year);
+  $('#se-name').value = t.title; $('#se-oname').value = t.oTitle || ''; $('#se-artist').value = t.artist === 'Unknown artist' ? '' : t.artist; $('#se-album').value = t.album === 'Unknown album' ? '' : t.album; $('#se-date').value = showDate((t.meta && t.meta.released) || t.year);
   $('#se-err').textContent = ''; $('#se-status').textContent = ''; $('#se-results').hidden = true; $('#se-results').innerHTML = '';
   $('#se-save').disabled = false; $('#se-save').textContent = 'Save';
   const al = IDX.albums.get(t.albumKey);
@@ -5666,7 +5743,8 @@ $('#song-edit-form').addEventListener('submit', async e => {
   const released = parseReleaseDate($('#se-date').value);
   if (released === null) { $('#se-err').textContent = 'Write the release date like Oct 24, 2024, 10/24/2024, or just 2024.'; $('#se-date').focus(); return; }
   $('#se-save').disabled = true; $('#se-err').textContent = ''; $('#se-save').textContent = 'Saving…';
-  const ch = { title, artist: artist || 'Unknown artist', album: album || 'Unknown album', ...se.extra, released, year: released.slice(0, 4), releaseType: se.type || 'album' };
+  const oTitle = $('#se-oname').value.trim();
+  const ch = { title, oTitle: oTitle === title ? '' : oTitle, oSeen: !!(t.meta && t.meta.oSeen) || oTitle !== (t.oTitle || ''), artist: artist || 'Unknown artist', album: album || 'Unknown album', ...se.extra, released, year: released.slice(0, 4), releaseType: se.type || 'album' };
   // Keep the album together: if the album artist was just the old artist, it follows the new one.
   if (!('albumArtist' in se.extra) && t.albumArtist && t.albumArtist === t.artist) ch.albumArtist = '';
   try {
@@ -5857,7 +5935,7 @@ function startDrag() {
   const t = tk(drag.row.dataset.id);
   drag.ghost = document.createElement('div');
   drag.ghost.className = 'drag-ghost';
-  drag.ghost.innerHTML = t ? `<img src="${esc(t.cover)}" alt=""><span>${esc(t.title)}</span>` : `<span>${esc(drag.row.querySelector('h3').textContent)}</span>`;
+  drag.ghost.innerHTML = t ? `<img src="${esc(t.cover)}" alt=""><span>${esc(nm(t))}</span>` : `<span>${esc(drag.row.querySelector('h3').textContent)}</span>`;
   document.body.appendChild(drag.ghost);
   drag.line = document.createElement('div');
   drag.line.className = 'drop-line';
@@ -6037,7 +6115,7 @@ function cloudTrack(id, d) {
   const old = S.tracks.get(id);
   const t = old && old.kind === 'cloud' ? old : { id, kind: 'cloud' };
   Object.assign(t, {
-    title: d.title || 'Untitled', artist: d.artist || 'Unknown artist', albumArtist: d.albumArtist || '', album: d.album || 'Unknown album',
+    title: d.title || 'Untitled', oTitle: d.oTitle || '', artist: d.artist || 'Unknown artist', albumArtist: d.albumArtist || '', album: d.album || 'Unknown album',
     year: d.year || '', released: d.released || '', bpm: d.bpm || 0, key: d.key || '', trackNo: d.trackNo || 0, genre: d.genre || '', duration: d.duration, added: d.added || Date.now(),
     releaseType: RTYPES[d.releaseType] ? d.releaseType : '', fileName: d.fileName, size: d.size, mime: d.mime, ownCover: d.cover ? coverUrl(id) + '?' + (d.coverSm ? 's=1&' : '') + 'v=' + (d.coverV || 0) : null,
     ownCoverFull: d.cover ? coverUrl(id) + '?v=' + (d.coverV || 0) : null,
@@ -6119,7 +6197,7 @@ async function loadLibrary(first) {
   for (const t of [...S.tracks.values()]) if (t.kind === 'cloud' && !seen.has(t.id)) detachTrack(t.id);
   applyState(data.state);
   rebuild();
-  if (!cloud.songsLoaded) { cloud.songsLoaded = true; bootDone.cloud = true; tryRestoreLast(); setTimeout(fillThumbs, 4000); }
+  if (!cloud.songsLoaded) { cloud.songsLoaded = true; bootDone.cloud = true; tryRestoreLast(); setTimeout(fillThumbs, 4000); setTimeout(findOriginals, 6000); }
   if (!S.renaming && $('#menu').hidden) render(); else renderSide();
   applyPlaceTop(true);
   updateMeta(); renderQueue(); renderSide(); syncLikes();
@@ -7062,7 +7140,7 @@ audio.addEventListener('error', () => {
 
 /* lock screen + headphone controls */
 function setMediaMeta(t) {
-  try { if ('mediaSession' in navigator && window.MediaMetadata) navigator.mediaSession.metadata = new MediaMetadata({ title: t.title, artist: t.artist, album: t.album, artwork: t.cover && !t.cover.startsWith('data:') ? [{ src: t.cover, sizes: '512x512' }] : [] }); } catch (e) {}
+  try { if ('mediaSession' in navigator && window.MediaMetadata) navigator.mediaSession.metadata = new MediaMetadata({ title: nm(t), artist: t.artist, album: t.album, artwork: t.cover && !t.cover.startsWith('data:') ? [{ src: t.cover, sizes: '512x512' }] : [] }); } catch (e) {}
 }
 try {
   if ('mediaSession' in navigator) {

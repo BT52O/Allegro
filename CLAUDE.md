@@ -50,6 +50,14 @@ this repo, and the rules for interface text, deleting, themes and phones.
   `@<id>`. The current profile on this device is `allegro.profile`. Opening a different profile reloads the page.
 - Song deletes in the UI check `canDelete(t)`.
 
+## Original song names
+
+- Settings > Library > Original Song Names (pref `origNames`, synced per profile). `nm(t)` is the name to show: the
+  song's `oTitle` when the switch is on, otherwise `title`. Use `nm(t)` anywhere a song name is displayed.
+- `oTitle` and `oSeen` (already looked up, or set by hand) live in the song's shared info. `findOriginals` fills them
+  in the background: it finds the song in Apple's US search, then asks `/api/store-names` for the same song in the
+  Korean, Japanese and Taiwanese stores, and `pickOriginal` chooses. Artist and album names are not changed.
+
 ## Deploying
 
 - `.github/workflows/deploy.yml` runs the tests on every push to `main` and on every pull request, but deploys only

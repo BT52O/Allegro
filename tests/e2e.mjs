@@ -28,9 +28,9 @@ if (madeDevVars) writeFileSync(devVars, `SETUP_CODE=${SETUP_CODE}\nSESSION_SECRE
 // A stand-in for Apple's song search, so tests don't depend on the internet.
 const MOCK_PORT = 8798, MOCK = `http://127.0.0.1:${MOCK_PORT}`;
 const SONGS = [
-  { trackName: 'Untagged Song', artistName: 'Some Band', collectionName: 'Mock Album', releaseDate: '2020-05-01T07:00:00Z', primaryGenreName: 'Pop', trackNumber: 3 },
-  { trackName: 'Swapped Song', artistName: 'Mock Band', collectionName: 'Swap Album', releaseDate: '2019-01-01T07:00:00Z', primaryGenreName: 'Rock', trackNumber: 1 },
-  { trackName: 'Mock Hit', artistName: 'Mock Artist', collectionName: 'Mock Hit Album', releaseDate: '2021-02-02T07:00:00Z', primaryGenreName: 'Pop', trackNumber: 7 }
+  { trackName: 'Untagged Song', artistName: 'Some Band', collectionName: 'Mock Album', releaseDate: '2020-05-01T07:00:00Z', primaryGenreName: 'Pop', trackNumber: 3, trackId: 101 },
+  { trackName: 'Swapped Song', artistName: 'Mock Band', collectionName: 'Swap Album', releaseDate: '2019-01-01T07:00:00Z', primaryGenreName: 'Rock', trackNumber: 1, trackId: 102 },
+  { trackName: 'Mock Hit', artistName: 'Mock Artist', collectionName: 'Mock Hit Album', releaseDate: '2021-02-02T07:00:00Z', primaryGenreName: 'Pop', trackNumber: 7, trackId: 103 }
 ];
 const lookups = [], transcribed = [], lrclibAsks = [], llmAsks = [];
 const mock = createServer((req, res) => {
@@ -74,6 +74,11 @@ const mock = createServer((req, res) => {
     const term = (u.searchParams.get('term') || '').toLowerCase(); lookups.push(term);
     const results = SONGS.filter(x => term.includes(x.trackName.toLowerCase())).map(x => ({ wrapperType: 'track', kind: 'song', ...x, artworkUrl100: `${MOCK}/art/${encodeURIComponent(x.trackName)}/100x100bb.jpg` }));
     res.writeHead(200, { 'content-type': 'application/json' }); res.end(JSON.stringify({ resultCount: results.length, results }));
+  } else if (u.pathname === '/lookup') {
+    // the same song in another country's store: only Mock Hit has a name in another language (in the Korean store)
+    const song = SONGS.find(x => String(x.trackId) === u.searchParams.get('id')), country = u.searchParams.get('country');
+    const results = song ? [{ ...song, trackName: song.trackId === 103 && country === 'kr' ? '모의 히트' : song.trackName }] : [];
+    res.writeHead(200, { 'content-type': 'application/json' }); res.end(JSON.stringify({ resultCount: results.length, results }));
   } else if (u.pathname.startsWith('/art/')) {
     res.writeHead(200, { 'content-type': 'image/png' }); res.end(readFileSync(join(fixtures, 'cover.png')));
   } else { res.writeHead(404); res.end(); }
@@ -84,7 +89,7 @@ await new Promise(r => mock.listen(MOCK_PORT, '127.0.0.1', r));
 const testConfig = join(root, '.wrangler-test.jsonc');
 writeFileSync(testConfig, readFileSync(join(root, 'wrangler.jsonc'), 'utf8').replace(/^\s*"ai":.*\n/m, ''));
 execFileSync(process.execPath, [wrangler, 'd1', 'migrations', 'apply', 'allegro', '--local', '--config', testConfig, '--persist-to', state], { cwd: root, env, stdio: 'inherit' });
-const server = spawn(process.execPath, [wrangler, 'dev', '--config', testConfig, '--port', String(PORT), '--ip', '127.0.0.1', '--persist-to', state, '--var', `TRANSCRIBE_URL:${MOCK}/transcribe`, '--var', `LLM_URL:${MOCK}/llm`, '--var', `MUSIC_SEARCH_URL:${MOCK}/search`, '--var', `DEEZER_SEARCH_URL:${MOCK}/deezer`, '--var', 'HISTORY_MERGE_MS:0', '--var', `LYRICS_URL:${MOCK}/lrclib`], { cwd: root, env, stdio: ['ignore', 'pipe', 'pipe'] });
+const server = spawn(process.execPath, [wrangler, 'dev', '--config', testConfig, '--port', String(PORT), '--ip', '127.0.0.1', '--persist-to', state, '--var', `TRANSCRIBE_URL:${MOCK}/transcribe`, '--var', `LLM_URL:${MOCK}/llm`, '--var', `MUSIC_SEARCH_URL:${MOCK}/search`, '--var', `MUSIC_LOOKUP_URL:${MOCK}/lookup`, '--var', `DEEZER_SEARCH_URL:${MOCK}/deezer`, '--var', 'HISTORY_MERGE_MS:0', '--var', `LYRICS_URL:${MOCK}/lrclib`], { cwd: root, env, stdio: ['ignore', 'pipe', 'pipe'] });
 let serverLog = '';
 server.stdout.on('data', d => { serverLog += d; });
 server.stderr.on('data', d => { serverLog += d; });
@@ -950,6 +955,34 @@ try {
   await A.click('.nav-btn[data-nav="library"]'); await settle(A, 400); await A.click('[data-chip="songs"]'); await settle(A, 300);
   const demoTagsOn = await A.$$eval('#view .demo-tag', x => x.length);
   check(demoOff[0] && demoOff[1] === 'false' && demoTagsOff === 0 && demoTagsOn > 0, 'Show Demo Songs hides and brings back the demo songs, saved online', JSON.stringify({ demoOff, demoTagsOff, demoTagsOn }));
+
+  // --- Original Song Names: the name from the song's own country shows in lists, and the switch brings the saved name back
+  {
+    const names = () => A.$$eval('#view .t-name', x => x.map(e => e.textContent));
+    const before = await names();
+    await A.click('#acct-btn'); await settle(A, 250); await A.click('#menu .mi:has-text("Settings")'); await settle(A, 400);
+    await A.click('#set-orig'); await settle(A, 400);
+    const swOn = await A.evaluate(() => document.querySelector('#set-orig').getAttribute('aria-checked'));
+    await A.click('.nav-btn[data-nav="library"]'); await settle(A, 400); await A.click('[data-chip="songs"]'); await settle(A, 300);
+    const found = await A.waitForFunction(() => [...document.querySelectorAll('#view .t-name')].some(e => e.textContent === '모의 히트'), null, { timeout: 60000 }).then(() => true, () => false);
+    const during = await names();
+    await shot(A, 'original-names');
+    data = await lib(A);
+    const saved = data.songs.find(x => x.title === 'Mock Hit') || {};
+    await A.click('.nav-btn[data-nav="uploads"]'); await settle(A, 400);
+    await A.click(`#view .more[data-more="${saved.id}"]`); await settle(A, 250); await A.click('#menu .mi:has-text("Edit Song")'); await settle(A, 400);
+    const editField = await A.inputValue('#se-oname');
+    await shot(A, 'original-names-edit'); await A.click('#se-close'); await settle(A, 200);
+    await A.fill('#search-input', '모의'); await settle(A, 600);
+    const searched = await names();
+    await A.fill('#search-input', ''); await settle(A, 400);
+    await A.click('#acct-btn'); await settle(A, 250); await A.click('#menu .mi:has-text("Settings")'); await settle(A, 400);
+    await A.click('#set-orig'); await settle(A, 400);
+    await A.click('.nav-btn[data-nav="library"]'); await settle(A, 400); await A.click('[data-chip="songs"]'); await settle(A, 300);
+    const after = await names();
+    check(swOn === 'true' && found && before.includes('Mock Hit') && !during.includes('Mock Hit') && saved.oTitle === '모의 히트' && saved.oSeen === true && editField === '모의 히트' && searched.includes('모의 히트') && after.includes('Mock Hit') && !after.includes('모의 히트'),
+      'Original Song Names shows a song under the name from its own country, finds it in search, and switches back', JSON.stringify({ swOn, found, before, during, saved: [saved.oTitle, saved.oSeen], searched, after }));
+  }
   await A.click('#acct-btn'); await settle(A, 250); await A.click('#menu .mi:has-text("Settings")'); await settle(A, 400);
   // Breathing Album Cover: off at first; on makes the Now Playing cover zoom in, rest 1s, and zoom out (17s, playing or paused), saved on this device only
   const breatheAnim = () => A.evaluate(() => [document.documentElement.classList.contains('breathe'), getComputedStyle(document.getElementById('s-cover')).animationName, getComputedStyle(document.getElementById('s-cover')).animationPlayState, getComputedStyle(document.getElementById('s-cover')).animationDuration, localStorage.getItem('allegro.breathe')]);

@@ -110,6 +110,7 @@ const str = (v, max = 300) => (typeof v === 'string' ? v : v == null ? '' : Stri
 function cleanMeta(d) {
   return {
     title: str(d.title) || 'Untitled', artist: str(d.artist) || 'Unknown artist', albumArtist: str(d.albumArtist),
+    oTitle: str(d.oTitle, 200), oSeen: !!d.oSeen,   // the name in the song's own language, and whether it has been looked up
     album: str(d.album) || 'Unknown album', year: str(d.year, 10), trackNo: Number(d.trackNo) || 0, genre: str(d.genre, 80),
     duration: Number(d.duration) || 0, added: Number(d.added) || Date.now(), fileName: str(d.fileName),
     mime: str(d.mime, 60), cover: !!d.cover, coverV: Number(d.coverV) || 0, coverSm: !!d.coverSm, q96: !!d.q96, q320: !!d.q320,
@@ -415,7 +416,7 @@ async function api(request, env, path) {
     };
     const apple = getJSON((env.MUSIC_SEARCH_URL || 'https://itunes.apple.com/search') + '?' + new URLSearchParams({ term, media: 'music', entity: 'song', limit: '15', country: 'US' }), 'Apple')
       .then(d => (d.results || []).filter(x => x && x.trackName && x.artistName).map(x => ({
-        title: str(x.trackName), artist: str(x.artistName), album: str(x.collectionName),
+        id: Number(x.trackId) || 0, title: str(x.trackName), artist: str(x.artistName), album: str(x.collectionName),
         albumArtist: x.collectionArtistName && x.collectionArtistName !== x.artistName ? str(x.collectionArtistName) : '',
         year: str(x.releaseDate, 4), released: str(x.releaseDate, 10), genre: str(x.primaryGenreName, 80), trackNo: Number(x.trackNumber) || 0,
         duration: (Number(x.trackTimeMillis) || 0) / 1000,
@@ -439,6 +440,23 @@ async function api(request, env, path) {
       if (!seen.has(key)) { seen.add(key); results.push(r); }
     }
     return json({ results, sources: { apple: a.status === 'fulfilled' ? 'ok' : a.reason.message, deezer: b.status === 'fulfilled' ? 'ok' : b.reason.message } }, 200, { 'cache-control': 'private, max-age=3600' });
+  }
+  // Original song names: the same Apple song as it is named in the Korean, Japanese and Taiwanese stores.
+  // The page picks which of them (if any) is the name the song was released under.
+  if (path === 'store-names' && method === 'GET') {
+    const id = (new URL(request.url).searchParams.get('id') || '').replace(/\D/g, '').slice(0, 20);
+    if (!id) return json({ names: {} });
+    const stores = { kr: {}, jp: { lang: 'ja_jp' }, tw: {} };
+    const got = await Promise.allSettled(Object.entries(stores).map(async ([country, extra]) => {
+      const r = await fetch((env.MUSIC_LOOKUP_URL || 'https://itunes.apple.com/lookup') + '?' + new URLSearchParams({ id, country, ...extra }), { headers: { accept: 'application/json', 'user-agent': 'Allegro/1.0 (personal music library)' } });
+      if (!r.ok) throw new Error('Apple ' + r.status);
+      const x = (JSON.parse(await r.text()).results || [])[0];
+      return str(x && x.trackName, 200);
+    }));
+    if (got.every(g => g.status === 'rejected')) return fail(502, `Apple isn't answering (${got[0].reason.message}). Try again in a minute.`);
+    const names = {};
+    Object.keys(stores).forEach((c, i) => { names[c] = got[i].status === 'fulfilled' ? got[i].value : ''; });
+    return json({ names }, 200, { 'cache-control': 'private, max-age=3600' });
   }
   // Fetches album artwork from the search results so the page can save it as a song's cover.
   if (path === 'art' && method === 'GET') {
