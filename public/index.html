@@ -288,12 +288,6 @@ body.is-playing .li.grid.playing .spk { display: grid; }
 .vhead .desc { color: var(--muted); font-size: .9rem; font-weight: 600; margin: 0; max-width: 62ch; }
 .rename { font: 800 clamp(2rem, 6cqi, 4rem)/1.05 var(--f-display); letter-spacing: -.03em; background: var(--raise); border: 1px solid var(--line); border-radius: 8px; padding: 2px 10px; width: 100%; max-width: 640px; }
 .actions { display: flex; align-items: center; gap: 18px; margin-top: -8px; }
-/* a single with one song: a big cover, with the details and play buttons along its bottom edge */
-.vhead.solo { gap: clamp(24px, 4cqi, 44px); }
-.vhead.solo .art { width: clamp(240px, 42cqi, 440px); border-radius: 12px; box-shadow: 0 30px 70px -24px rgba(0,0,0,.65); }
-.vhead.solo .vhead-text { gap: 10px; }
-.vhead.solo .meta { font-size: .95rem; }
-.vhead.solo .actions { margin-top: 14px; }
 /* playlist page: details on the left, songs on the right */
 .pl-layout { display: grid; grid-template-columns: minmax(240px, 300px) minmax(0, 1fr); gap: 32px; align-items: start; padding-top: 8px; }
 .vhead.pl-head { position: sticky; top: 72px; flex-direction: column; align-items: stretch; gap: 26px; padding: 0; text-align: center; }
@@ -916,11 +910,6 @@ img { -webkit-user-drag: none; user-select: none; }
   .vhead { flex-direction: column; align-items: flex-start; gap: 16px; }
   .vhead .art { width: min(62vw, 240px); align-self: center; }
   .vhead h1 { font-size: clamp(1.8rem, 8.5vw, 2.6rem); }
-  .vhead.solo { align-items: center; text-align: center; gap: 20px; }
-  .vhead.solo .art { width: min(84vw, 360px); }
-  .vhead.solo .vhead-text { align-items: center; width: 100%; }
-  .vhead.solo .meta { justify-content: center; }
-  .vhead.solo .actions { margin-top: 6px; justify-content: center; }
   .callout { grid-template-columns: auto minmax(0, 1fr); }
   .callout .btn { grid-column: 1 / -1; }
   .card-play { display: none; }
@@ -2644,8 +2633,6 @@ function addFileRecord(rec) {
 const AP_MONTHS = ['Jan.', 'Feb.', 'March', 'April', 'May', 'June', 'July', 'Aug.', 'Sept.', 'Oct.', 'Nov.', 'Dec.'];
 // Release types you can sort a song into. Songs you haven't sorted count as part of an album.
 const RTYPES = { album: 'Album', ep: 'EP', single: 'Single' };
-// Album names that mark a single even when its songs weren't sorted: "Single", "Song - Single", "Song (Single)".
-const SINGLE_NAME = /(^|\s[-–]\s|\()single\)?$/i;
 // An album's type is the one its songs were sorted into most often (Album when none were).
 function releaseTypeOf(ids) {
   const n = {};
@@ -3211,9 +3198,9 @@ function qtile(key) {
   return `<div class="qt" data-open="${esc(key)}" tabindex="0" role="link"><div class="art${c.round ? ' round' : ''}">${c.art}</div><span class="qt-name">${esc(c.name)}</span><button class="card-play" data-card-play="${esc(key)}" aria-label="Play ${esc(c.name)}">${ic('play')}</button></div>`;
 }
 const artistPenFor = name => `<span class="pl-pen" data-artist-pen="${esc(name)}" role="button" aria-label="Choose a photo for ${esc(name)}" title="Choose Photo">${ic('edit')}</span>`;
-function head({ art, round, type, title, meta, desc, tintSrc, editable, penId, artistPen, pen, cls = '', after = '' }) {
+function head({ art, round, type, title, meta, desc, tintSrc, editable, penId, artistPen, pen }) {
   return `<div class="view-bg" ${tintSrc ? `data-tint-src="${esc(tintSrc)}"` : ''}></div>
-  <header class="vhead${editable ? ' editable' : ''}${cls ? ' ' + cls : ''}"><div class="art${round ? ' round' : ''}${penId || artistPen || pen ? ' has-pen' : ''}"${editable ? ' title="Edit Details"' : artistPen ? ' title="Choose Photo"' : ''}>${art}${penId ? penFor(penId) : ''}${artistPen ? artistPenFor(artistPen) : ''}${pen || ''}</div><div class="vhead-text" data-type="${esc(type)}">${title}${desc ? `<p class="desc">${esc(desc)}</p>` : ''}<div class="meta">${meta}</div>${after}</div></header>`;
+  <header class="vhead${editable ? ' editable' : ''}"><div class="art${round ? ' round' : ''}${penId || artistPen || pen ? ' has-pen' : ''}"${editable ? ' title="Edit Details"' : artistPen ? ' title="Choose Photo"' : ''}>${art}${penId ? penFor(penId) : ''}${artistPen ? artistPenFor(artistPen) : ''}${pen || ''}</div><div class="vhead-text" data-type="${esc(type)}">${title}${desc ? `<p class="desc">${esc(desc)}</p>` : ''}<div class="meta">${meta}</div></div></header>`;
 }
 const actions = (key, extra = '') => `<div class="actions"><button class="big-play" data-ctx-play="${esc(key)}" aria-label="Play">${ic('play')}</button><button class="act-btn${S.shuffle ? ' on' : ''}" data-act="shuffle" aria-label="Shuffle" aria-pressed="${S.shuffle}">${ic('shuffle')}</button>${extra}</div>`;
 const fileCount = () => { let n = 0; for (const t of S.tracks.values()) if (t.kind === 'file' || t.kind === 'cloud') n++; return n; };
@@ -3424,15 +3411,9 @@ const VIEWS = {
     const a = IDX.albums.get(v.key);
     if (!a) return notFound('That album is no longer in your library.');
     const key = 'album:' + a.key, ar = artistsOf(a.artist).every(n => IDX.artists.has(n));
-    // A single with just one song gets a much bigger cover, with the play buttons beside it instead of underneath,
-    // since there's no list of songs to make room for. Singles with more songs look like any other album.
-    const solo = a.ids.length === 1 && (a.type === 'single' || SINGLE_NAME.test(a.name));
-    // Albums tagged only as "Single" show the song's own name as the heading.
-    const name = solo && /^single$/i.test(a.name.trim()) ? nm(tk(a.ids[0])) : a.name;
-    const acts = actions(key, `<button class="act-btn" data-ctx-more="${esc(key)}" aria-label="More options">${ic('more')}</button>`);
-    return head({ art: `<img src="${esc(a.cover)}" alt="">`, type: 'Album', title: `<h1>${esc(name)}</h1>`, tintSrc: a.cover, cls: solo ? 'solo' : '', after: solo ? acts : '',
+    return head({ art: `<img src="${esc(a.cover)}" alt="">`, type: 'Album', title: `<h1>${esc(a.name)}</h1>`, tintSrc: a.cover,
       meta: `${ar ? artistLinks(a.artist, true) : `<button class="link" data-go-artist="${esc(artistsOf(tk(a.ids[0]).artist)[0])}"><b>${esc(a.artist)}</b></button>`}${a.year ? ` · <span class="released">${esc(a.released ? longDate(a.released) : a.year)}</span>` : ''} · <span>${plural(a.ids.length, 'song')}, ${fmtLong(totalDur(a.ids))}</span>` })
-      + (solo ? '' : acts)
+      + actions(key, `<button class="act-btn" data-ctx-more="${esc(key)}" aria-label="More options">${ic('more')}</button>`)
       + trackList(a.ids, { key, name: a.name }, { cover: false, trackNo: true });
   },
   artist(v) {

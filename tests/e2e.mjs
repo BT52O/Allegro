@@ -749,22 +749,6 @@ try {
   await A.click(`#view .tr[data-id="${tagged.id}"] [data-go-album]`); await settle(A, 500);
   const albumDate = await A.textContent('.vhead .meta .released').catch(() => '');
   check(albumDate === 'Feb. 2, 2021', 'album page shows the full release date', albumDate);
-  // a single with one song gets the big-cover layout, with the play buttons beside the cover
-  await shot(A, 'single-solo');
-  const solo = await A.evaluate(() => { const h = document.querySelector('#view .vhead.solo'); if (!h) return null; const a = h.querySelector('.art').getBoundingClientRect(), p = h.querySelector('.actions .big-play'); return { w: Math.round(a.width), inHead: !!p, rows: document.querySelectorAll('#view .tr').length }; });
-  check(!!solo && solo.w >= 400 && solo.inHead && solo.rows === 1, 'a one-song Single shows a big cover with the play buttons beside it', JSON.stringify(solo));
-  await A.setViewportSize({ width: 390, height: 844 }); await settle(A, 300);
-  await shot(A, 'single-solo-phone');
-  const soloPh = await A.evaluate(() => { const a = document.querySelector('#view .vhead.solo .art').getBoundingClientRect(), v = document.querySelector('#view').getBoundingClientRect(); return [Math.round(a.width), Math.round(a.left + a.width / 2 - (v.left + v.width / 2))]; });
-  check(soloPh[0] >= 320 && Math.abs(soloPh[1]) <= 2, 'on phones the one-song Single cover is big and centered', JSON.stringify(soloPh));
-  await A.setViewportSize({ width: 1440, height: 900 }); await settle(A, 300);
-  await A.click('.nav-btn[data-nav="library"]'); await settle(A, 400);
-  await A.click('[data-chip="albums"]').catch(() => {}); await settle(A, 300);
-  const albumCards = await A.$$eval('#view .card[data-open^="album:"]', x => x.map(c => c.dataset.open));
-  await A.click('#view .card[aria-label="Rain Day Sketches"] .card-t');
-  await A.waitForSelector('#view .vhead', { timeout: 8000 }).catch(() => {}); await settle(A, 300);
-  const plain = await A.evaluate(() => [!!document.querySelector('#view .vhead:not(.solo)'), !!document.querySelector('#view > .actions'), document.querySelectorAll('#view .tr').length]);
-  check(plain[0] && plain[1] && plain[2] > 1, 'other albums keep the regular layout', JSON.stringify({ plain, albumCards }));
   await A.click('.nav-btn[data-nav="uploads"]'); await settle(A, 400);
   // when Apple turns the server away, Deezer still answers
   const dz = await A.evaluate(async () => (await fetch('/api/lookup?term=deezer%20song')).json());
