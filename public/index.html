@@ -575,7 +575,7 @@ body.sheet-open #vol-wrap { --volume-panel: #242426; --volume-track: #3b3b3f; --
 .vtrack b { position: absolute; left: 50%; bottom: var(--v, 80%); width: 12px; height: 5px; margin: 0 0 -2.5px -6px; border-radius: 2.5px; background: var(--volume-ink); }
 /* the quality pill: liquid glass in the Apple style. The body is nearly clear; light bends at the rounded edge, so the
    edge reads brighter than the middle; thin highlights catch the top left and bottom right like a lit glass lozenge.
-   Red for Max (your original file), gold for 96 kbps */
+   Red for Max (your original file), gold for 96 kbps (Low) */
 .q-badge { --qg: 236, 62, 76; --qa: .12; --qt: #ff5e6a; position: relative; isolation: isolate; display: inline-flex; align-items: center; justify-content: center; line-height: 1; height: 34px; padding: 0 18px; border-radius: 999px; font: 500 .82rem var(--f-body); letter-spacing: .01em; white-space: nowrap; color: var(--qt); font-variant-numeric: tabular-nums;
   text-shadow: 0 0 10px rgba(var(--qg), .4), 0 0 1px rgba(0, 0, 0, .55), 0 1px 3px rgba(0, 0, 0, .5);
   background: radial-gradient(120% 140% at 50% 50%, rgba(255, 255, 255, 0) 52%, rgba(255, 255, 255, .14) 100%),
@@ -594,28 +594,30 @@ body.sheet-open #vol-wrap { --volume-panel: #242426; --volume-track: #3b3b3f; --
    faint outline keeps the edge visible against white. Now Playing puts the bar over the cover's dark color even on the
    light theme, so there the pill keeps its dark look (the light halo made the text fuzzy and the glass milky). The
    pills inside the white popup always sit on white, so they keep the light look. */
-:root:not([data-theme="dark"]) :is(body:not(.sheet-open) .q-badge, .qb-opt .q-badge) { --qbase: .2; text-shadow: 0 0 8px rgba(var(--qg), .25), 0 1px 0 rgba(255, 255, 255, .6);
+:root:not([data-theme="dark"]) body:not(.sheet-open) .q-badge { --qbase: .2; text-shadow: 0 0 8px rgba(var(--qg), .25), 0 1px 0 rgba(255, 255, 255, .6);
   box-shadow: inset 0 0 0 .5px rgba(0, 0, 0, .1), inset 0 0 9px rgba(255, 255, 255, .5), inset 0 0 18px rgba(var(--qg), .08), 0 0 0 .5px rgba(0, 0, 0, .12), 0 6px 18px -6px rgba(0, 0, 0, .22); }
 .q-badge.q96 { --qg: 236, 186, 62; --qa: .22; --qt: #f5c548; }
 /* the bright red and gold are too pale on clear glass over a white bar, so they go deeper there */
-:root:not([data-theme="dark"]) :is(body:not(.sheet-open) .q-badge, .qb-opt .q-badge) { --qt: #e5343f; }
-:root:not([data-theme="dark"]) :is(body:not(.sheet-open) .q-badge.q96, .qb-opt .q-badge.q96) { --qt: #b07a00; }
+:root:not([data-theme="dark"]) body:not(.sheet-open) .q-badge { --qt: #e5343f; }
+:root:not([data-theme="dark"]) body:not(.sheet-open) .q-badge.q96 { --qt: #b07a00; }
 @media (prefers-reduced-transparency: reduce) { .q-badge { -webkit-backdrop-filter: none; backdrop-filter: none; background: radial-gradient(70% 90% at 50% 60%, rgba(var(--qg), var(--qa)), rgba(var(--qg), 0) 100%), linear-gradient(#26262b, #121215); } }
 .q-badge.making::after { content: ""; position: absolute; right: 7px; top: 50%; width: 4px; height: 4px; margin-top: -2px; border-radius: 50%; background: var(--qt); animation: qbPulse 1.2s ease-in-out infinite; }
 @keyframes qbPulse { 50% { opacity: .25; } }
 .q-badge:hover { filter: brightness(1.18); }
-.qb-pop { width: 300px; padding: 16px 16px 14px; right: 0; transform: translate(0, 8px); font-size: .85rem; }
+/* the Streaming Quality menu, after the owner's sketch: a centered title, square checkboxes, the tier name in capitals
+   with its spec underneath, and a plain boxed label on the right (all boxes the same width so they line up) */
+.qb-pop { width: 320px; padding: 18px 18px 16px; right: 0; transform: translate(0, 8px); font-size: .85rem; }
 .pr-wrap.open .qb-pop { transform: none; }
-.qb-pop h4 { margin: 0 0 10px 2px; font-size: .95rem; }
-.qb-opts { display: flex; flex-direction: column; gap: 2px; margin: 0 -6px; }
-.qb-opt { display: grid; grid-template-columns: 18px minmax(0, 1fr) auto; align-items: center; gap: 10px; padding: 8px 8px; border-radius: 10px; text-align: left; color: #111; }
+.qb-pop h4 { margin: 0 0 12px; font-size: 1rem; text-align: center; }
+.qb-opts { display: flex; flex-direction: column; gap: 4px; margin: 0 -8px; }
+.qb-opt { display: grid; grid-template-columns: 18px minmax(0, 1fr) auto; align-items: center; gap: 12px; padding: 10px; border-radius: 10px; text-align: left; color: #111; }
 .qb-opt:hover { background: #f1f1f3; }
-.qb-opt .qb-dot { width: 16px; height: 16px; border-radius: 50%; border: 2px solid #c4c4c8; display: grid; place-items: center; }
-.qb-opt[aria-checked="true"] .qb-dot { border-color: #111; }
-.qb-opt[aria-checked="true"] .qb-dot::after { content: ""; width: 8px; height: 8px; border-radius: 50%; background: #111; }
-.qb-opt b { display: block; font-size: .88rem; }
-.qb-opt small { display: block; color: #6b6b70; font-size: .74rem; line-height: 1.35; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.qb-opt .q-badge { height: 22px; padding: 0 9px; font-size: .66rem; pointer-events: none; }
+.qb-opt .qb-box { width: 16px; height: 16px; border-radius: 3px; border: 2px solid #2a2a2e; display: grid; place-items: center; }
+.qb-opt[aria-checked="true"] .qb-box { background: #111; border-color: #111; }
+.qb-opt[aria-checked="true"] .qb-box::after { content: ""; width: 4px; height: 8px; margin-top: -2px; border: solid #fff; border-width: 0 2px 2px 0; transform: rotate(45deg); }
+.qb-opt b { display: block; font-size: .86rem; letter-spacing: .06em; text-transform: uppercase; }
+.qb-opt small { display: block; margin-top: 1px; color: #6b6b70; font-size: .74rem; line-height: 1.35; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.qb-tag { min-width: 78px; padding: 5px 8px; border: 1.5px solid #2a2a2e; border-radius: 4px; font: 500 .72rem var(--f-body); text-align: center; white-space: nowrap; color: #222; font-variant-numeric: tabular-nums; }
 .qb-pop p { margin: 10px 0 0 2px; color: #666; font-size: .78rem; line-height: 1.45; }
 .qb-fill { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 12px; padding-top: 12px; border-top: 1px solid #ececef; color: #666; font-size: .76rem; line-height: 1.4; }
 .qb-fill .pr-chip { flex: none; }
@@ -1855,7 +1857,7 @@ const I18N = [
   ['Nothing here yet. Add your own notes, the story behind the song, or the credits.', '这里还没有内容。添加你的笔记、歌曲背后的故事或制作信息。', '這裡還沒有內容。加入你的筆記、歌曲背後的故事或製作資訊。'], ['Upload this song to add notes and credits.', '上传这首歌后即可添加笔记和制作信息。', '上傳這首歌後即可加入筆記和製作資訊。'],
   ['The story behind the song, what it means to you, anything you like.', '歌曲背后的故事、它对你的意义，写什么都可以。', '歌曲背後的故事、它對你的意義，寫什麼都可以。'], ['Show song details and lyrics', '显示歌曲详情和歌词', '顯示歌曲詳情和歌詞'], ['Saved', '已保存', '已儲存'], ['About this song', '关于这首歌', '關於這首歌'],
   ['Saved Online · MP3, M4A, WAV, FLAC, OGG', '在线保存 · MP3、M4A、WAV、FLAC、OGG', '線上儲存 · MP3、M4A、WAV、FLAC、OGG'], ['Saved in This Browser · MP3, M4A, WAV, FLAC, OGG', '保存在此浏览器 · MP3、M4A、WAV、FLAC、OGG', '儲存在此瀏覽器 · MP3、M4A、WAV、FLAC、OGG'],
-  ['Streaming Quality', '音质', '音質'], ['Streaming quality', '音质', '音質'], ['Max', '最高', '最高'], ['Your original file', '你的原始文件', '你的原始檔案'], ['High quality MP3', '高音质 MP3', '高音質 MP3'], ['Data saver MP3', '省流量 MP3', '省流量 MP3'],
+  ['Streaming Quality', '音质', '音質'], ['Streaming quality', '音质', '音質'], ['Max', '最高', '最高'], ['Low', '低', '低'], ['Your original file', '你的原始文件', '你的原始檔案'], ['High quality MP3', '高音质 MP3', '高音質 MP3'], ['Data saver MP3', '省流量 MP3', '省流量 MP3'],
   ['Playing a smaller copy of your file to save data.', '正在播放较小的副本以节省流量。', '正在播放較小的副本以節省流量。'],
   ["This song's file is already this size or smaller, so it plays as is.", '这首歌的文件已经不大于此音质，所以直接播放原文件。', '這首歌的檔案已經不大於此音質，所以直接播放原檔案。'],
   ['Making a smaller copy of this song. It plays from the next time.', '正在为这首歌制作较小的副本，下次播放时生效。', '正在為這首歌製作較小的副本，下次播放時生效。'],
@@ -7086,7 +7088,10 @@ async function drawQuality() {
   b.className = 'q-badge' + (cp ? ' q' + cp : small ? ' q' + QUAL : '') + (COPY.busy === t.id ? ' making' : '');
   b.hidden = false;
   b.setAttribute('aria-label', 'Streaming quality: ' + b.textContent);
-  const opt = (q, name, sub, subNt) => `<button class="qb-opt" role="radio" aria-checked="${QUAL === q}" data-qset="${q}"><span class="qb-dot"></span><span><b${q === 'max' ? '' : ' data-nt'}>${name}</b><small>${sub ? `<span>${sub}</span>` : ''}${subNt ? `<span data-nt>${sub ? ', ' : ''}${esc(subNt)}</span>` : ''}</small></span><span class="q-badge${q === 'max' ? '' : ' q' + q}" data-nt>${q === 'max' ? esc(origLabel(info, t)) : q + ' kbps'}</span></button>`;
+  // Max shows the original's details: bit depth and format under the name, sample rate (or bitrate) in the box
+  const lossless = info && info.lossless && info.rate, maxSub = lossless && info.bits ? `${info.bits}-bit ${info.codec}` : info && info.codec;
+  const maxTag = lossless ? khz(info.rate).replace('kHz', ' kHz') : origLabel(info, t);
+  const opt = (q, name, sub, subNt, tag) => `<button class="qb-opt" role="radio" aria-checked="${QUAL === q}" data-qset="${q}"><span class="qb-box"></span><span><b>${name}</b><small><span>${sub}</span>${subNt ? `<span data-nt>, ${esc(subNt)}</span>` : ''}</small></span><span class="qb-tag" data-nt>${esc(tag)}</span></button>`;
   let note = '';
   if (QUAL === 'max') note = '';
   else if (cp) note = 'Playing a smaller copy of your file to save data.';
@@ -7099,7 +7104,7 @@ async function drawQuality() {
   const missing = canMakeCopies() ? [...S.tracks.values()].filter(wantsCopy).length : 0;
   const fill = !canMakeCopies() ? '' : COPY.all ? `<div class="qb-fill"><span data-nt>${esc(tr('Preparing songs') + ': ' + Math.min(COPY.done + 1, COPY.total) + ' / ' + COPY.total)}</span><button class="pr-chip" data-qfill="stop">Stop</button></div>`
     : missing ? `<div class="qb-fill"><span>Make the 96 kbps copy of every song now, so it's ready on your phone.</span><button class="pr-chip" data-qfill="go">Prepare All Songs</button></div>` : '';
-  $('#qb-pop').innerHTML = `<h4>Streaming Quality</h4><div class="qb-opts" role="radiogroup" aria-label="Streaming quality">${opt('max', 'Max', 'Your original file')}${opt('96', '96 kbps', 'Data saver MP3')}</div>${note ? `<p>${note}</p>` : ''}${fill}`;
+  $('#qb-pop').innerHTML = `<h4>Streaming Quality</h4><div class="qb-opts" role="radiogroup" aria-label="Streaming quality">${opt('96', 'Low', 'Data saver MP3', '', '96 kbps')}${opt('max', 'Max', 'Your original file', maxSub, maxTag)}</div>${note ? `<p>${note}</p>` : ''}${fill}`;
 }
 const openQb = prPop($('#qb-wrap'), { hover: false });
 $('#q-badge').addEventListener('click', () => openQb(!$('#qb-wrap').classList.contains('open')));
