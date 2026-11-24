@@ -2832,11 +2832,13 @@ function next(auto) {
   else { audio.pause(); audio.currentTime = 0; return; }
   startCurrent(auto || !audio.paused || loading);
 }
+// Previous always moves to the song before this one, however far into the song you are. It never starts the same
+// song over (that's what "play from the start" is for). From the first song it wraps to the last, the same way
+// Next wraps from the last song to the first, and with only one song in the queue there's nowhere to go.
 function prev() {
-  if (!S.queue.length) return;
-  if (audio.currentTime > 3) { audio.currentTime = 0; return; }
-  const wasPlaying = !audio.paused;
-  S.qi = S.qi > 0 ? S.qi - 1 : (S.repeat === 'all' ? S.queue.length - 1 : 0);
+  if (S.queue.length < 2) return;
+  const wasPlaying = !audio.paused || loading;
+  S.qi = S.qi > 0 ? S.qi - 1 : S.queue.length - 1;
   startCurrent(wasPlaying);
 }
 function jumpTo(i) { if (i < 0 || i >= S.queue.length) return; unlock(); S.qi = i; startCurrent(true); }

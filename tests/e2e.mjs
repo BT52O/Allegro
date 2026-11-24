@@ -1311,6 +1311,22 @@ try {
     && modes.join(',') === 'Repeat all|true|false|false,Repeat one|true|true|false,Shuffle|true|false|true,Repeat off|false|false|false',
     'play from the start goes back to 0:00 (still paused), and the repeat button cycles all, one, shuffle, off', JSON.stringify({ rsAt, rsZero, modes }));
 
+  // --- Previous always goes to the song before, even several seconds in, and never starts the same song over
+  await A.locator('#view .tr').nth(0).locator('.t-name').click(); await settle(A, 600);
+  await A.locator('#view .tr').nth(1).locator('.t-name').click();
+  await A.waitForFunction(() => { const [m, x] = (document.querySelector('#player .t-cur').textContent || '0:00').split(':').map(Number); return m * 60 + x >= 4; }, null, { timeout: 10000 }).catch(() => {});
+  const pvNames = await A.evaluate(() => [...document.querySelectorAll('#view .tr .t-name')].map(e => e.textContent.trim()));
+  const pvFrom = await A.evaluate(() => [document.getElementById('p-title').textContent, document.querySelector('#player .t-cur').textContent]);
+  await A.click('#player [data-act="prev"]');
+  await A.waitForFunction(t => document.getElementById('p-title').textContent !== t, pvFrom[0], { timeout: 5000 }).catch(() => {});
+  const pvTo = await A.evaluate(() => document.getElementById('p-title').textContent);
+  await A.click('#player [data-act="prev"]');
+  await A.waitForFunction(t => document.getElementById('p-title').textContent !== t, pvTo, { timeout: 5000 }).catch(() => {});
+  const pvWrap = await A.evaluate(() => document.getElementById('p-title').textContent);
+  check(sec(pvFrom[1]) >= 4 && pvFrom[0] === pvNames[1] && pvTo === pvNames[0] && pvWrap !== pvTo && pvWrap === pvNames[pvNames.length - 1],
+    'Previous goes to the song before even several seconds in, and from the first song it wraps to the last', JSON.stringify({ pvFrom, pvTo, pvWrap, n: pvNames.length }));
+  await A.click('#player [data-act="toggle"]'); await settle(A, 200);
+
   // --- the play queue floats under the search bar, lined up with it, and fades in and out
   await A.locator('#view .tr').first().locator('.t-name').click(); await settle(A, 800);
   const mainW = await A.evaluate(() => document.getElementById('main').getBoundingClientRect().width);
